@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>notso.ai — Proposal Generator</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgenjs.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script>
+if (typeof window.jspdf === 'undefined') {
+  var s1 = document.createElement('script');
+  s1.src = 'https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js';
+  document.head.appendChild(s1);
+}
+</script>
+<script>
+if (typeof PptxGenJS === 'undefined') {
+  var s = document.createElement('script');
+  s.src = 'https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgenjs.bundle.js';
+  document.head.appendChild(s);
+}
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0A0A0A;--white:#FFFFFF;
+  --gray-100:#F6F6F4;--gray-200:#E8E8E4;--gray-400:#BBBBB5;--gray-500:#8A8A84;
+  --accent:#5B5BD6;--green:#22C55E;--red:#EF4444;
+  --font:'Inter',system-ui,-apple-system,sans-serif;
+}
+body{font-family:var(--font);background:var(--gray-100);color:var(--black);min-height:100vh}
+
+/* ── HEADER ── */
+header{background:var(--black);padding:14px 32px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.logo{background:var(--white);color:var(--black);font-weight:900;font-size:16px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:5px;letter-spacing:-1px;flex-shrink:0}
+.logo-name{color:var(--white);font-size:16px;font-weight:700;letter-spacing:-0.3px}
+.logo-badge{background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);font-size:11px;padding:3px 10px;border-radius:20px;margin-left:4px}
+.header-right{margin-left:auto;color:rgba(255,255,255,.4);font-size:12px}
+
+/* ── LAYOUT ── */
+.container{max-width:880px;margin:0 auto;padding:40px 24px 80px}
+
+/* ── STEP BAR ── */
+.steps{display:flex;align-items:center;gap:0;margin-bottom:36px}
+.step{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-400);font-weight:500;white-space:nowrap}
+.step.active{color:var(--black);font-weight:700}
+.step.done{color:var(--green)}
+.step-num{width:26px;height:26px;border-radius:50%;background:var(--gray-200);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;transition:all .2s}
+.step.active .step-num{background:var(--black);color:var(--white)}
+.step.done .step-num{background:var(--green);color:var(--white)}
+.step-line{flex:1;height:1px;background:var(--gray-200);margin:0 12px}
+
+/* ── TYPOGRAPHY ── */
+.page-title{font-size:30px;font-weight:900;letter-spacing:-0.6px;margin-bottom:6px}
+.page-sub{color:var(--gray-500);font-size:15px;margin-bottom:32px}
+
+/* ── CARD ── */
+.card{background:var(--white);border-radius:16px;border:1px solid var(--gray-200);padding:28px 32px}
+
+/* ── FORM ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.form-group{display:flex;flex-direction:column;gap:7px}
+.form-group.full{grid-column:1/-1}
+label{font-size:12px;font-weight:700;color:var(--black);letter-spacing:.3px;text-transform:uppercase}
+label .hint{text-transform:none;font-weight:400;color:var(--gray-500);letter-spacing:0}
+input,select,textarea{
+  border:1.5px solid var(--gray-200);border-radius:10px;padding:11px 14px;
+  font-size:14px;font-family:var(--font);color:var(--black);background:var(--white);
+  outline:none;transition:border .15s;width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--black)}
+input[type=password]{letter-spacing:.05em}
+textarea{resize:vertical;min-height:90px;line-height:1.6}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+
+.color-row{display:flex;gap:8px;align-items:center}
+input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radius:10px;flex-shrink:0}
+.color-hex{flex:1}
+
+.divider{border:none;border-top:1.5px solid var(--gray-200);margin:24px 0}
+.section-label{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:16px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .15s;font-family:var(--font);text-decoration:none}
+.btn-primary{background:var(--black);color:var(--white)}
+.btn-primary:hover{background:#222}
+.btn-primary:disabled{background:var(--gray-400);cursor:not-allowed}
+.btn-secondary{background:var(--gray-100);color:var(--black);border:1.5px solid var(--gray-200)}
+.btn-secondary:hover{background:var(--gray-200)}
+.btn-green{background:var(--green);color:var(--white)}
+.btn-green:hover{background:#16a34a}
+.btn-full{width:100%;margin-top:24px;padding:16px;font-size:15px}
+.btn-canva{background:#7C3AED;color:var(--white)}
+.btn-canva:hover{background:#6d28d9}
+
+/* ── LOADING ── */
+.loading-wrap{text-align:center;padding:60px 40px}
+.loading-orb{width:64px;height:64px;border-radius:50%;background:var(--black);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 20px;animation:breathe 2s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(0,0,0,.15)}50%{transform:scale(1.06);box-shadow:0 0 0 12px rgba(0,0,0,0)}}
+.loading-title{font-size:22px;font-weight:900;letter-spacing:-.4px;margin-bottom:8px}
+.loading-sub{color:var(--gray-500);font-size:14px;margin-bottom:28px;min-height:20px}
+.progress-track{background:var(--gray-200);border-radius:99px;height:5px;max-width:360px;margin:0 auto;overflow:hidden}
+.progress-bar{height:100%;background:var(--black);border-radius:99px;transition:width .6s ease;width:0%}
+
+/* ── RESULT HEADER ── */
+.result-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;gap:16px;flex-wrap:wrap}
+
+/* ── SLIDE CARDS ── */
+.slides-list{display:flex;flex-direction:column;gap:14px}
+.slide-card{background:var(--white);border-radius:14px;border:1px solid var(--gray-200);overflow:hidden}
+.slide-top{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--gray-100);border-bottom:1px solid var(--gray-200)}
+.slide-num{background:var(--black);color:var(--white);font-size:10px;font-weight:900;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.slide-icon{font-size:17px}
+.slide-label{font-size:13px;font-weight:700;flex:1}
+.slide-body{padding:20px 22px}
+
+/* Slide content helpers */
+.s-headline{font-size:19px;font-weight:900;letter-spacing:-.3px;margin-bottom:10px;line-height:1.3}
+.s-text{font-size:13px;color:#4A4A46;line-height:1.65}
+.s-divider{height:1px;background:var(--gray-200);margin:14px 0}
+.pain-item{padding-left:14px;border-left:3px solid var(--red);margin-bottom:12px}
+.pain-title{font-weight:700;font-size:13px;margin-bottom:2px}
+.pain-desc{font-size:12px;color:#555;line-height:1.5}
+.feature-row{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
+.feat-icon{font-size:20px;width:30px;flex-shrink:0;margin-top:1px}
+.feat-title{font-weight:700;font-size:13px;margin-bottom:2px}
+.feat-desc{font-size:12px;color:#555;line-height:1.5}
+.mascot-opt{border:1.5px solid var(--gray-200);border-radius:12px;padding:16px;margin-bottom:12px}
+.mascot-opt:hover{border-color:var(--black)}
+.opt-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.opt-badge{background:var(--black);color:var(--white);font-size:10px;font-weight:800;padding:2px 8px;border-radius:5px}
+.opt-arch{font-size:11px;color:var(--gray-500);border:1px solid var(--gray-200);padding:2px 8px;border-radius:5px;font-weight:600}
+.opt-name{font-size:17px;font-weight:900;margin-bottom:5px}
+.opt-why{font-size:11px;color:var(--gray-500);font-style:italic;margin-top:6px}
+.traits{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.trait{background:var(--gray-100);border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600}
+.trait.dark{background:var(--black);color:var(--white)}
+.mascot-design-head{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.mascot-avatar{width:52px;height:52px;border-radius:50%;background:var(--black);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.mascot-name-big{font-size:22px;font-weight:900;letter-spacing:-.3px}
+.mascot-rec{font-size:11px;color:var(--gray-500);margin-top:2px}
+.sub-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--gray-400);margin-bottom:5px}
+.phrase-row{display:flex;flex-wrap:wrap;gap:6px}
+.phrase-chip{background:var(--gray-100);border:1px solid var(--gray-200);border-radius:8px;padding:5px 11px;font-size:12px;font-style:italic}
+.chat-wrap{border:1.5px solid var(--gray-200);border-radius:14px;padding:16px;background:var(--gray-100)}
+.chat-scenario{font-size:11px;color:var(--gray-500);font-style:italic;margin-bottom:12px}
+.bubble-row{margin-bottom:8px}
+.bubble-row.user{text-align:right}
+.bubble-sender{font-size:10px;color:var(--gray-400);margin-bottom:3px;font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+.bubble{display:inline-block;border-radius:14px;padding:10px 14px;font-size:13px;line-height:1.55;max-width:85%;text-align:left}
+.bubble.user{background:var(--white);border-bottom-right-radius:4px;border:1px solid var(--gray-200)}
+.bubble.bot{background:var(--black);color:var(--white);border-bottom-left-radius:4px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}
+.stat-box{text-align:center;background:var(--gray-100);border-radius:10px;padding:14px 8px}
+.stat-num{font-size:26px;font-weight:900;letter-spacing:-1px}
+.stat-lbl{font-size:11px;color:var(--gray-500);margin-top:3px;line-height:1.4}
+.case-box{background:var(--black);color:var(--white);border-radius:10px;padding:14px 16px}
+.case-label{font-size:10px;opacity:.5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.case-client{font-weight:800;font-size:14px}
+.case-result{font-size:12px;opacity:.75;margin-top:4px}
+.tier-wrap{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.tier{border:2px solid var(--gray-200);border-radius:12px;padding:14px 16px}
+.tier.rec{background:var(--black);color:var(--white);border-color:var(--black)}
+.tier-badge{font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;opacity:.6}
+.tier-name{font-size:15px;font-weight:900;margin-bottom:4px}
+.tier-price{font-size:22px;font-weight:900;letter-spacing:-.5px}
+.tier-note{font-size:11px;opacity:.65;margin-top:4px}
+.rec-label{font-size:9px;font-weight:800;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:5px;margin-bottom:8px;display:inline-block}
+.next-steps{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.ns-row{display:flex;gap:10px;align-items:flex-start}
+.ns-num{width:24px;height:24px;border-radius:50%;background:var(--black);color:var(--white);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ns-text{font-size:13px;color:#444;padding-top:4px;line-height:1.5}
+.contact-box{background:var(--gray-100);border-radius:10px;padding:13px 16px;margin-top:14px}
+.contact-box .label{font-weight:800;font-size:13px;margin-bottom:5px}
+.contact-box .detail{font-size:12px;color:var(--gray-500)}
+
+/* ── EXPORT BAR ── */
+.export-bar{display:flex;align-items:center;gap:12px;margin-top:24px;padding:20px 24px;background:var(--white);border-radius:14px;border:1px solid var(--gray-200);flex-wrap:wrap}
+.export-bar .lead{flex:1;min-width:200px}
+.export-lead-title{font-weight:800;font-size:14px;margin-bottom:2px}
+.export-lead-sub{font-size:12px;color:var(--gray-500)}
+
+/* ── CANVA MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px}
+.modal{background:var(--white);border-radius:18px;padding:32px;max-width:560px;width:100%}
+.modal h3{font-size:20px;font-weight:900;margin-bottom:8px}
+.modal p{font-size:13px;color:var(--gray-500);margin-bottom:20px;line-height:1.6}
+.modal textarea{width:100%;height:140px;font-size:11px;background:var(--gray-100);border-color:var(--gray-200);font-family:monospace;resize:none}
+.modal-actions{display:flex;gap:10px;margin-top:16px}
+
+/* ── HISTORY PANEL ── */
+.history-toggle{background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);font-size:12px;padding:6px 14px;border-radius:8px;cursor:pointer;border:none;font-family:var(--font);font-weight:600;transition:all .15s}
+.history-toggle:hover{background:rgba(255,255,255,.2);color:#fff}
+.history-panel{position:fixed;top:0;right:-380px;width:370px;height:100vh;background:var(--white);border-left:1px solid var(--gray-200);z-index:200;transition:right .3s ease;display:flex;flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,.08)}
+.history-panel.open{right:0}
+.history-head{padding:20px 20px 14px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between}
+.history-head h3{font-size:16px;font-weight:900;letter-spacing:-.3px}
+.history-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray-500);padding:4px 8px;border-radius:6px}
+.history-close:hover{background:var(--gray-100)}
+.history-body{flex:1;overflow-y:auto;padding:14px}
+.history-empty{text-align:center;padding:40px 20px;color:var(--gray-400);font-size:13px}
+.history-item{background:var(--gray-100);border:1px solid var(--gray-200);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .15s}
+.history-item:hover{border-color:var(--black);background:var(--white)}
+.history-item-name{font-weight:800;font-size:14px;margin-bottom:3px}
+.history-item-meta{font-size:11px;color:var(--gray-500);display:flex;gap:8px;flex-wrap:wrap}
+.history-item-actions{display:flex;gap:6px;margin-top:8px}
+.history-item-actions button{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--gray-200);background:var(--white);cursor:pointer;font-family:var(--font);font-weight:600}
+.history-item-actions button:hover{background:var(--gray-100)}
+.history-item-actions button.del{color:var(--red);border-color:#fecaca}
+.history-item-actions button.del:hover{background:#fef2f2}
+.history-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:199;display:none}
+.history-overlay.open{display:block}
+
+/* ── HIDDEN ── */
+.hidden{display:none!important}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  .form-grid{grid-template-columns:1fr}
+  .form-group.full{grid-column:1}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .tier-wrap{grid-template-columns:1fr}
+  .history-panel{width:100%;right:-100%}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">N</div>
+  <span class="logo-name">notso.ai</span>
+  <span class="logo-badge">Proposal Generator</span>
+  <button class="history-toggle" onclick="toggleHistory()">History</button>
+  <span class="header-right">Powered by Claude AI</span>
+</header>
+
+<!-- History overlay & panel -->
+<div class="history-overlay" id="historyOverlay" onclick="toggleHistory()"></div>
+<div class="history-panel" id="historyPanel">
+  <div class="history-head">
+    <h3>Proposal History</h3>
+    <button class="history-close" onclick="toggleHistory()">&times;</button>
+  </div>
+  <div class="history-body" id="historyBody">
+    <div class="history-empty">No proposals yet. Generate one to see it here.</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Step Bar -->
+  <div class="steps" id="stepBar">
+    <div class="step active" id="si1"><div class="step-num" id="sn1">1</div>Client Info</div>
+    <div class="step-line"></div>
+    <div class="step" id="si2"><div class="step-num" id="sn2">2</div>Generating</div>
+    <div class="step-line"></div>
+    <div class="step" id="si3"><div class="step-num" id="sn3">3</div>Preview & Export</div>
+  </div>
+
+  <!-- ── STEP 1: INPUT ── -->
+  <div id="view1">
+    <div class="page-title">New Client Proposal</div>
+    <div class="page-sub">Fill in the details — we'll research, write, and structure the entire pitch deck for you.</div>
+
+    <div class="card">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Client Name</label>
+          <input type="text" id="clientName" placeholder="e.g. Jumbo, FinSport, Ahrend" />
+        </div>
+        <div class="form-group">
+          <label>Industry / Sector</label>
+          <input type="text" id="industry" placeholder="e.g. Retail, Finance, Healthcare" />
+        </div>
+        <div class="form-group full">
+          <label>Primary Use Case</label>
+          <select id="useCase">
+            <option value="">Select use case...</option>
+            <option value="customer_support">Customer Support & Service (24/7 chat)</option>
+            <option value="hr_onboarding">HR Onboarding & Internal Workflows</option>
+            <option value="sales_conversion">Sales & Lead Conversion</option>
+            <option value="product_experience">Product Discovery & Guided Buying</option>
+            <option value="events_kiosk">Events / Trade Show Kiosk</option>
+            <option value="compliance">Compliance, Policy & FAQ</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Client Description <span class="hint">— what do they do, who are their customers?</span></label>
+          <textarea id="clientDesc" placeholder="e.g. Jumbo is one of the largest supermarket chains in the Netherlands with 700+ stores. Their HR team handles thousands of new employee onboarding cases per year and is overwhelmed with repetitive policy questions..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Brand Primary Color</label>
+          <div class="color-row">
+            <input type="color" id="color1" value="#FFD700" />
+            <input type="text" id="color1hex" class="color-hex" value="#FFD700" placeholder="#FFD700" maxlength="7" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Brand Secondary Color <span class="hint">(optional)</span></label>
+          <div class="color-row">
+            <input type="color" id="color2" value="#000000" />
+            <input type="text" id="color2hex" class="color-hex" value="#000000" placeholder="#000000" maxlength="7" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Suggested Mascot Name <span class="hint">(optional)</span></label>
+          <input type="text" id="mascotName" placeholder="e.g. Liza, Finn, Max, Biek..." />
+        </div>
+        <div class="form-group">
+          <label>Output Language</label>
+          <select id="outputLang">
+            <option value="en">English</option>
+            <option value="zh-TW">繁體中文</option>
+            <option value="ja">日本語</option>
+            <option value="nl">Nederlands</option>
+            <option value="ko">한국어</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <div class="section-label">API Configuration</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Claude API Key <span class="hint">— from Anthropic Console (console.anthropic.com)</span></label>
+          <input type="password" id="geminiKey" placeholder="sk-ant-..." />
+        </div>
+      </div>
+
+      <div id="errorBox" style="display:none;background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:10px;padding:12px 16px;margin-top:16px;font-size:13px;color:#991B1B;font-weight:600"></div>
+
+      <button class="btn btn-primary btn-full" id="generateBtn" onclick="startGeneration()">
+        Generate Proposal →
+      </button>
+      <div style="margin-top:12px;text-align:center;font-size:12px;color:var(--gray-400)">
+        Need a Claude API key? Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--black)">console.anthropic.com</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: LOADING ── -->
+  <div id="view2" class="hidden">
+    <div class="card loading-wrap">
+      <div class="loading-orb" id="loadOrb">🤖</div>
+      <div class="loading-title" id="loadTitle">Researching your client...</div>
+      <div class="loading-sub" id="loadSub">Analysing industry, pain points & competitive landscape</div>
+      <div class="progress-track">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: RESULT ── -->
+  <div id="view3" class="hidden">
+    <div class="result-header">
+      <div>
+        <div class="page-title" id="resultTitle">Proposal Ready</div>
+        <div class="page-sub" id="resultSub">9 slides generated</div>
+      </div>
+      <button class="btn btn-secondary" onclick="resetAll()">← New Proposal</button>
+    </div>
+
+    <div class="slides-list" id="slidesList"></div>
+
+    <div class="export-bar">
+      <div class="lead">
+        <div class="export-lead-title">Your proposal is ready</div>
+        <div class="export-lead-sub">Export as PPTX or send the brief to Claude to generate in Canva</div>
+      </div>
+      <button class="btn btn-secondary" onclick="exportPDF()">📄 Download PDF</button>
+      <button class="btn btn-secondary" onclick="exportPPTX()">📊 Export PPTX</button>
+      <button class="btn btn-canva" onclick="showCanvaModal()">🎨 Generate in Canva</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── CANVA MODAL ── -->
+<div class="modal-overlay hidden" id="canvaModal">
+  <div class="modal">
+    <h3>🎨 Generate in Canva</h3>
+    <p>Copy the brief below and paste it to Claude (in Cowork) to automatically generate your Canva presentation. Claude will duplicate the <strong>Projectvoorstel Fin</strong> template and fill in all 9 slides with your client's content and brand colors.</p>
+    <textarea id="canvaPrompt" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="copyCanvaBrief()">Copy Brief</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('canvaModal').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── STATE ─── */
+let proposal = null;
+let client = {};
+const CANVA_TEMPLATE_ID = 'DAG553tmMGk';
+
+/* ─── COLOR SYNC ─── */
+['1','2'].forEach(n => {
+  document.getElementById('color'+n).addEventListener('input', e => {
+    document.getElementById('color'+n+'hex').value = e.target.value.toUpperCase();
+  });
+  document.getElementById('color'+n+'hex').addEventListener('input', e => {
+    const v = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(v)) document.getElementById('color'+n).value = v;
+  });
+});
+
+/* ─── STEP INDICATOR ─── */
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    const si = document.getElementById('si'+i);
+    const sn = document.getElementById('sn'+i);
+    si.className = 'step' + (i===n?' active':i<n?' done':'');
+    sn.textContent = i < n ? '✓' : String(i);
+  });
+  [1,2,3].forEach(i => {
+    const v = document.getElementById('view'+i);
+    if (v) v.classList.toggle('hidden', i !== n);
+  });
+}
+
+/* ─── LOADING ANIMATION ─── */
+const loadSteps = [
+  { title:'Researching your client...', sub:'Analysing industry trends, pain points & competition', p:15, orb:'🔍' },
+  { title:'Mapping opportunities...', sub:'Connecting client context to notso.ai capabilities', p:30, orb:'🗺️' },
+  { title:'Creating mascot concepts...', sub:'Designing 2 character options tailored to their audience', p:50, orb:'🎭' },
+  { title:'Writing proposal copy...', sub:'Generating 9 slides in notso.ai voice & style', p:70, orb:'✍️' },
+  { title:'Adding data & insights...', sub:'Pulling relevant market stats for their industry', p:85, orb:'📊' },
+  { title:'Finalising your pitch...', sub:'Polishing every slide for maximum impact', p:95, orb:'✨' },
+];
+
+function animateLoading() {
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i >= loadSteps.length) { clearInterval(interval); return; }
+    const s = loadSteps[i];
+    document.getElementById('loadTitle').textContent = s.title;
+    document.getElementById('loadSub').textContent = s.sub;
+    document.getElementById('progressBar').style.width = s.p + '%';
+    document.getElementById('loadOrb').textContent = s.orb;
+    i++;
+  }, 1400);
+  return interval;
+}
+
+/* ─── MAIN GENERATION ─── */
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = '⚠ ' + msg;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function hideError() {
+  document.getElementById('errorBox').style.display = 'none';
+}
+
+async function startGeneration() {
+  hideError();
+  const btn = document.getElementById('generateBtn');
+  const name = document.getElementById('clientName').value.trim();
+  const industry = document.getElementById('industry').value.trim();
+  const useCase = document.getElementById('useCase').value;
+  const desc = document.getElementById('clientDesc').value.trim();
+  const key = document.getElementById('geminiKey').value.trim();
+
+  if (!name) { showError('Please enter the Client Name.'); return; }
+  if (!industry) { showError('Please enter the Industry / Sector.'); return; }
+  if (!useCase) { showError('Please select a Primary Use Case.'); return; }
+  if (!desc) { showError('Please fill in the Client Description.'); return; }
+  if (!key) { showError('Please enter your Claude API Key from console.anthropic.com'); return; }
+  if (!key.startsWith('sk-ant-')) { showError('Claude API key should start with "sk-ant-". Please double-check your key.'); return; }
+
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  client = {
+    name, industry, useCase, desc,
+    color1: document.getElementById('color1hex').value || '#000000',
+    color2: document.getElementById('color2hex').value || '#FFFFFF',
+    mascotName: document.getElementById('mascotName').value.trim(),
+    lang: document.getElementById('outputLang').value,
+  };
+
+  setStep(2);
+  const interval = animateLoading();
+
+  try {
+    proposal = await callGemini(client, key);
+    clearInterval(interval);
+    document.getElementById('progressBar').style.width = '100%';
+    document.getElementById('loadTitle').textContent = 'Done! Building your preview...';
+    btn.textContent = 'Generate Proposal →';
+    btn.disabled = false;
+    // Save to history automatically
+    saveToHistory(client, proposal);
+    setTimeout(() => {
+      setStep(3);
+      document.getElementById('resultTitle').textContent = 'Proposal for ' + name;
+      document.getElementById('resultSub').textContent = industry + ' · ' + useCaseLabel(useCase) + ' · 9 slides ready';
+      renderAllSlides(proposal, client);
+    }, 600);
+  } catch(err) {
+    clearInterval(interval);
+    setStep(1);
+    btn.textContent = 'Generate Proposal →';
+    btn.disabled = false;
+    showError('API Error: ' + err.message + ' — Please check your Claude API key and try again.');
+  }
+}
+
+/* ─── GEMINI SYSTEM PROMPT ─── */
+const SYSTEM = `You are the expert sales AI for notso.ai (www.notso.ai), a Dutch AI startup backed by Rabobank. You create highly personalized, compelling sales proposals for potential clients.
+
+ABOUT NOTSO.AI:
+"The Experience Layer of AI" — the missing layer between AI and users. We transform boring text chatbots into personality-driven, 3D animated AI mascots. We don't replace existing AI infrastructure — we sit ON TOP of it, adding the experience layer that makes users actually enjoy interacting with AI.
+
+BRAND VOICE:
+Direct, confident, slightly provocative. Warm but not fluffy. Smart but never arrogant.
+- "Stop building boring chatbots. Build a digital employee."
+- "Bring your brand to life. Literally."
+- "One mascot, endless possibilities."
+- Short punchy sentences. No jargon. Real results, not buzzwords.
+- Use "we" for notso.ai, "you/your" for the client.
+
+PRODUCTS & PRICING:
+Basic — €5,000/year (no setup fee): 1 mascot slot, basic rig template, 1 custom reskin, 1,000 users/mo, 3,000 conversations/mo, 1 chat journey, KB up to 10 pages, media starter pack (5 images, 1 clip), basic analytics, email support. Live in 2 months.
+
+Premium — €8,000/year (no setup fee): 2 mascot slots, premium rig templates, 1 custom reskin, 2,000 users/mo, 6,000 conversations/mo, 3 chat journeys per slot, KB up to 20 pages, media pack (10 images, 5 clips), premium analytics, 24/7 email support. Live in 2 months.
+
+Enterprise — from €10,000/year + one-time setup from €15,000: Custom rig, animation, design, journeys, knowledge base, API integrations, unlimited users & conversations, enterprise analytics, priority support. Live in 3 months.
+
+DATA & PROOF:
+- Mascots remembered 7x better than a logo
+- Trust increases 35% with a named AI character
+- Engagement +40% vs. text chatbots
+- Higher conversion, lower support costs, longer session duration
+- Backed by Rabobank
+
+CASE STUDIES:
+- Jumbo/Liza (retail supermarket): HR onboarding — self-service, reduced HR workload, higher employee engagement
+- Se7en/Willy (office furniture): Sales mascot — guides product config, increases showroom conversion
+- FinSport/Fin (sports club finance): 24/7 compliance/support mascot — reduces tickets, trusted by treasurers
+- RAUWcc/Biek (creative agency): Digital twin — pre-qualifies leads, unique brand voice
+- IUS Sarajevo/Woof (university): Student campus buddy — exam guidance, campus support
+
+IMPLEMENTATION (4 steps):
+1. Design: We design or optimize the 3D mascot (5 concepts to choose from)
+2. Brain Training: Client uploads PDFs, URLs, FAQs — we train the AI brain
+3. Engineering: Chatflows, tone of voice, API integrations
+4. Deploy: Lightweight widget — live in under 5 minutes once ready
+
+Always make proposals highly specific to the client. Reference their real industry context, their customers, their exact pain points. Never be generic.`;
+
+async function callGemini(info, key) {
+  const ucMap = {
+    customer_support:'Customer Support & Service',hr_onboarding:'HR Onboarding & Internal Workflows',
+    sales_conversion:'Sales & Lead Conversion',product_experience:'Product Discovery & Guided Buying',
+    events_kiosk:'Events & Kiosk Experience',compliance:'Compliance, Policy & FAQ'
+  };
+
+  const langMap = {
+    'en':'English','zh-TW':'Traditional Chinese (繁體中文)','ja':'Japanese (日本語)',
+    'nl':'Dutch (Nederlands)','ko':'Korean (한국어)','de':'German (Deutsch)',
+    'fr':'French (Français)','es':'Spanish (Español)'
+  };
+  const langLabel = langMap[info.lang] || 'English';
+
+  const prompt = `Generate a complete 9-slide notso.ai sales proposal for this client.
+
+IMPORTANT: Generate ALL text content in ${langLabel}. Every headline, description, pain point, feature, mascot personality, chat dialogue, pricing description, and closing message must be written in ${langLabel}. Only keep proper nouns (company names, product names like "notso.ai") in their original form.
+
+CLIENT NAME: ${info.name}
+INDUSTRY: ${info.industry}
+PRIMARY USE CASE: ${ucMap[info.useCase]||info.useCase}
+CLIENT DESCRIPTION: ${info.desc}
+BRAND PRIMARY COLOR: ${info.color1}
+BRAND SECONDARY COLOR: ${info.color2}
+${info.mascotName?'SUGGESTED MASCOT NAME: '+info.mascotName:''}
+
+Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
+{
+  "s1": {
+    "mascot_name": "name",
+    "greeting": "short warm opening line the mascot says",
+    "tagline": "punchy client-specific proposal tagline"
+  },
+  "s2": {
+    "headline": "bold direct headline about their core problem",
+    "intro": "1-2 sentence setup",
+    "points": [
+      {"title":"Pain title","desc":"specific industry pain"},
+      {"title":"Pain title","desc":"specific pain"},
+      {"title":"Pain title","desc":"specific pain"}
+    ]
+  },
+  "s3": {
+    "headline": "what the mascot will do for ${info.name}",
+    "intro": "1 sentence value statement",
+    "features": [
+      {"icon":"emoji","title":"feature","desc":"how it applies to this client"},
+      {"icon":"emoji","title":"feature","desc":"..."},
+      {"icon":"emoji","title":"feature","desc":"..."},
+      {"icon":"emoji","title":"feature","desc":"..."}
+    ]
+  },
+  "s4": {
+    "headline": "Find the right fit for ${info.name}",
+    "option_a": {
+      "name":"Character Name","archetype":"The [Archetype]",
+      "traits":["trait","trait","trait","trait"],
+      "desc":"2-3 sentence character description relevant to their audience",
+      "why":"1 sentence why this fits ${info.name} specifically",
+      "formal":40,"playful":70
+    },
+    "option_b": {
+      "name":"Different Name","archetype":"The [Archetype]",
+      "traits":["trait","trait","trait","trait"],
+      "desc":"2-3 sentence character description",
+      "why":"1 sentence",
+      "formal":70,"playful":30
+    }
+  },
+  "s5": {
+    "rec_note": "which option you recommend and why (1 sentence)",
+    "name": "recommended mascot name",
+    "personality": "2 sentences on their character personality",
+    "tone_desc": "how they speak — formal/informal balance, style",
+    "phrases": ["sample phrase 1","sample phrase 2","sample phrase 3"],
+    "interests": ["industry-relevant interest","interest","interest"]
+  },
+  "s6": {
+    "mascot_name": "mascot name",
+    "scenario": "brief description of chat scenario",
+    "chat": [
+      {"r":"user","m":"opening message relevant to ${info.name} use case"},
+      {"r":"bot","m":"mascot reply — warm, helpful, on-brand"},
+      {"r":"user","m":"follow-up question"},
+      {"r":"bot","m":"mascot response — shows personality, guides to outcome"}
+    ]
+  },
+  "s7": {
+    "headline": "Why AI mascots outperform chatbots",
+    "industry_stat": "a specific insight or stat about AI adoption in ${info.industry}",
+    "stats": [
+      {"n":"7x","l":"Better brand recall than a logo"},
+      {"n":"35%","l":"Higher trust with a named character"},
+      {"n":"40%","l":"More engagement vs. text chatbots"},
+      {"n":"stat","l":"industry-specific stat for ${info.industry}"}
+    ],
+    "case_client": "most relevant existing notso.ai client",
+    "case_result": "key result they achieved"
+  },
+  "s8": {
+    "rec_tier": "Basic or Premium or Enterprise",
+    "reasoning": "1-2 sentences on why this tier fits ${info.name}",
+    "next_step": "specific CTA for ${info.name}",
+    "tiers": [
+      {"name":"Basic","price":"€5,000/year","highlight":"1 mascot · 1K users/mo","rec":false},
+      {"name":"Premium","price":"€8,000/year","highlight":"2 mascots · 2K users/mo","rec":false},
+      {"name":"Enterprise","price":"From €10K/year","highlight":"Custom · Unlimited","rec":false}
+    ]
+  },
+  "s9": {
+    "closing": "warm direct closing for ${info.name} (2 sentences)",
+    "next_steps": ["step 1","step 2","step 3"],
+    "email": "hello@notso.ai",
+    "phone": "+31 6 40450599",
+    "website": "www.notso.ai"
+  }
+}`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  if (!res.ok) {
+    const e = await res.json();
+    throw new Error(e.error?.message || 'Claude API error (status ' + res.status + ')');
+  }
+  const data = await res.json();
+  const txt = data.content?.[0]?.text;
+  if (!txt) throw new Error('Empty response from Claude');
+  try { return JSON.parse(txt); }
+  catch {
+    const m = txt.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error('Could not parse Claude response as JSON');
+  }
+}
+
+/* ─── RENDER ALL SLIDES ─── */
+const ICONS = ['🎯','😟','✨','🎭','🎨','💬','📊','💰','🙏'];
+const LABELS = ['Cover','Pain Points','Core Features','Mascot Selection','Mascot Design','Chat Mock-up','Data & Insights','Pricing','Thank You'];
+
+function renderAllSlides(d, info) {
+  const fns = [
+    () => rCover(d.s1, info),
+    () => rPain(d.s2),
+    () => rFeatures(d.s3),
+    () => rMascotSel(d.s4),
+    () => rMascotDesign(d.s5),
+    () => rChat(d.s6),
+    () => rData(d.s7),
+    () => rPricing(d.s8),
+    () => rThankYou(d.s9),
+  ];
+  document.getElementById('slidesList').innerHTML = fns.map((fn, i) => `
+    <div class="slide-card">
+      <div class="slide-top">
+        <div class="slide-num">${String(i+1).padStart(2,'0')}</div>
+        <span class="slide-icon">${ICONS[i]}</span>
+        <span class="slide-label">${LABELS[i]}</span>
+      </div>
+      <div class="slide-body">${fn()}</div>
+    </div>
+  `).join('');
+}
+
+function safe(v){ return v || '' }
+function esc(s){ return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+function rCover(d, info) {
+  if (!d) return '<em>—</em>';
+  return `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+      <div style="width:54px;height:54px;border-radius:50%;background:${info.color1};display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">👋</div>
+      <div>
+        <div class="s-headline">"${esc(d.greeting)}"</div>
+        <div style="font-size:12px;color:var(--gray-500)">— ${esc(d.mascot_name)}, powered by notso.ai</div>
+      </div>
+    </div>
+    <div style="background:var(--black);color:var(--white);display:inline-block;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700">${esc(d.tagline)}</div>
+  `;
+}
+
+function rPain(d) {
+  if (!d) return '<em>—</em>';
+  const pts = (d.points||[]).map(p => `
+    <div class="pain-item">
+      <div class="pain-title">${esc(p.title)}</div>
+      <div class="pain-desc">${esc(p.desc)}</div>
+    </div>`).join('');
+  return `<div class="s-headline">${esc(d.headline)}</div><div class="s-text" style="margin-bottom:16px">${esc(d.intro)}</div>${pts}`;
+}
+
+function rFeatures(d) {
+  if (!d) return '<em>—</em>';
+  const feats = (d.features||[]).map(f => `
+    <div class="feature-row">
+      <div class="feat-icon">${esc(f.icon)||'⚡'}</div>
+      <div><div class="feat-title">${esc(f.title)}</div><div class="feat-desc">${esc(f.desc)}</div></div>
+    </div>`).join('');
+  return `<div class="s-headline">${esc(d.headline)}</div><div class="s-text" style="margin-bottom:16px">${esc(d.intro)}</div>${feats}`;
+}
+
+function rMascotSel(d) {
+  if (!d) return '<em>—</em>';
+  const opt = (o, lbl) => `
+    <div class="mascot-opt">
+      <div class="opt-row">
+        <span class="opt-badge">Option ${lbl}</span>
+        <span class="opt-arch">${esc(o.archetype)}</span>
+      </div>
+      <div class="opt-name">${esc(o.name)}</div>
+      <div class="s-text">${esc(o.desc)}</div>
+      <div class="opt-why">${esc(o.why)}</div>
+      <div class="traits">${(o.traits||[]).map(t=>`<span class="trait">${esc(t)}</span>`).join('')}</div>
+    </div>`;
+  return `<div class="s-headline">${esc(d.headline)}</div>${opt(d.option_a||{},'A')}${opt(d.option_b||{},'B')}`;
+}
+
+function rMascotDesign(d) {
+  if (!d) return '<em>—</em>';
+  return `
+    <div class="mascot-design-head">
+      <div class="mascot-avatar">🎨</div>
+      <div>
+        <div class="mascot-name-big">${esc(d.name)}</div>
+        <div class="mascot-rec">${esc(d.rec_note)}</div>
+      </div>
+    </div>
+    <div class="sub-label">Personality</div>
+    <div class="s-text" style="margin-bottom:14px">${esc(d.personality)}</div>
+    <div class="sub-label">Tone of Voice</div>
+    <div class="s-text" style="margin-bottom:10px">${esc(d.tone_desc)}</div>
+    <div class="phrase-row">${(d.phrases||[]).map(p=>`<span class="phrase-chip">"${esc(p)}"</span>`).join('')}</div>
+    ${d.interests ? `<div class="sub-label" style="margin-top:14px">Interests & Context</div>
+    <div class="traits">${(d.interests||[]).map(i=>`<span class="trait">${esc(i)}</span>`).join('')}</div>` : ''}
+  `;
+}
+
+function rChat(d) {
+  if (!d) return '<em>—</em>';
+  const bubbles = (d.chat||[]).map(m => {
+    const isUser = m.r === 'user';
+    return `
+      <div class="bubble-row ${isUser?'user':''}">
+        <div class="bubble-sender">${isUser ? 'User' : (esc(d.mascot_name)||'Mascot') + ' // online'}</div>
+        <div class="bubble ${isUser?'user':'bot'}">${esc(m.m)}</div>
+      </div>`;
+  }).join('');
+  return `<div class="chat-wrap"><div class="chat-scenario">${esc(d.scenario)}</div>${bubbles}</div>`;
+}
+
+function rData(d) {
+  if (!d) return '<em>—</em>';
+  const stats = (d.stats||[]).map(s => `
+    <div class="stat-box">
+      <div class="stat-num">${esc(s.n)}</div>
+      <div class="stat-lbl">${esc(s.l)}</div>
+    </div>`).join('');
+  return `
+    <div class="s-headline">${esc(d.headline)}</div>
+    <div style="background:var(--gray-100);border-radius:10px;padding:12px 14px;font-size:13px;color:#555;margin-bottom:14px">${esc(d.industry_stat)}</div>
+    <div class="stat-grid">${stats}</div>
+    ${d.case_client ? `<div class="case-box">
+      <div class="case-label">Case Study</div>
+      <div class="case-client">${esc(d.case_client)}</div>
+      <div class="case-result">${esc(d.case_result)}</div>
+    </div>` : ''}
+  `;
+}
+
+function rPricing(d) {
+  if (!d) return '<em>—</em>';
+  const tiers = (d.tiers||[]).map(t => {
+    const isRec = d.rec_tier && t.name.toLowerCase() === d.rec_tier.toLowerCase();
+    return `
+      <div class="tier ${isRec?'rec':''}">
+        ${isRec ? '<div class="rec-label">⭐ Recommended</div>' : ''}
+        <div class="tier-name">${esc(t.name)}</div>
+        <div class="tier-price">${esc(t.price)}</div>
+        <div class="tier-note">${esc(t.highlight)}</div>
+      </div>`;
+  }).join('');
+  return `
+    <div style="background:var(--gray-100);border-radius:10px;padding:12px 14px;font-size:13px;color:#555;margin-bottom:16px">${esc(d.reasoning)}</div>
+    <div class="tier-wrap">${tiers}</div>
+    <div style="margin-top:14px;font-weight:800;font-size:14px">→ ${esc(d.next_step)}</div>
+  `;
+}
+
+function rThankYou(d) {
+  if (!d) return '<em>—</em>';
+  const steps = (d.next_steps||[]).map((s,i) => `
+    <div class="ns-row">
+      <div class="ns-num">${i+1}</div>
+      <div class="ns-text">${esc(s)}</div>
+    </div>`).join('');
+  return `
+    <div class="s-headline">${esc(d.closing)}</div>
+    <div class="sub-label" style="margin-top:16px">Next Steps</div>
+    <div class="next-steps">${steps}</div>
+    <div class="contact-box">
+      <div class="label">notso.ai</div>
+      <div class="detail">📧 ${esc(d.email)} &nbsp;·&nbsp; 📞 ${esc(d.phone)} &nbsp;·&nbsp; 🌐 ${esc(d.website)}</div>
+    </div>
+  `;
+}
+
+/* ─── EXPORT PDF ─── */
+function stripEmoji(str) {
+  if (!str) return '';
+  return String(str).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\s{2,}/g,' ').trim();
+}
+
+function exportPDF() {
+  if (!proposal) return;
+  if (typeof window.jspdf === 'undefined') {
+    alert('jsPDF not loaded, please refresh.'); return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W = 210, H = 297;
+  const ML = 22, MR = 22, MT = 25, MB = 25;
+  const usable = W - ML - MR;
+  let y = MT;
+  const c1 = client.color1 || '#FFD700';
+
+  function hex2rgb(hex) {
+    hex = hex.replace('#','');
+    return [parseInt(hex.substring(0,2),16), parseInt(hex.substring(2,4),16), parseInt(hex.substring(4,6),16)];
+  }
+  function lum(r,g,b){ return 0.299*r+0.587*g+0.114*b; }
+
+  function needPage(need) {
+    if (y + need > H - MB) { doc.addPage(); y = MT; addFooter(); return true; }
+    return false;
+  }
+
+  function addFooter() {
+    doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.setTextColor(180,180,180);
+    doc.text('notso.ai  |  Proposal for ' + stripEmoji(client.name||''), ML, H - 12);
+    doc.text(String(doc.getNumberOfPages()), W - MR, H - 12, { align:'right' });
+    doc.setTextColor(30,30,30);
+  }
+
+  // ─── Section header with brand color bar ───
+  function sectionHeader(num, title) {
+    needPage(22);
+    const [r,g,b] = hex2rgb(c1);
+    // Left accent bar
+    doc.setFillColor(r,g,b);
+    doc.rect(ML, y, 4, 10, 'F');
+    // Title text
+    doc.setFont('helvetica','bold'); doc.setFontSize(13);
+    doc.setTextColor(30,30,30);
+    doc.text(`${num}. ${stripEmoji(title)}`, ML + 8, y + 7);
+    y += 16;
+  }
+
+  function heading(text) {
+    if (!text) return;
+    text = stripEmoji(text);
+    needPage(12);
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.setTextColor(30,30,30);
+    const lines = doc.splitTextToSize(text, usable);
+    doc.text(lines, ML, y);
+    y += lines.length * 6.5 + 4;
+  }
+
+  function body(text) {
+    if (!text) return;
+    text = stripEmoji(text);
+    needPage(8);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.setTextColor(60,60,60);
+    const lines = doc.splitTextToSize(text, usable);
+    lines.forEach(line => {
+      needPage(6);
+      doc.text(line, ML, y);
+      y += 5;
+    });
+    y += 4;
+    doc.setTextColor(30,30,30);
+  }
+
+  function bullet(title, desc) {
+    needPage(14);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.setTextColor(30,30,30);
+    const t = stripEmoji(title);
+    const tLines = doc.splitTextToSize(t, usable - 8);
+    // Bullet dot
+    const [r,g,b] = hex2rgb(c1);
+    doc.setFillColor(r,g,b);
+    doc.circle(ML + 2, y - 1.2, 1.2, 'F');
+    doc.text(tLines, ML + 7, y);
+    y += tLines.length * 5 + 1;
+    if (desc) {
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      doc.setTextColor(90,90,90);
+      const dLines = doc.splitTextToSize(stripEmoji(desc), usable - 10);
+      dLines.forEach(line => { needPage(5); doc.text(line, ML + 7, y); y += 4.5; });
+      doc.setTextColor(30,30,30);
+    }
+    y += 4;
+  }
+
+  function spacer(h) { y += h || 6; }
+  function divider() { spacer(4); needPage(2); doc.setDrawColor(230,230,230); doc.line(ML, y, W-MR, y); spacer(8); }
+
+  // ════════════════════════════════════
+  // COVER PAGE
+  // ════════════════════════════════════
+  const d1 = proposal.s1 || {};
+  const [cr,cg,cb] = hex2rgb(c1);
+
+  // Top color band
+  doc.setFillColor(cr,cg,cb);
+  doc.rect(0, 0, W, 90, 'F');
+  const textOnBrand = lum(cr,cg,cb) > 150 ? [10,10,10] : [255,255,255];
+  doc.setTextColor(...textOnBrand);
+
+  // notso.ai logo area
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text('notso.ai', ML, 30);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text('Proposal Generator', ML + 25, 30);
+
+  // Client name big
+  doc.setFont('helvetica','bold'); doc.setFontSize(32);
+  const nameTxt = stripEmoji(client.name || 'Proposal');
+  const nameLines = doc.splitTextToSize(nameTxt, usable);
+  doc.text(nameLines, ML, 55);
+
+  // Tagline
+  if (d1.tagline) {
+    doc.setFont('helvetica','normal'); doc.setFontSize(13);
+    doc.text(doc.splitTextToSize(stripEmoji(d1.tagline), usable), ML, 72);
+  }
+
+  // Below the band — greeting & info
+  doc.setTextColor(30,30,30);
+  doc.setFont('helvetica','italic'); doc.setFontSize(14);
+  if (d1.greeting) {
+    const greet = '"' + stripEmoji(d1.greeting) + '"';
+    doc.text(doc.splitTextToSize(greet, usable), ML, 110);
+  }
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  if (d1.mascot_name) doc.text('-- ' + stripEmoji(d1.mascot_name) + ', powered by notso.ai', ML, 125);
+
+  doc.setFontSize(10);
+  doc.text(stripEmoji(client.industry) + '  |  ' + useCaseLabel(client.useCase), ML, 145);
+
+  // Bottom info
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.setTextColor(130,130,130);
+  doc.text('hello@notso.ai  |  www.notso.ai  |  +31 6 40450599', ML, H - 25);
+  const now = new Date();
+  doc.text(now.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}), W - MR, H - 25, {align:'right'});
+
+  // ════════════════════════════════════
+  // CONTENT PAGES
+  // ════════════════════════════════════
+  doc.addPage(); y = MT; addFooter();
+
+  // — Slide 2: Pain Points —
+  const d2 = proposal.s2 || {};
+  sectionHeader('1', 'Pain Points');
+  heading(d2.headline);
+  body(d2.intro);
+  (d2.points||[]).forEach(p => bullet(p.title, p.desc));
+
+  // — Slide 3: Core Features — (new page for breathing room)
+  doc.addPage(); y = MT; addFooter();
+  const d3 = proposal.s3 || {};
+  sectionHeader('2', 'Core Features');
+  heading(d3.headline);
+  body(d3.intro);
+  (d3.features||[]).forEach(f => bullet(f.title, f.desc));
+
+  // — Slide 4: Mascot Selection —
+  doc.addPage(); y = MT; addFooter();
+  const d4 = proposal.s4 || {};
+  sectionHeader('3', 'Mascot Selection');
+  heading(d4.headline);
+  ['option_a','option_b'].forEach((k, i) => {
+    const o = d4[k] || {};
+    needPage(30);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.setTextColor(30,30,30);
+    doc.text(`Option ${i===0?'A':'B'}  --  ${stripEmoji(o.name||'')}  (${stripEmoji(o.archetype||'')})`, ML, y);
+    y += 7;
+    body(o.desc);
+    if (o.traits) body('Traits: ' + o.traits.map(t=>stripEmoji(t)).join(', '));
+    if (o.why) { doc.setFont('helvetica','italic'); body(o.why); }
+    spacer(4);
+  });
+
+  // — Slide 5: Mascot Design —
+  divider();
+  const d5 = proposal.s5 || {};
+  sectionHeader('4', 'Mascot Design');
+  heading('Meet ' + stripEmoji(d5.name||''));
+  if (d5.rec_note) body(d5.rec_note);
+  if (d5.personality) body('Personality: ' + d5.personality);
+  if (d5.tone_desc) body('Tone: ' + d5.tone_desc);
+  if (d5.phrases) body('Phrases: ' + d5.phrases.map(p=>'"'+stripEmoji(p)+'"').join('  |  '));
+  if (d5.interests) body('Interests: ' + d5.interests.map(i=>stripEmoji(i)).join(', '));
+
+  // — Slide 6: Chat Mock-up —
+  doc.addPage(); y = MT; addFooter();
+  const d6 = proposal.s6 || {};
+  sectionHeader('5', 'Chat Demo');
+  if (d6.scenario) body('Scenario: ' + d6.scenario);
+  spacer(2);
+  (d6.chat||[]).forEach(m => {
+    needPage(14);
+    const isUser = m.r === 'user';
+    const sender = isUser ? 'User' : stripEmoji(d6.mascot_name || 'Mascot');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.setTextColor(150,150,150);
+    doc.text(sender.toUpperCase(), ML + 5, y); y += 5;
+    // Chat bubble background
+    const msgText = stripEmoji(m.m);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    const mLines = doc.splitTextToSize(msgText, usable - 20);
+    const bubbleH = mLines.length * 5 + 6;
+    needPage(bubbleH + 4);
+    if (isUser) {
+      doc.setFillColor(245,245,242);
+      doc.roundedRect(ML + 3, y - 4, usable - 6, bubbleH, 3, 3, 'F');
+      doc.setTextColor(30,30,30);
+    } else {
+      doc.setFillColor(30,30,30);
+      doc.roundedRect(ML + 3, y - 4, usable - 6, bubbleH, 3, 3, 'F');
+      doc.setTextColor(255,255,255);
+    }
+    mLines.forEach(line => { doc.text(line, ML + 8, y); y += 5; });
+    doc.setTextColor(30,30,30);
+    y += 6;
+  });
+
+  // — Slide 7: Data & Insights —
+  doc.addPage(); y = MT; addFooter();
+  const d7 = proposal.s7 || {};
+  sectionHeader('6', 'Data & Insights');
+  heading(d7.headline);
+  if (d7.industry_stat) body(d7.industry_stat);
+  spacer(2);
+  (d7.stats||[]).forEach(s => {
+    needPage(12);
+    doc.setFont('helvetica','bold'); doc.setFontSize(18);
+    const [r,g,b] = hex2rgb(c1);
+    doc.setTextColor(r,g,b);
+    doc.text(stripEmoji(s.n), ML + 5, y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.setTextColor(60,60,60);
+    doc.text(stripEmoji(s.l), ML + 35, y);
+    y += 10;
+  });
+  doc.setTextColor(30,30,30);
+  spacer(4);
+  if (d7.case_client) {
+    needPage(16);
+    doc.setFillColor(30,30,30);
+    doc.roundedRect(ML, y, usable, 16, 3, 3, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text('Case Study: ' + stripEmoji(d7.case_client), ML + 6, y + 7);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(stripEmoji(d7.case_result), ML + 6, y + 13);
+    doc.setTextColor(30,30,30);
+    y += 22;
+  }
+
+  // — Slide 8: Pricing —
+  doc.addPage(); y = MT; addFooter();
+  const d8 = proposal.s8 || {};
+  sectionHeader('7', 'Pricing');
+  if (d8.reasoning) body(d8.reasoning);
+  spacer(2);
+  (d8.tiers||[]).forEach(t => {
+    const isRec = d8.rec_tier && t.name.toLowerCase() === d8.rec_tier.toLowerCase();
+    needPage(22);
+    if (isRec) {
+      const [r,g,b] = hex2rgb(c1);
+      doc.setFillColor(r,g,b);
+      doc.roundedRect(ML, y - 3, usable, 18, 3, 3, 'F');
+      const tc = lum(r,g,b) > 150 ? [10,10,10] : [255,255,255];
+      doc.setTextColor(...tc);
+    } else {
+      doc.setDrawColor(200,200,200);
+      doc.roundedRect(ML, y - 3, usable, 18, 3, 3, 'S');
+      doc.setTextColor(30,30,30);
+    }
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text(stripEmoji(t.name) + (isRec ? '  [RECOMMENDED]' : ''), ML + 6, y + 4);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text(stripEmoji(t.price) + '  --  ' + stripEmoji(t.highlight), ML + 6, y + 11);
+    doc.setTextColor(30,30,30);
+    y += 24;
+  });
+  spacer(4);
+  if (d8.next_step) {
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    body('>> ' + d8.next_step);
+  }
+
+  // — Slide 9: Thank You —
+  doc.addPage(); y = MT; addFooter();
+  const d9 = proposal.s9 || {};
+  sectionHeader('8', 'Next Steps');
+  heading(d9.closing);
+  spacer(4);
+  (d9.next_steps||[]).forEach((s, i) => {
+    needPage(12);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    const [r,g,b] = hex2rgb(c1);
+    doc.setFillColor(r,g,b);
+    doc.circle(ML + 3, y - 1.2, 4, 'F');
+    const tc = lum(r,g,b) > 150 ? [10,10,10] : [255,255,255];
+    doc.setTextColor(...tc);
+    doc.text(String(i+1), ML + 1.5, y);
+    doc.setTextColor(30,30,30);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    const sLines = doc.splitTextToSize(stripEmoji(s), usable - 14);
+    doc.text(sLines, ML + 11, y);
+    y += sLines.length * 5 + 6;
+  });
+  spacer(8);
+  needPage(20);
+  // Contact box
+  doc.setFillColor(245,245,242);
+  doc.roundedRect(ML, y, usable, 22, 3, 3, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.text('notso.ai', ML + 6, y + 8);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.setTextColor(100,100,100);
+  doc.text(`${d9.email||'hello@notso.ai'}  |  ${d9.phone||''}  |  ${d9.website||'www.notso.ai'}`, ML + 6, y + 16);
+
+  doc.save(`notso-proposal-${stripEmoji(client.name)||'draft'}.pdf`);
+}
+
+/* ─── EXPORT PPTX ─── */
+function exportPPTX() {
+  if (!proposal) return;
+  if (typeof PptxGenJS === 'undefined') { alert('PptxGenJS not loaded, please refresh.'); return; }
+
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+  const bg = client.color1 || '#0A0A0A';
+  const white = 'FFFFFF';
+  const black = '0A0A0A';
+
+  // Slide 1: Cover
+  const s1 = pptx.addSlide();
+  s1.background = { color: bg.replace('#','') };
+  const d1 = proposal.s1||{};
+  s1.addText(d1.mascot_name||'', { x:1,y:1,w:'80%',fontSize:52,bold:true,color:white });
+  s1.addText('"' + (d1.greeting||'') + '"', { x:1,y:2.8,w:'80%',fontSize:20,color:white,italic:true });
+  s1.addText(d1.tagline||'', { x:1,y:4,w:'80%',fontSize:14,color:white });
+  s1.addText('Powered by notso.ai', { x:1,y:6.8,w:'80%',fontSize:11,color:white });
+
+  function addSlide(title, body) {
+    const sl = pptx.addSlide();
+    sl.background = { color: 'F6F6F4' };
+    sl.addText(title, { x:0.5,y:0.3,w:'90%',fontSize:26,bold:true,color:black });
+    sl.addText(body, { x:0.5,y:1.4,w:'90%',h:4.8,fontSize:13,color:'444444',valign:'top',wrap:true });
+    sl.addText('notso.ai',{ x:8.8,y:0.2,w:1,fontSize:9,bold:true,color:'BBBBBB' });
+  }
+
+  const d2=proposal.s2||{};
+  addSlide(d2.headline||'Pain Points', d2.intro+'\n\n'+(d2.points||[]).map(p=>`• ${p.title}: ${p.desc}`).join('\n\n'));
+  const d3=proposal.s3||{};
+  addSlide(d3.headline||'Core Features', (d3.features||[]).map(f=>`${f.icon||'•'} ${f.title}: ${f.desc}`).join('\n\n'));
+  const d4=proposal.s4||{};
+  addSlide('Mascot Options',
+    `Option A — ${(d4.option_a||{}).name}: ${(d4.option_a||{}).desc}\n\nOption B — ${(d4.option_b||{}).name}: ${(d4.option_b||{}).desc}`);
+  const d5=proposal.s5||{};
+  addSlide('Meet '+d5.name, `${d5.personality}\n\nTone: ${d5.tone_desc}\n\n${(d5.phrases||[]).map(p=>'"'+p+'"').join(' · ')}`);
+  const d6=proposal.s6||{};
+  addSlide('Chat Demo — '+d6.mascot_name, (d6.chat||[]).map(m=>(m.r==='user'?'👤 User: ':'🤖 '+d6.mascot_name+': ')+m.m).join('\n\n'));
+  const d7=proposal.s7||{};
+  addSlide('Data & Insights', d7.industry_stat+'\n\n'+(d7.stats||[]).map(s=>s.n+' — '+s.l).join('\n')+'\n\nCase: '+d7.case_client+' — '+d7.case_result);
+  const d8=proposal.s8||{};
+  addSlide('Pricing — Recommended: '+d8.rec_tier, d8.reasoning+'\n\n'+(d8.tiers||[]).map(t=>t.name+': '+t.price+' ('+t.highlight+')').join('\n')+'\n\n→ '+d8.next_step);
+  const d9=proposal.s9||{};
+  addSlide('Thank You', d9.closing+'\n\n'+(d9.next_steps||[]).map((s,i)=>(i+1)+'. '+s).join('\n')+'\n\nhello@notso.ai · www.notso.ai');
+
+  pptx.writeFile({ fileName:'notso-proposal-'+client.name+'.pptx' });
+}
+
+/* ─── CANVA MODAL ─── */
+function showCanvaModal() {
+  if (!proposal) return;
+  const brief = buildCanvaBrief();
+  document.getElementById('canvaPrompt').value = brief;
+  document.getElementById('canvaModal').classList.remove('hidden');
+}
+
+function buildCanvaBrief() {
+  const d = proposal;
+  const c = client;
+  return `Please generate a Canva presentation using the proposal data below.
+
+TASK: Duplicate the Canva template "Projectvoorstel Fin" (ID: ${CANVA_TEMPLATE_ID}) and update the content for this new client. Adapt the layout style from Projectvoorstel Fin but apply the client's brand colors.
+
+CLIENT: ${c.name}
+INDUSTRY: ${c.industry}
+BRAND COLOR 1: ${c.color1}
+BRAND COLOR 2: ${c.color2}
+
+== SLIDE 1: COVER ==
+Mascot Name: ${(d.s1||{}).mascot_name}
+Greeting: ${(d.s1||{}).greeting}
+Tagline: ${(d.s1||{}).tagline}
+
+== SLIDE 2: PAIN POINTS ==
+Headline: ${(d.s2||{}).headline}
+Intro: ${(d.s2||{}).intro}
+Points:
+${((d.s2||{}).points||[]).map((p,i)=>`${i+1}. ${p.title}: ${p.desc}`).join('\n')}
+
+== SLIDE 3: CORE FEATURES ==
+Headline: ${(d.s3||{}).headline}
+${((d.s3||{}).features||[]).map(f=>`• ${f.title}: ${f.desc}`).join('\n')}
+
+== SLIDE 4: MASCOT SELECTION ==
+Option A: ${((d.s4||{}).option_a||{}).name} — ${((d.s4||{}).option_a||{}).archetype}
+${((d.s4||{}).option_a||{}).desc}
+Option B: ${((d.s4||{}).option_b||{}).name} — ${((d.s4||{}).option_b||{}).archetype}
+${((d.s4||{}).option_b||{}).desc}
+
+== SLIDE 5: MASCOT DESIGN ==
+Recommended: ${(d.s5||{}).name}
+${(d.s5||{}).personality}
+Tone: ${(d.s5||{}).tone_desc}
+Phrases: ${((d.s5||{}).phrases||[]).join(' · ')}
+
+== SLIDE 6: CHAT MOCK-UP ==
+Scenario: ${(d.s6||{}).scenario}
+${((d.s6||{}).chat||[]).map(m=>(m.r==='user'?'User: ':'Bot: ')+m.m).join('\n')}
+
+== SLIDE 7: DATA & INSIGHTS ==
+${(d.s7||{}).industry_stat}
+Stats: ${((d.s7||{}).stats||[]).map(s=>s.n+' '+s.l).join(' | ')}
+Case: ${(d.s7||{}).case_client} — ${(d.s7||{}).case_result}
+
+== SLIDE 8: PRICING ==
+Recommended Tier: ${(d.s8||{}).rec_tier}
+${(d.s8||{}).reasoning}
+CTA: ${(d.s8||{}).next_step}
+
+== SLIDE 9: THANK YOU ==
+${(d.s9||{}).closing}
+Next Steps:
+${((d.s9||{}).next_steps||[]).map((s,i)=>`${i+1}. ${s}`).join('\n')}`;
+}
+
+function copyCanvaBrief() {
+  const ta = document.getElementById('canvaPrompt');
+  ta.select();
+  document.execCommand('copy');
+  const btn = event.target;
+  btn.textContent = '✓ Copied!';
+  setTimeout(()=>btn.textContent='Copy Brief',2000);
+}
+
+/* ─── HELPERS ─── */
+function useCaseLabel(uc){
+  const m={customer_support:'Customer Support',hr_onboarding:'HR Onboarding',sales_conversion:'Sales & Conversion',product_experience:'Product Experience',events_kiosk:'Events/Kiosk',compliance:'Compliance & Policy'};
+  return m[uc]||uc;
+}
+
+function resetAll() {
+  proposal = null; client = {};
+  setStep(1);
+  document.getElementById('clientName').value='';
+  document.getElementById('industry').value='';
+  document.getElementById('useCase').value='';
+  document.getElementById('clientDesc').value='';
+  document.getElementById('mascotName').value='';
+}
+
+/* ─── HISTORY ─── */
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('notso_history') || '[]'); }
+  catch { return []; }
+}
+
+function saveToHistory(clientData, proposalData) {
+  const history = getHistory();
+  const entry = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    client: clientData,
+    proposal: proposalData
+  };
+  history.unshift(entry);
+  // Keep max 30
+  if (history.length > 30) history.length = 30;
+  localStorage.setItem('notso_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const container = document.getElementById('historyBody');
+  if (!history.length) {
+    container.innerHTML = '<div class="history-empty">No proposals yet.<br>Generate one to see it here.</div>';
+    return;
+  }
+  container.innerHTML = history.map(h => {
+    const d = new Date(h.date);
+    const dateStr = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+    const timeStr = d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    const langMap = {'en':'EN','zh-TW':'ZH','ja':'JA','nl':'NL','ko':'KO','de':'DE','fr':'FR','es':'ES'};
+    const lang = langMap[h.client.lang] || 'EN';
+    return `
+      <div class="history-item" onclick="loadFromHistory(${h.id})">
+        <div class="history-item-name">${esc(h.client.name)}</div>
+        <div class="history-item-meta">
+          <span>${esc(h.client.industry)}</span>
+          <span>${lang}</span>
+          <span>${dateStr} ${timeStr}</span>
+        </div>
+        <div class="history-item-actions" onclick="event.stopPropagation()">
+          <button onclick="loadFromHistory(${h.id})">View</button>
+          <button onclick="reEditFromHistory(${h.id})">Edit</button>
+          <button class="del" onclick="deleteFromHistory(${h.id})">Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function loadFromHistory(id) {
+  const history = getHistory();
+  const entry = history.find(h => h.id === id);
+  if (!entry) return;
+  proposal = entry.proposal;
+  client = entry.client;
+  setStep(3);
+  document.getElementById('resultTitle').textContent = 'Proposal for ' + client.name;
+  document.getElementById('resultSub').textContent = client.industry + ' · ' + useCaseLabel(client.useCase) + ' · 9 slides ready';
+  renderAllSlides(proposal, client);
+  toggleHistory();
+}
+
+function reEditFromHistory(id) {
+  const history = getHistory();
+  const entry = history.find(h => h.id === id);
+  if (!entry) return;
+  const c = entry.client;
+  document.getElementById('clientName').value = c.name || '';
+  document.getElementById('industry').value = c.industry || '';
+  document.getElementById('useCase').value = c.useCase || '';
+  document.getElementById('clientDesc').value = c.desc || '';
+  document.getElementById('color1').value = c.color1 || '#FFD700';
+  document.getElementById('color1hex').value = c.color1 || '#FFD700';
+  document.getElementById('color2').value = c.color2 || '#000000';
+  document.getElementById('color2hex').value = c.color2 || '#000000';
+  document.getElementById('mascotName').value = c.mascotName || '';
+  document.getElementById('outputLang').value = c.lang || 'en';
+  setStep(1);
+  toggleHistory();
+}
+
+function deleteFromHistory(id) {
+  let history = getHistory();
+  history = history.filter(h => h.id !== id);
+  localStorage.setItem('notso_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function toggleHistory() {
+  const panel = document.getElementById('historyPanel');
+  const overlay = document.getElementById('historyOverlay');
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open');
+  overlay.classList.toggle('open');
+  if (!isOpen) renderHistory();
+}
+
+// Init history on load
+renderHistory();
+</script>
+</body>
+</html>
