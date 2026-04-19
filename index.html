@@ -2605,10 +2605,14 @@ async function serverExport(format) {
   if (btn) { btn.textContent = 'Generating...'; btn.disabled = true; }
 
   try {
+    // Downscale mascots to keep the request body under Vercel's 4.5MB limit.
+    // 768px keeps PDF quality high at the ≤480px slot sizes we render into
+    // while cutting payload ~4× vs. raw 1024×1024 outputs.
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format, proposal, client, selectedSlides: Array.from(selectedSlides), mascotImages: savedMascotPaths || {} })
+      body: JSON.stringify({ format, proposal, client, selectedSlides: Array.from(selectedSlides), mascotImages: shrunkMascots })
     });
 
     if (!res.ok) {
@@ -2658,12 +2662,26 @@ async function previewAndEdit() {
 
   try {
     const selectedSlides = getSelectedSlides();
+    // Shrink mascot data URLs to ≤512px before POST so the request body
+    // stays well under Vercel's 4.5MB serverless limit. Without this,
+    // 8+ full-res mascots (~8MB total) trigger a 413 and the gateway
+    // returns an HTML error page that blows up JSON.parse.
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selectedSlides), mascotImages: savedMascotPaths || {} })
+      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selectedSlides), mascotImages: shrunkMascots })
     });
-    const data = await resp.json();
+    // Guard against Vercel edge errors (HTML gateway responses) — read as
+    // text first, then try to parse. This turns the old "Unexpected token R"
+    // stack trace into a readable "Preview failed (413): …" message.
+    const raw = await resp.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch (_) {
+      const snippet = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+      throw new Error(`Preview failed (HTTP ${resp.status}): ${snippet || 'server returned non-JSON response'}`);
+    }
     if (!resp.ok || !data.success) throw new Error(data.error || 'Preview failed');
 
     _previewHtml = data.html;
@@ -2804,10 +2822,12 @@ async function exportPDFFromPreview() {
     btn.textContent = '⏳ Exporting...';
     btn.disabled = true;
 
+    // Same payload-size guard as the other export paths.
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
     const resp = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format: 'pdf', proposal, client, selectedSlides: Array.from(getSelectedSlides()), mascotImages: savedMascotPaths || {}, editedHtml: fullHtml })
+      body: JSON.stringify({ format: 'pdf', proposal, client, selectedSlides: Array.from(getSelectedSlides()), mascotImages: shrunkMascots, editedHtml: fullHtml })
     });
 
     if (!resp.ok) {
@@ -3305,6 +3325,58 @@ loadGSConfig().then(() => {
 });
 
 /* ═══════════════════════════════════════════════
+   IMAGE PAYLOAD SHRINK (Vercel 4.5MB request-body cap)
+   ═══════════════════════════════════════════════
+   Asset-pack flows can attach 8+ mascot data URLs per request. At 1 MB each
+   that blows past Vercel's 4.5 MB serverless body limit, and the gateway
+   responds with an HTML "Request Entity Too Large" page — which the client
+   tries to JSON.parse and dies with "Unexpected token 'R', 'Request En…'".
+   Fix: downscale each mascot to ≤maxSide before POST. 512 px is still crisp
+   at preview-zoom (0.65×) and on exported PDFs at the slot sizes we actually
+   use. `preservesAlpha: true` keeps the chroma-keyed transparency intact. */
+async function _shrinkDataUrl(dataUrl, maxSide) {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+    return dataUrl;
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w0 = img.naturalWidth, h0 = img.naturalHeight;
+        if (!w0 || !h0) { resolve(dataUrl); return; }
+        if (w0 <= maxSide && h0 <= maxSide) { resolve(dataUrl); return; }
+        const scale = Math.min(maxSide / w0, maxSide / h0);
+        const w = Math.max(1, Math.round(w0 * scale));
+        const h = Math.max(1, Math.round(h0 * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/png'));
+      } catch (_) { resolve(dataUrl); }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function _shrinkMascotMap(paths, maxSide) {
+  if (!paths || typeof paths !== 'object') return {};
+  const out = {};
+  // Dedupe by source dataUrl → same shrunk result; cuts CPU + payload when
+  // multiple slides share the same mascot.
+  const cache = new Map();
+  for (const [role, url] of Object.entries(paths)) {
+    if (!url) continue;
+    if (!cache.has(url)) cache.set(url, await _shrinkDataUrl(url, maxSide));
+    out[role] = cache.get(url);
+  }
+  return out;
+}
+
+/* ═══════════════════════════════════════════════
    CLIENT-SIDE BACKGROUND REMOVAL (fallback for Vercel)
    ═══════════════════════════════════════════════
    Gemini often returns mascots on a white/near-white background even when
@@ -3313,24 +3385,33 @@ loadGSConfig().then(() => {
    transparent in the browser: fully transparent above WHITE_FULL_THRESHOLD,
    feathered alpha in the soft band, fully opaque below SOFT_THRESHOLD. */
 async function chromaKeyWhiteBackground(dataUrl) {
-  // Two-pass background removal:
+  // Three-pass background removal:
   //   Pass A  (pixel filter)  — any pixel that is near-white AND near-grey
   //                             (low saturation) gets alpha 0 or a feather.
   //                             Safe for high-contrast mascots.
   //   Pass B  (edge flood)    — starting from every border pixel, flood any
   //                             light-ish low-saturation region into full
-  //                             transparency. This eats Gemini's slightly
-  //                             off-white or cream backgrounds that Pass A
-  //                             would miss because they sit just below the
-  //                             brightness threshold.
+  //                             transparency. Wider tolerances than Pass A
+  //                             because we know we're walking from outside
+  //                             the mascot.
+  //   Pass C  (global sweep)  — final pass that zaps any remaining near-
+  //                             white low-saturation pixel anywhere in the
+  //                             image, even if Pass B couldn't reach it
+  //                             (e.g. enclosed gap inside the mascot).
   //
-  // Flood-fill is bounded by saturation guard, so a brightly-coloured mascot
-  // body never gets consumed even if its edge pixels are light.
-  const WHITE_FULL_THRESHOLD = 245;
-  const SOFT_THRESHOLD = 225;
-  const SATURATION_GUARD = 14;        // Pass A: keep colored pixels
-  const FLOOD_MIN_BRIGHTNESS = 215;   // Pass B: treat as bg if min(r,g,b) >= this
-  const FLOOD_SATURATION = 18;        // Pass B: and maxC-minC < this
+  // Saturation guards keep brightly-coloured mascot bodies intact even when
+  // their edges happen to be light.
+  //
+  // Aggressiveness dial (user asked for fully transparent, so defaults lean
+  // aggressive; if you see a coloured mascot getting eaten, raise
+  // FLOOD_MIN_BRIGHTNESS back toward ~210):
+  const WHITE_FULL_THRESHOLD = 238;    // was 245
+  const SOFT_THRESHOLD = 205;          // was 225
+  const SATURATION_GUARD = 18;         // Pass A: was 14
+  const FLOOD_MIN_BRIGHTNESS = 185;    // Pass B: was 215
+  const FLOOD_SATURATION = 30;         // Pass B: was 18
+  const GLOBAL_MIN_BRIGHTNESS = 220;   // Pass C: global zap threshold
+  const GLOBAL_SATURATION = 22;        // Pass C: global zap saturation guard
 
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -3394,6 +3475,20 @@ async function chromaKeyWhiteBackground(dataUrl) {
           pushIfBg(x - 1, y);
           pushIfBg(x, y + 1);
           pushIfBg(x, y - 1);
+        }
+
+        // ── Pass C: global sweep ───────────────────────────────────────
+        // Catches enclosed near-white regions (gaps inside mascot shapes
+        // that Pass B can't reach from the edges). Slightly stricter than
+        // Pass A so we don't strip highlights off coloured surfaces.
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i+3] === 0) continue;
+          const r = d[i], g = d[i+1], b = d[i+2];
+          const minC = Math.min(r, g, b);
+          const maxC = Math.max(r, g, b);
+          if (minC >= GLOBAL_MIN_BRIGHTNESS && (maxC - minC) < GLOBAL_SATURATION) {
+            d[i+3] = 0;
+          }
         }
 
         ctx.putImageData(imgData, 0, 0);
@@ -3739,16 +3834,42 @@ function openAssetPackModal() {
     document.getElementById('assetPackGenerateBtn').disabled = false;
   }
 
-  // Reset views
-  document.getElementById('assetPackIntro').style.display = 'block';
+  // Persist prior results across modal close/reopen: if there's an existing
+  // session with at least one OK result, restore the done-view rather than
+  // nuking it. Users were complaining that closing the modal wiped every
+  // asset they had just generated, forcing a full regenerate cycle.
+  const hasPriorResults = !!(
+    _assetPackSession &&
+    _assetPackSession.sessionId &&
+    Array.isArray(_assetPackSession.results) &&
+    _assetPackSession.results.length
+  );
+
+  // Reset transient views regardless
   document.getElementById('assetPackProgress').style.display = 'none';
-  document.getElementById('assetPackDone').style.display = 'none';
   document.getElementById('assetPackError').style.display = 'none';
-  document.getElementById('assetPackCancelBtn').textContent = 'Cancel';
-  document.getElementById('assetPackGenerateBtn').style.display = 'inline-flex';
-  const rBtn = document.getElementById('assetPackRegenAllBtn'); if (rBtn) rBtn.style.display = 'none';
-  const dBtn = document.getElementById('assetPackDownloadBtn'); if (dBtn) dBtn.style.display = 'none';
-  _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
+  document.getElementById('assetPackCancelBtn').textContent = hasPriorResults ? 'Close' : 'Cancel';
+
+  if (hasPriorResults) {
+    // Skip the intro, jump straight to the results grid. The user can still
+    // hit "Generate" again to do a full re-run if they want a fresh batch.
+    document.getElementById('assetPackIntro').style.display = 'none';
+    document.getElementById('assetPackDone').style.display = 'block';
+    document.getElementById('assetPackGenerateBtn').style.display = 'inline-flex';
+    document.getElementById('assetPackGenerateBtn').textContent = '🔁 Regenerate All';
+    const rBtn = document.getElementById('assetPackRegenAllBtn'); if (rBtn) rBtn.style.display = 'inline-flex';
+    const dBtn = document.getElementById('assetPackDownloadBtn'); if (dBtn) dBtn.style.display = 'inline-flex';
+    try { renderAssetPackResults(); } catch (_) {}
+  } else {
+    document.getElementById('assetPackIntro').style.display = 'block';
+    document.getElementById('assetPackDone').style.display = 'none';
+    document.getElementById('assetPackGenerateBtn').style.display = 'inline-flex';
+    document.getElementById('assetPackGenerateBtn').textContent = '✨ Generate Asset Pack';
+    const rBtn = document.getElementById('assetPackRegenAllBtn'); if (rBtn) rBtn.style.display = 'none';
+    const dBtn = document.getElementById('assetPackDownloadBtn'); if (dBtn) dBtn.style.display = 'none';
+    // True fresh start — safe to reset in-memory session state.
+    _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
+  }
   modal.classList.add('open');
 }
 
