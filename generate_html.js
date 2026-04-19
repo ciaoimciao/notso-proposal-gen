@@ -413,7 +413,7 @@ function renderSlide_S6_MascotSelection(proposal, client, mascotImages) {
       return `
         <div style="background: #F4F4F3; padding: 24px; border-radius: 16px; text-align: center;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 20px;">${stripEmoji(opt.name || `Option ${i + 1}`)}</div>
-          <div style="width: 100%; height: 220px; background: white; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          <div style="width: 100%; height: 220px; background: transparent; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
             ${getImageHTML(imagePath, `Mascot Option ${i + 1}`)}
           </div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; line-height: 1.6;">${stripEmoji(opt.description || '')}</div>

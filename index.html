@@ -1383,17 +1383,30 @@ document.addEventListener('DOMContentLoaded', () => {
     'clientName', 'industry', 'useCase', 'clientDesc',
     'color1', 'color1hex', 'color2', 'color2hex',
     'color3', 'color3hex', 'color4', 'color4hex',
-    'mascotName',
+    'mascotName', 'clientWebsite',
   ];
-  // Restore saved values
+  // Restore saved values. Unconditionally write (no `!el.value` guard) —
+  // some fields (color inputs, hex inputs) ship with default values, which
+  // would previously block restore. The color pairs are synced manually so
+  // the swatch and hex stay in lockstep after restore.
   try {
     const raw = localStorage.getItem(_formAutoSaveKey);
     if (raw) {
       const saved = JSON.parse(raw);
       _formFieldIds.forEach(id => {
         const el = document.getElementById(id);
-        if (el && saved[id] != null && !el.value) el.value = saved[id];
+        if (el && saved[id] != null && saved[id] !== '') el.value = saved[id];
       });
+      // Keep color input + color hex in sync after restore (their oninput
+      // handlers only fire on user typing, not on programmatic .value=).
+      ['1','2','3','4'].forEach(n => {
+        const swatch = document.getElementById('color' + n);
+        const hex = document.getElementById('color' + n + 'hex');
+        if (swatch && hex && hex.value && /^#[0-9A-Fa-f]{6}$/.test(hex.value)) {
+          swatch.value = hex.value;
+        }
+      });
+      console.log('[autosave] restored Step-1 form from localStorage');
     }
   } catch (e) { console.warn('form auto-save restore failed:', e); }
   // Debounced save on any change
@@ -1416,7 +1429,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el) return;
     el.addEventListener('input', _persistForm);
     el.addEventListener('change', _persistForm);
+    el.addEventListener('blur', _persistForm);
   });
+  // Final flush right before the page unloads. Debounce timer may still be
+  // pending if user refreshes within 400ms of their last keystroke.
+  const _flushFormNow = () => {
+    clearTimeout(_formSaveTimer);
+    try {
+      const data = {};
+      _formFieldIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) data[id] = el.value;
+      });
+      localStorage.setItem(_formAutoSaveKey, JSON.stringify(data));
+    } catch (_) { /* ignore */ }
+  };
+  window.addEventListener('pagehide', _flushFormNow);
+  window.addEventListener('beforeunload', _flushFormNow);
   // Expose clear-form helper so resetAll() can wipe the saved state
   window.clearStep1AutoSave = () => {
     try { localStorage.removeItem(_formAutoSaveKey); } catch (_) {}
@@ -1480,10 +1509,13 @@ async function bootstrapFromServerConfig() {
   //     with Google OAuth) we haven't fully wired for the serverless target.
   //     Leaving them visible would let users click and get a cryptic 500.
   if (cfg.isVercel) {
+    // Hide only the export buttons that require server-side binaries we don't
+    // ship to the serverless target. Asset Pack uses Gemini HTTP calls + /tmp
+    // for image serving, so it works on Vercel (ZIP download falls back to
+    // "View in browser" links if python3 isn't available).
     const hideSelectors = [
       'button[onclick="exportPPTX()"]',
       'button[onclick="sendToGoogleSlides()"]',
-      '#assetPackBtn',
     ];
     hideSelectors.forEach(sel => {
       document.querySelectorAll(sel).forEach(el => { el.style.display = 'none'; });
@@ -3276,41 +3308,89 @@ loadGSConfig().then(() => {
    transparent in the browser: fully transparent above WHITE_FULL_THRESHOLD,
    feathered alpha in the soft band, fully opaque below SOFT_THRESHOLD. */
 async function chromaKeyWhiteBackground(dataUrl) {
-  // Thresholds chosen to preserve subtle highlights on the mascot (lightest
-  // parts of the character can be ~235–245 on each channel) while nuking
-  // solid white backgrounds (~250–255).
-  const WHITE_FULL_THRESHOLD = 248;  // >= this on min(r,g,b) → alpha 0
-  const SOFT_THRESHOLD = 230;        // <= this → keep alpha
-  const SATURATION_GUARD = 12;       // if max-min > 12, pixel is colored → keep
+  // Two-pass background removal:
+  //   Pass A  (pixel filter)  — any pixel that is near-white AND near-grey
+  //                             (low saturation) gets alpha 0 or a feather.
+  //                             Safe for high-contrast mascots.
+  //   Pass B  (edge flood)    — starting from every border pixel, flood any
+  //                             light-ish low-saturation region into full
+  //                             transparency. This eats Gemini's slightly
+  //                             off-white or cream backgrounds that Pass A
+  //                             would miss because they sit just below the
+  //                             brightness threshold.
+  //
+  // Flood-fill is bounded by saturation guard, so a brightly-coloured mascot
+  // body never gets consumed even if its edge pixels are light.
+  const WHITE_FULL_THRESHOLD = 245;
+  const SOFT_THRESHOLD = 225;
+  const SATURATION_GUARD = 14;        // Pass A: keep colored pixels
+  const FLOOD_MIN_BRIGHTNESS = 215;   // Pass B: treat as bg if min(r,g,b) >= this
+  const FLOOD_SATURATION = 18;        // Pass B: and maxC-minC < this
 
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
         const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
+        canvas.width = w;
+        canvas.height = h;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
 
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const imgData = ctx.getImageData(0, 0, w, h);
         const d = imgData.data;
+
+        // ── Pass A: threshold + feather ─────────────────────────────────
         for (let i = 0; i < d.length; i += 4) {
           const r = d[i], g = d[i+1], b = d[i+2];
           const minC = Math.min(r, g, b);
           const maxC = Math.max(r, g, b);
-          // Keep colored pixels untouched (mascot body).
           if (maxC - minC > SATURATION_GUARD) continue;
           if (minC >= WHITE_FULL_THRESHOLD) {
             d[i+3] = 0;
           } else if (minC > SOFT_THRESHOLD) {
-            // Soft edge feather: linear ramp from 1→0 across the band.
             const band = WHITE_FULL_THRESHOLD - SOFT_THRESHOLD;
             const t = (minC - SOFT_THRESHOLD) / band;
             d[i+3] = Math.round(d[i+3] * (1 - t));
           }
         }
+
+        // ── Pass B: flood-fill from all edge pixels ─────────────────────
+        // Uses a stack + "visited" bitmap sized w*h. Safe on mobile since
+        // typical mascot is 1024×1024 (~1M bytes).
+        const visited = new Uint8Array(w * h);
+        const stack = [];
+        const pushIfBg = (x, y) => {
+          if (x < 0 || y < 0 || x >= w || y >= h) return;
+          const p = y * w + x;
+          if (visited[p]) return;
+          const i = p * 4;
+          if (d[i+3] === 0) { visited[p] = 1; return; } // already transparent
+          const r = d[i], g = d[i+1], b = d[i+2];
+          const minC = Math.min(r, g, b);
+          const maxC = Math.max(r, g, b);
+          if (minC >= FLOOD_MIN_BRIGHTNESS && (maxC - minC) < FLOOD_SATURATION) {
+            visited[p] = 1;
+            stack.push(p);
+          }
+        };
+        for (let x = 0; x < w; x++) { pushIfBg(x, 0); pushIfBg(x, h - 1); }
+        for (let y = 0; y < h; y++) { pushIfBg(0, y); pushIfBg(w - 1, y); }
+        while (stack.length) {
+          const p = stack.pop();
+          const i = p * 4;
+          d[i+3] = 0;
+          const x = p % w;
+          const y = (p - x) / w;
+          pushIfBg(x + 1, y);
+          pushIfBg(x - 1, y);
+          pushIfBg(x, y + 1);
+          pushIfBg(x, y - 1);
+        }
+
         ctx.putImageData(imgData, 0, 0);
         resolve(canvas.toDataURL('image/png'));
       } catch (e) {
