@@ -1,0 +1,92 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0A0A0A', 'primaryTextColor': '#fff', 'primaryBorderColor': '#333', 'lineColor': '#888', 'secondaryColor': '#F5F5F0', 'tertiaryColor': '#EEF0FF', 'fontFamily': 'Inter, system-ui, sans-serif' }}}%%
+flowchart TD
+    START([🚀 開啟應用程式]) --> S1
+
+    subgraph S1[" 步驟一 — 客戶資訊 "]
+        A1[填寫客戶名稱\n與產業/領域]
+        A2[選擇主要使用情境]
+        A3[撰寫客戶描述]
+        A4[設定品牌色彩\n4 欄位：主色 + 3 輔助色]
+        A5[建議吉祥物名稱\n選填]
+        A6{上傳吉祥物\n參考圖？}
+        A6Y[上傳 1 張以上\nPNG / JPG]
+        A6ST{啟用風格轉換\n模式？}
+        A7{上傳客戶\n網站截圖？}
+        A7Y[上傳網站截圖\n用於合成 mockup]
+        A8[貼上 Claude API Key\nsk-ant-...]
+        A9[貼上 Gemini API Key\nAIza... 選填]
+
+        A1 --> A2 --> A3 --> A4 --> A5 --> A6
+        A6 -- 是 --> A6Y --> A6ST
+        A6 -- 否 --> A7
+        A6ST -- 是：保留角色身份 --> A7
+        A6ST -- 否：僅作風格參考 --> A7
+        A7 -- 是 --> A7Y --> A8
+        A7 -- 否 --> A8
+        A8 --> A9
+    end
+
+    S1 --> GEN[🟢 生成提案 →]
+
+    subgraph S2[" 步驟二 — 生成中 "]
+        G1[🔍 研究客戶資料...]
+        G2[🗺️ 對接商機...]
+        G3[🎭 構思吉祥物概念...]
+        G4[✍️ 撰寫提案文案...]
+        G5[📊 加入數據與洞察...]
+        G6[✨ 最終優化...]
+        G1 --> G2 --> G3 --> G4 --> G5 --> G6
+    end
+
+    GEN --> S2
+
+    S2 --> MASQ{吉祥物生成\n功能啟用？}
+    MASQ -- 是 --> S25
+    MASQ -- 否 --> S3
+
+    subgraph S25[" 步驟 2.5 — AI 吉祥物生成器 "]
+        M0{已提供\nGemini 金鑰？}
+        M0 -- 否 --> M0H[⚠ 在此處貼上金鑰\n或按 Skip →]
+        M0 -- 是 --> M1
+        M1[選擇引擎\nauto / nano-banana / imagen4...]
+        M2[自訂 Prompt\n選填，可覆蓋預設]
+        M3[🎨 生成 9 種吉祥物方案]
+        M4[點擊卡片指定 A / B / C\n選擇最多 3 個角色]
+        M5[✅ 確認選擇 →]
+        MSKIP[跳過 → 不生成吉祥物]
+        MUPLOAD[📁 自行上傳\n方案 A / 方案 B]
+
+        M1 --> M2 --> M3 --> M4 --> M5
+        M0H --> MSKIP
+        M3 -.-> |不滿意？重新生成| M3
+        M4 -.-> MUPLOAD
+    end
+
+    M5 --> S3
+    MSKIP --> S3
+
+    subgraph S3[" 步驟三 — 預覽與匯出 "]
+        R1[檢視 18 頁提案簡報\n可開關個別投影片]
+        R2[✏️ 編輯個別投影片\n點擊鉛筆圖示]
+        R3{匯出格式？}
+        R3A[📄 下載 PDF]
+        R3B[📊 匯出 PPTX]
+        R3C[🎨 發送至 Canva\n自動填入模板]
+        R3D[🎁 吉祥物素材包\n表情 + 動作 + mockup ZIP]
+
+        R1 --> R2 --> R3
+        R3 --> R3A
+        R3 --> R3B
+        R3 --> R3C
+        R3 --> R3D
+    end
+
+    R3A --> DONE([✅ 完成 — 交付客戶])
+    R3B --> DONE
+    R3C --> DONE
+    R3D --> DONE
+
+    style S1 fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
+    style S2 fill:#F0FFF4,stroke:#BBF7D0,stroke-width:2px
+    style S25 fill:#FFF7ED,stroke:#FED7AA,stroke-width:2px
+    style S3 fill:#EFF6FF,stroke:#BFDBFE,stroke-width:2px

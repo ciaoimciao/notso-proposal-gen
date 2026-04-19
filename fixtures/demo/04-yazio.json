@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "title": "Yazio — The Personal Nutrition Coach (Blue Monster)",
+    "preset_id": "yazio",
+    "note": "Demo preset inspired by a real, publicly-known nutrition app. Not a real client engagement."
+  },
+  "clientName": "Yazio",
+  "industry": "Health & Nutrition / Mobile App",
+  "useCase": "customer_support",
+  "clientDesc": "Yazio is a global nutrition app with a mission to help as many people as possible live healthier lives. With millions of users in more than 150 countries, this remote-first company helps people track their calories, fasting windows, and overall diet. We want to turn their friendly blue monster mascot into a 24/7 interactive pocket coach. Users can literally talk to the mascot to log their meals by voice; the AI buddy gives personalized dietary advice based on their goals, tracks progress, sends friendly reminders to drink water, shares healthy lifestyle tips, and — most importantly — gives users enthusiastic compliments and motivation every time they hit a health milestone.",
+  "color1hex": "#44A8B3",
+  "color2hex": "#1A1A1A",
+  "color3hex": "#FFFFFF",
+  "color4hex": "#FF7A59",
+  "mascotName": "Yaz",
+  "outputLang": "en"
+}

@@ -1,0 +1,92 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0A0A0A', 'primaryTextColor': '#fff', 'primaryBorderColor': '#333', 'lineColor': '#888', 'secondaryColor': '#F5F5F0', 'tertiaryColor': '#EEF0FF', 'fontFamily': 'Inter, system-ui, sans-serif' }}}%%
+flowchart TD
+    START([🚀 Open App]) --> S1
+
+    subgraph S1[" Step 1 — Client Info "]
+        A1[Fill in Client Name\n& Industry / Sector]
+        A2[Select Primary Use Case]
+        A3[Write Client Description]
+        A4[Set Brand Colors\n4 slots: main + 3 accents]
+        A5[Suggest Mascot Name\noptional]
+        A6{Upload mascot\nreference images?}
+        A6Y[Upload 1+ images\nPNG / JPG]
+        A6ST{Style-transfer\nmode?}
+        A7{Upload website\nscreenshot?}
+        A7Y[Upload site screenshot\nfor mockups]
+        A8[Paste Claude API Key\nsk-ant-...]
+        A9[Paste Gemini API Key\nAIza... optional]
+
+        A1 --> A2 --> A3 --> A4 --> A5 --> A6
+        A6 -- Yes --> A6Y --> A6ST
+        A6 -- No --> A7
+        A6ST -- Yes: preserve identity --> A7
+        A6ST -- No: style reference only --> A7
+        A7 -- Yes --> A7Y --> A8
+        A7 -- No --> A8
+        A8 --> A9
+    end
+
+    S1 --> GEN[🟢 Generate Proposal →]
+
+    subgraph S2[" Step 2 — Generating "]
+        G1[🔍 Researching client...]
+        G2[🗺️ Mapping opportunities...]
+        G3[🎭 Creating mascot concepts...]
+        G4[✍️ Writing proposal copy...]
+        G5[📊 Adding data & insights...]
+        G6[✨ Finalising pitch...]
+        G1 --> G2 --> G3 --> G4 --> G5 --> G6
+    end
+
+    GEN --> S2
+
+    S2 --> MASQ{Mascot step\nenabled?}
+    MASQ -- Yes --> S25
+    MASQ -- No --> S3
+
+    subgraph S25[" Step 2.5 — AI Mascot Generator "]
+        M0{Gemini key\nprovided?}
+        M0 -- No --> M0H[⚠ Paste key inline\nor Skip →]
+        M0 -- Yes --> M1
+        M1[Select Engine\nauto / nano-banana / imagen4...]
+        M2[Custom Prompt\noptional override]
+        M3[🎨 Generate 9 Mascot Options]
+        M4[Select A / B / C\nassign roles per card]
+        M5[✅ Confirm Selection →]
+        MSKIP[Skip → no mascot]
+        MUPLOAD[📁 Upload custom\nOption A / Option B]
+
+        M1 --> M2 --> M3 --> M4 --> M5
+        M0H --> MSKIP
+        M3 -.-> |not happy| M3
+        M4 -.-> MUPLOAD
+    end
+
+    M5 --> S3
+    MSKIP --> S3
+
+    subgraph S3[" Step 3 — Preview & Export "]
+        R1[Review 18-slide proposal\ntoggle slides on/off]
+        R2[✏️ Edit individual slides\nclick pencil icon]
+        R3{Export format?}
+        R3A[📄 Download PDF]
+        R3B[📊 Export PPTX]
+        R3C[🎨 Send to Canva\nauto-fill template]
+        R3D[🎁 Mascot Asset Pack\nexpressions + mockups ZIP]
+
+        R1 --> R2 --> R3
+        R3 --> R3A
+        R3 --> R3B
+        R3 --> R3C
+        R3 --> R3D
+    end
+
+    R3A --> DONE([✅ Done — Deliver to Client])
+    R3B --> DONE
+    R3C --> DONE
+    R3D --> DONE
+
+    style S1 fill:#F9FAFB,stroke:#E5E7EB,stroke-width:2px
+    style S2 fill:#F0FFF4,stroke:#BBF7D0,stroke-width:2px
+    style S25 fill:#FFF7ED,stroke:#FED7AA,stroke-width:2px
+    style S3 fill:#EFF6FF,stroke:#BFDBFE,stroke-width:2px

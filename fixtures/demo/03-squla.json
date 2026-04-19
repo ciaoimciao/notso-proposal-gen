@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "title": "Squla — The Ultimate Study Buddy (Q)",
+    "preset_id": "squla",
+    "note": "Demo preset inspired by a real, publicly-known education platform. Not a real client engagement."
+  },
+  "clientName": "Squla",
+  "industry": "K-12 EdTech / Online Learning Platform",
+  "useCase": "product_experience",
+  "clientDesc": "Squla is an online educational platform designed to make learning fun for primary school children through interactive quizzes, educational videos, and gamification. Today their mascot 'Q' — the friendly blue alien / eyeball character — is just a static illustration in the UI. We want to transform Q from a flat image into a living, breathing 3D buddy that kids can actually talk to. The AI mascot will guide children through the website, play short educational mini-games, offer kid-friendly hints when they get stuck on a tough math or spelling problem, and deliver consistently safe, age-appropriate support — turning lesson time into playtime.",
+  "color1hex": "#00B6E0",
+  "color2hex": "#1A1A1A",
+  "color3hex": "#FFD84D",
+  "color4hex": "#FF6A3D",
+  "mascotName": "Q",
+  "outputLang": "en"
+}

@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "title": "WWF — The Digital Fundraiser (Panda)",
+    "preset_id": "wwf",
+    "note": "Demo preset inspired by a real, publicly-known conservation NGO. Not a real client engagement."
+  },
+  "clientName": "World Wildlife Fund (WWF)",
+  "industry": "Conservation / Environmental NGO",
+  "useCase": "sales_conversion",
+  "clientDesc": "WWF is the world's leading conservation organization, dedicated to protecting endangered wildlife, preserving natural habitats, and reducing humanity's footprint on the environment. Just like other major NGOs, their digital fundraising team struggles to scale 1:1 conversations with potential donors across dozens of countries. We want to bring the iconic WWF Panda to life as a 24/7 digital ambassador on wwf.nl — welcoming visitors, answering questions about conservation programs, and visually explaining exactly how a specific monthly donation helps protect vulnerable ecosystems, species, and habitats.",
+  "color1hex": "#000000",
+  "color2hex": "#FFFFFF",
+  "color3hex": "#007A3D",
+  "color4hex": "#F2A900",
+  "mascotName": "Panda",
+  "outputLang": "en"
+}

@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "title": "Save the Children — The Digital Fundraiser",
+    "preset_id": "save-the-children",
+    "note": "Demo preset inspired by a real, publicly-known NGO. Not a real client engagement."
+  },
+  "clientName": "Save the Children",
+  "industry": "Global NGO / International Charity",
+  "useCase": "sales_conversion",
+  "clientDesc": "Save the Children is a leading global NGO dedicated to improving the lives of children worldwide. They provide emergency aid, education, and healthcare to children in need across the globe. Their donation team is overwhelmed answering repetitive questions from (potential) donors about where the money goes, how emergency campaigns work, and what impact a monthly gift has. We want to turn their iconic red child figure from the logo into a 3D digital ambassador that lives on savethechildren.org — welcoming visitors, answering donor questions 24/7, and interactively showing the real-world impact of each donation in a warm, human way.",
+  "color1hex": "#E2231A",
+  "color2hex": "#1A1A1A",
+  "color3hex": "#FFFFFF",
+  "color4hex": "#F5A623",
+  "mascotName": "Hope",
+  "outputLang": "en"
+}

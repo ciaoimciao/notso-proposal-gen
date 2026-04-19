@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "title": "Bellewaerde — The Digital Park Guide (Lion)",
+    "preset_id": "bellewaerde",
+    "note": "Demo preset inspired by a real, publicly-known theme park. Not a real client engagement."
+  },
+  "clientName": "Bellewaerde",
+  "industry": "Theme Park / Family Entertainment",
+  "useCase": "customer_support",
+  "clientDesc": "Bellewaerde is a unique and popular theme park in Belgium that offers a perfect mix of thrilling family rides, exotic animal exhibits, and beautiful nature parks. Their iconic Lion — Koning Leeuw — is already beloved by every visiting family. We want to turn that Lion into the ultimate interactive companion for the entire visitor journey. Pre-visit, the 3D mascot lives on bellewaerde.be to handle customer support, ticket sales, and trip planning. On the day of the visit, guests can use the mascot on their phones to navigate the park, get real-time answers to any question, and — most importantly — stay entertained with interactive stories, fun animal facts, and trivia while waiting in line for attractions.",
+  "color1hex": "#D4A017",
+  "color2hex": "#1F3B1F",
+  "color3hex": "#8B4513",
+  "color4hex": "#F5E6C8",
+  "mascotName": "Koning Leeuw",
+  "outputLang": "en"
+}

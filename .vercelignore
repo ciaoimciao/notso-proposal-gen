@@ -1,0 +1,31 @@
+# ─── Never upload secrets ──────────────────────────────
+# (also gitignored; this is belt-and-suspenders in case anyone runs
+# `vercel` from a working copy that still has these files on disk)
+.env
+.env.local
+.env.*.local
+.secrets.json
+*.key
+*.pem
+
+# ─── Local-only fixtures (real client briefs) ──────────
+# fixtures/demo/*.json is public demo data → uploaded.
+# Anything else directly under fixtures/ is gitignored locally; also
+# excluded here in case someone deploys with a dirty working copy.
+fixtures/*.json
+!fixtures/fixture.example.json
+
+# ─── Runtime / local artifacts ─────────────────────────
+.canva-jobs.archive/
+.assetpack-jobs/
+output/
+__pycache__/
+
+# ─── Editor / OS ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ─── Dev-only docs (not needed by the serverless function) ──
+docs/

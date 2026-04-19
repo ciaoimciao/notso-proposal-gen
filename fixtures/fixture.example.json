@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "title": "Short label shown in the preset dropdown, e.g. 'Acme — Digital Concierge'",
+    "preset_id": "acme",
+    "note": "Freeform note for your teammates. This whole _meta block is ignored by the app."
+  },
+  "clientName": "Acme Corp",
+  "industry": "Retail / Consumer Goods",
+  "useCase": "customer_support",
+  "clientDesc": "Acme is a fictional retail chain with 500+ stores. Their contact center is overwhelmed with repetitive questions about store hours, return policy, and loyalty program. We want to deploy a branded 3D mascot that answers those on the website 24/7 and deflects 60% of tier-1 tickets.",
+  "color1hex": "#FF5A00",
+  "color2hex": "#1A1A1A",
+  "color3hex": "#FFFFFF",
+  "color4hex": "#F5A623",
+  "mascotName": "Max",
+  "outputLang": "en"
+}

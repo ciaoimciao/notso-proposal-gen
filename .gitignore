@@ -1,0 +1,54 @@
+# ─── Secrets ─────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.secrets.json
+*.key
+*.pem
+
+# ─── Client fixtures (may contain customer data) ─────
+# Public demo fixtures live in fixtures/demo/ and ARE committed.
+# Everything else directly under fixtures/ (real client briefs) is ignored.
+# fixtures/fixture.example.json is the schema template and stays committed.
+fixtures/*.json
+!fixtures/*.example.json
+# (fixtures/demo/*.json is not matched by fixtures/*.json, so it stays tracked)
+
+# ─── Node ────────────────────────────────────────────
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ─── Python ──────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ─── Runtime job/cache folders ───────────────────────
+.canva-jobs.archive/
+.assetpack-jobs/
+output/*.pptx
+output/*.pdf
+output/assetpack-*.zip
+
+# ─── Loose test / scratch artifacts at repo root ─────
+# If a generated deck file lands in the project root (rather than output/),
+# it's almost always a one-off from local testing. Committing them bloats
+# the repo for no reason.
+/*.pptx
+/*.pdf
+
+# ─── Editor / OS ─────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── Build artifacts ─────────────────────────────────
+dist/
+build/
+.vercel
