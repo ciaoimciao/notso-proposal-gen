@@ -371,6 +371,14 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <input type="text" id="industry" data-i18n-placeholder="form.industry.ph" placeholder="e.g. Retail, Finance, Healthcare" />
         </div>
         <div class="form-group full">
+          <label data-i18n="form.website">Client Website <span class="hint" data-i18n="form.website.hint">(optional — we'll auto-fetch their brand colors)</span></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="clientWebsite" placeholder="e.g. jumbo.com or https://jumbo.com" style="flex:1" />
+            <button type="button" class="btn btn-secondary" id="fetchBrandBtn" onclick="autoFetchBrandColors()" style="white-space:nowrap;font-size:13px" data-i18n="form.website.fetch">🎨 Auto-fill colors</button>
+          </div>
+          <div id="fetchBrandStatus" style="font-size:11px;color:var(--gray-400);margin-top:4px;display:none"></div>
+        </div>
+        <div class="form-group full">
           <label data-i18n="form.useCase">Primary Use Case</label>
           <select id="useCase">
             <option value="" data-i18n="form.useCase.ph">Select use case...</option>
@@ -477,7 +485,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
       <div class="form-grid">
         <div class="form-group full">
           <label data-i18n="form.claudeKey">Claude API Key <span class="hint" data-i18n="form.claudeKey.hint">— from Anthropic Console (console.anthropic.com)</span></label>
-          <input type="password" id="geminiKey" placeholder="sk-ant-..." />
+          <input type="password" id="claudeKey" placeholder="sk-ant-..." />
         </div>
         <div class="form-group full">
           <label data-i18n="form.geminiKey">Google Gemini API Key <span class="hint" data-i18n="form.geminiKey.hint">— optional, for AI mascot generation (aistudio.google.com)</span></label>
@@ -512,25 +520,23 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
   <div id="viewMascot" class="hidden">
     <div class="card" style="max-width:900px;margin:0 auto">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-        <div class="page-title" style="margin:0">AI Mascot Generator</div>
-        <button class="btn btn-secondary" onclick="skipMascot()" style="margin-left:auto;font-size:12px">Skip →</button>
+        <div class="page-title" style="margin:0" data-i18n="mascot.title">AI Mascot Generator</div>
+        <button class="btn btn-secondary" onclick="skipMascot()" style="margin-left:auto;font-size:12px" data-i18n="mascot.skip">Skip →</button>
       </div>
-      <div class="page-sub" style="margin-bottom:20px">Generate 9 3D mascot options (PNG, transparent background) with Gemini AI, then pick up to 3 for your proposal</div>
+      <div class="page-sub" style="margin-bottom:20px" data-i18n="mascot.sub">Generate 9 3D mascot options (PNG, transparent background) with Gemini AI, then pick up to 3 for your proposal</div>
 
       <div id="mascotGenArea">
         <!-- Missing Gemini key hint (shown only when key is absent/invalid) -->
         <div id="mascotKeyHint" style="display:none;margin-bottom:14px;padding:12px 14px;background:#FFF7E8;border:1.5px solid #F5C971;border-radius:10px;font-size:13px;line-height:1.5;color:#5A4500">
-          <div style="font-weight:800;margin-bottom:4px">⚠ Google Gemini API key missing</div>
-          To generate mascot images you need a free Gemini key from
-          <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#5A4500;text-decoration:underline;font-weight:700">aistudio.google.com/apikey</a>.
-          Paste it below and then click Generate — or press <b>Skip →</b> to continue without mascots.
+          <div style="font-weight:800;margin-bottom:4px" data-i18n="mascot.keyMissing.title">⚠ Google Gemini API key missing</div>
+          <span data-i18n="mascot.keyMissing.body">To generate mascot images you need a free Gemini key from <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#5A4500;text-decoration:underline;font-weight:700">aistudio.google.com/apikey</a>. Paste it below and then click Generate — or press <b>Skip →</b> to continue without mascots.</span>
           <div style="margin-top:8px">
             <input type="password" id="mascotInlineKey" placeholder="AIza..." style="width:100%;padding:8px 10px;border:1px solid #E6D4A0;border-radius:6px;font-size:12px;font-family:inherit;background:#fff" oninput="document.getElementById('googleGeminiKey').value=this.value;if(this.value.startsWith('AIza'))document.getElementById('mascotKeyHint').style.display='none'" />
           </div>
         </div>
         <!-- Engine Selector -->
         <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
-          <label style="font-size:13px;font-weight:600;white-space:nowrap">Engine:</label>
+          <label style="font-size:13px;font-weight:600;white-space:nowrap" data-i18n="mascot.engine.label">Engine:</label>
           <select id="mascotEngine" style="flex:1;padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;background:#fff">
             <option value="auto">Auto (try all)</option>
             <option value="nano-banana">Nano Banana (Gemini 2.5 Flash Image)</option>
@@ -542,61 +548,61 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         </div>
         <!-- Reference image mode checkboxes -->
         <div style="margin-bottom:12px;padding:10px 12px;background:#F9FAFB;border:1px solid var(--gray-200);border-radius:10px">
-          <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Reference Image Mode</div>
+          <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px" data-i18n="mascot.refmode.label">Reference Image Mode</div>
           <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;line-height:1.4;margin-bottom:6px">
             <input type="checkbox" id="mascotFaithful" style="margin-top:2px;width:15px;height:15px;cursor:pointer;accent-color:#E8A317" />
-            <span><b>完全按照客戶吉祥物</b> — 100% faithful reproduction, only swap to 3D clay material. No Notso eye/eyebrow override.</span>
+            <span data-i18n="mascot.refmode.faithful"><b>Faithful mascot reproduction</b> — 100% faithful reproduction, only swap to 3D clay material. No Notso eye/eyebrow override.</span>
           </label>
           <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;line-height:1.4;color:var(--gray-500)">
             <input type="checkbox" id="mascotMimicRef" style="margin-top:2px;width:15px;height:15px;cursor:pointer;accent-color:var(--accent)" />
-            <span><b>以參考圖生圖</b> — Mimic the reference image's art style, proportions, and vibe (but create a new character per variation).</span>
+            <span data-i18n="mascot.refmode.mimic"><b>Generate from reference</b> — Mimic the reference image's art style, proportions, and vibe (but create a new character per variation).</span>
           </label>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:6px">Both options require reference image(s) uploaded in Step 1. If neither is checked, references are used as loose style inspiration.</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:6px" data-i18n="mascot.refmode.note">Both options require reference image(s) uploaded in Step 1. If neither is checked, references are used as loose style inspiration.</div>
         </div>
         <!-- Custom Prompt -->
         <div style="margin-bottom:12px">
-          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">Custom Prompt (optional):</label>
-          <textarea id="mascotCustomPrompt" rows="3" placeholder="Leave empty to auto-generate from client data. Or write your own prompt, e.g.: A cute 3D fox mascot in blue outfit, clay toy style, transparent background..." style="width:100%;padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px" data-i18n="mascot.customPrompt.label">Custom Prompt (optional):</label>
+          <textarea id="mascotCustomPrompt" rows="3" data-i18n-placeholder="mascot.customPrompt.ph" placeholder="Leave empty to auto-generate from client data. Or write your own prompt, e.g.: A cute 3D fox mascot in blue outfit, clay toy style, transparent background..." style="width:100%;padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
         </div>
         <!-- Editable reference prompt (advanced) -->
         <details style="margin-bottom:12px">
-          <summary style="font-size:12px;font-weight:600;color:var(--gray-500);cursor:pointer;margin-bottom:4px">🔧 Advanced: Edit reference image prompt</summary>
-          <textarea id="mascotRefPromptOverride" rows="3" placeholder="Leave empty to use the default. This text is appended after the style lock prompt when reference images are present." style="width:100%;padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;resize:vertical;font-family:inherit;margin-top:6px"></textarea>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Overrides the default reference image instruction. Leave blank to use the built-in prompt for whichever mode is selected above.</div>
+          <summary style="font-size:12px;font-weight:600;color:var(--gray-500);cursor:pointer;margin-bottom:4px" data-i18n="mascot.advanced.summary">🔧 Advanced: Edit reference image prompt</summary>
+          <textarea id="mascotRefPromptOverride" rows="3" data-i18n-placeholder="mascot.advanced.ph" placeholder="Leave empty to use the default. This text is appended after the style lock prompt when reference images are present." style="width:100%;padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;resize:vertical;font-family:inherit;margin-top:6px"></textarea>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:4px" data-i18n="mascot.advanced.note">Overrides the default reference image instruction. Leave blank to use the built-in prompt for whichever mode is selected above.</div>
         </details>
-        <button class="btn btn-primary btn-full" id="mascotGenBtn" onclick="generateMascots()">
+        <button class="btn btn-primary btn-full" id="mascotGenBtn" onclick="generateMascots()" data-i18n="mascot.generateBtn">
           🎨 Generate 9 Mascot Options with AI
         </button>
-        <div style="text-align:center;margin:16px 0;font-size:12px;color:var(--gray-400)">— or —</div>
+        <div style="text-align:center;margin:16px 0;font-size:12px;color:var(--gray-400)" data-i18n="mascot.or">— or —</div>
         <div style="display:flex;gap:12px">
-          <label class="btn btn-secondary" style="flex:1;text-align:center;cursor:pointer">
+          <label class="btn btn-secondary" style="flex:1;text-align:center;cursor:pointer" data-i18n="mascot.uploadA">
             📁 Upload Option A
             <input type="file" accept="image/*" style="display:none" onchange="uploadMascot(this, 'option_a', 0)" />
           </label>
-          <label class="btn btn-secondary" style="flex:1;text-align:center;cursor:pointer">
+          <label class="btn btn-secondary" style="flex:1;text-align:center;cursor:pointer" data-i18n="mascot.uploadB">
             📁 Upload Option B
             <input type="file" accept="image/*" style="display:none" onchange="uploadMascot(this, 'option_b', 1)" />
           </label>
         </div>
-        <div style="font-size:11px;color:var(--gray-400);margin-top:8px;text-align:center">
+        <div style="font-size:11px;color:var(--gray-400);margin-top:8px;text-align:center" data-i18n="mascot.uploadTip">
           Tip: Use PNG with transparent background for best results in presentations
         </div>
       </div>
 
       <div id="mascotLoading" class="hidden" style="text-align:center;padding:30px">
         <div style="font-size:48px;animation:spin 2s linear infinite">🎨</div>
-        <div style="margin-top:12px;font-weight:600" id="mascotLoadText">Generating mascot designs...</div>
-        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">This may take 30-60 seconds</div>
+        <div style="margin-top:12px;font-weight:600" id="mascotLoadText" data-i18n="mascot.loading">Generating mascot designs...</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:4px" data-i18n="mascot.loadingNote">This may take 30-60 seconds</div>
       </div>
 
       <div id="mascotOptions" class="hidden">
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px" id="mascotGrid"></div>
-        <div style="text-align:center;margin-bottom:12px;font-size:13px;color:var(--gray-400)" id="mascotSelectHint">
+        <div style="text-align:center;margin-bottom:12px;font-size:13px;color:var(--gray-400)" id="mascotSelectHint" data-i18n="mascot.selectHint">
           Click each card to assign: A (cover + primary) → B → C → deselect. Pick at least 1.
         </div>
         <div style="display:flex;gap:12px;justify-content:center">
-          <button class="btn btn-secondary" onclick="generateMascots()">🔄 Regenerate</button>
-          <button class="btn btn-primary" id="mascotConfirmBtn" onclick="confirmMascots()" disabled>
+          <button class="btn btn-secondary" onclick="generateMascots()" data-i18n="mascot.regenerate">🔄 Regenerate</button>
+          <button class="btn btn-primary" id="mascotConfirmBtn" onclick="confirmMascots()" disabled data-i18n="mascot.confirm">
             Confirm Selection →
           </button>
         </div>
@@ -749,6 +755,9 @@ const I18N = {
     'form.clientName.ph': 'e.g. Jumbo, FinSport, Ahrend',
     'form.industry': 'Industry / Sector',
     'form.industry.ph': 'e.g. Retail, Finance, Healthcare',
+    'form.website': 'Client Website <span class="hint">(optional — we\'ll auto-fetch their brand colors)</span>',
+    'form.website.hint': '(optional — we\'ll auto-fetch their brand colors)',
+    'form.website.fetch': '🎨 Auto-fill colors',
     'form.useCase': 'Primary Use Case',
     'form.useCase.ph': 'Select use case...',
     'form.useCase.support': 'Customer Support & Service (24/7 chat)',
@@ -786,6 +795,32 @@ const I18N = {
     'form.geminiKey.hint': '— optional, for AI mascot generation (aistudio.google.com)',
     'form.generate': 'Generate Proposal →',
     'form.needKey': 'Need a Claude API key? Get one at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--black)">console.anthropic.com</a>',
+    // Step 2.5 — Mascot generation
+    'mascot.title': 'AI Mascot Generator',
+    'mascot.skip': 'Skip →',
+    'mascot.sub': 'Generate 9 3D mascot options (PNG, transparent background) with Gemini AI, then pick up to 3 for your proposal',
+    'mascot.keyMissing.title': '⚠ Google Gemini API key missing',
+    'mascot.keyMissing.body': 'To generate mascot images you need a free Gemini key from <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#5A4500;text-decoration:underline;font-weight:700">aistudio.google.com/apikey</a>. Paste it below and then click Generate — or press <b>Skip →</b> to continue without mascots.',
+    'mascot.engine.label': 'Engine:',
+    'mascot.refmode.label': 'Reference Image Mode',
+    'mascot.refmode.faithful': '<b>Faithful mascot reproduction</b> — 100% faithful reproduction, only swap to 3D clay material. No Notso eye/eyebrow override.',
+    'mascot.refmode.mimic': '<b>Generate from reference</b> — Mimic the reference image\'s art style, proportions, and vibe (but create a new character per variation).',
+    'mascot.refmode.note': 'Both options require reference image(s) uploaded in Step 1. If neither is checked, references are used as loose style inspiration.',
+    'mascot.customPrompt.label': 'Custom Prompt (optional):',
+    'mascot.customPrompt.ph': 'Leave empty to auto-generate from client data. Or write your own prompt, e.g.: A cute 3D fox mascot in blue outfit, clay toy style, transparent background...',
+    'mascot.advanced.summary': '🔧 Advanced: Edit reference image prompt',
+    'mascot.advanced.ph': 'Leave empty to use the default. This text is appended after the style lock prompt when reference images are present.',
+    'mascot.advanced.note': 'Overrides the default reference image instruction. Leave blank to use the built-in prompt for whichever mode is selected above.',
+    'mascot.generateBtn': '🎨 Generate 9 Mascot Options with AI',
+    'mascot.or': '— or —',
+    'mascot.uploadA': '📁 Upload Option A',
+    'mascot.uploadB': '📁 Upload Option B',
+    'mascot.uploadTip': 'Tip: Use PNG with transparent background for best results in presentations',
+    'mascot.loading': 'Generating mascot designs...',
+    'mascot.loadingNote': 'This may take 30-60 seconds',
+    'mascot.selectHint': 'Click each card to assign: A (cover + primary) → B → C → deselect. Pick at least 1.',
+    'mascot.regenerate': '🔄 Regenerate',
+    'mascot.confirm': 'Confirm Selection →',
   },
   'zh-TW': {
     'header.badge': '提案生成器',
@@ -800,6 +835,9 @@ const I18N = {
     'form.clientName.ph': '例如:Jumbo、FinSport、Ahrend',
     'form.industry': '產業 / 領域',
     'form.industry.ph': '例如:零售、金融、醫療保健',
+    'form.website': '客戶官網 <span class="hint">(選填 — 會自動抓取品牌色)</span>',
+    'form.website.hint': '(選填 — 會自動抓取品牌色)',
+    'form.website.fetch': '🎨 自動填入品牌色',
     'form.useCase': '主要使用情境',
     'form.useCase.ph': '選擇使用情境⋯',
     'form.useCase.support': '客戶支援與服務(24/7 聊天)',
@@ -837,6 +875,32 @@ const I18N = {
     'form.geminiKey.hint': '— 選填,用於 AI 吉祥物生成(aistudio.google.com)',
     'form.generate': '生成提案 →',
     'form.needKey': '需要 Claude API 金鑰?請至 <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--black)">console.anthropic.com</a> 取得',
+    // Step 2.5 — 吉祥物生成
+    'mascot.title': 'AI 吉祥物生成器',
+    'mascot.skip': '略過 →',
+    'mascot.sub': '使用 Gemini AI 生成 9 款 3D 吉祥物設計(PNG、透明背景),選擇最多 3 款加入提案',
+    'mascot.keyMissing.title': '⚠ 尚未設定 Google Gemini API 金鑰',
+    'mascot.keyMissing.body': '生成吉祥物需要 Gemini 免費金鑰,請至 <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#5A4500;text-decoration:underline;font-weight:700">aistudio.google.com/apikey</a> 取得。貼上後點選生成 — 或按 <b>略過 →</b> 跳過這步。',
+    'mascot.engine.label': '生成引擎:',
+    'mascot.refmode.label': '參考圖模式',
+    'mascot.refmode.faithful': '<b>完全按照客戶吉祥物</b> — 100% 忠實重現,僅將材質切換為 3D 黏土風格。不套用 Notso 標準眼神/眉型。',
+    'mascot.refmode.mimic': '<b>以參考圖生圖</b> — 模仿參考圖的風格、比例與氛圍,但每張都是全新角色。',
+    'mascot.refmode.note': '兩種模式都需要在第一步上傳參考圖。若都未勾選,參考圖將作為鬆散的風格靈感。',
+    'mascot.customPrompt.label': '自訂提示詞(選填):',
+    'mascot.customPrompt.ph': '留空會自動從客戶資料生成。你也可以自行撰寫,例如:穿藍色衣服的可愛 3D 狐狸吉祥物,黏土玩具風格,透明背景⋯',
+    'mascot.advanced.summary': '🔧 進階:編輯參考圖提示詞',
+    'mascot.advanced.ph': '留空使用預設提示詞。此段會在有參考圖時追加在風格鎖定提示之後。',
+    'mascot.advanced.note': '覆寫預設的參考圖指令。留空則使用選取模式對應的內建提示。',
+    'mascot.generateBtn': '🎨 用 AI 生成 9 款吉祥物',
+    'mascot.or': '— 或 —',
+    'mascot.uploadA': '📁 上傳 Option A',
+    'mascot.uploadB': '📁 上傳 Option B',
+    'mascot.uploadTip': '提示:簡報中使用透明背景的 PNG 效果最佳',
+    'mascot.loading': '正在生成吉祥物設計⋯',
+    'mascot.loadingNote': '可能需要 30–60 秒',
+    'mascot.selectHint': '點擊每張卡片指派角色:A(封面 + 主角)→ B → C → 取消。至少選 1 張。',
+    'mascot.regenerate': '🔄 重新生成',
+    'mascot.confirm': '確認選擇 →',
   },
   ja: {
     'header.badge': '提案ジェネレーター',
@@ -851,6 +915,9 @@ const I18N = {
     'form.clientName.ph': '例:Jumbo、FinSport、Ahrend',
     'form.industry': '業界 / セクター',
     'form.industry.ph': '例:小売、金融、ヘルスケア',
+    'form.website': 'クライアントのウェブサイト <span class="hint">(任意 — ブランドカラーを自動取得)</span>',
+    'form.website.hint': '(任意 — ブランドカラーを自動取得)',
+    'form.website.fetch': '🎨 カラーを自動入力',
     'form.useCase': '主なユースケース',
     'form.useCase.ph': 'ユースケースを選択⋯',
     'form.useCase.support': 'カスタマーサポート(24 時間チャット)',
@@ -888,6 +955,32 @@ const I18N = {
     'form.geminiKey.hint': '— 任意。AI マスコット生成に使用(aistudio.google.com)',
     'form.generate': '提案を生成 →',
     'form.needKey': 'Claude API キーが必要ですか? <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--black)">console.anthropic.com</a> で取得できます',
+    // Step 2.5 — マスコット生成
+    'mascot.title': 'AI マスコットジェネレーター',
+    'mascot.skip': 'スキップ →',
+    'mascot.sub': 'Gemini AI で 9 種類の 3D マスコット(PNG・透過背景)を生成し、提案用に最大 3 つ選べます',
+    'mascot.keyMissing.title': '⚠ Google Gemini API キーが未設定です',
+    'mascot.keyMissing.body': 'マスコット生成には Gemini の無料キーが必要です。<a href="https://aistudio.google.com/apikey" target="_blank" style="color:#5A4500;text-decoration:underline;font-weight:700">aistudio.google.com/apikey</a> から取得し、下に貼り付けて生成を押すか、<b>スキップ →</b> で省略できます。',
+    'mascot.engine.label': 'エンジン:',
+    'mascot.refmode.label': '参考画像モード',
+    'mascot.refmode.faithful': '<b>完全忠実再現</b> — マスコットを 100% 忠実に再現し、3D クレイ素材だけを置き換えます。Notso の目/眉スタイルは上書きしません。',
+    'mascot.refmode.mimic': '<b>参考画像からバリエーション生成</b> — 参考画像のアートスタイル・比率・雰囲気を踏襲し、バリエーションごとに新キャラを作成します。',
+    'mascot.refmode.note': 'どちらもステップ 1 での参考画像アップロードが必要です。どちらも選ばない場合、参考画像はゆるいスタイルヒントとして使用されます。',
+    'mascot.customPrompt.label': 'カスタムプロンプト(任意):',
+    'mascot.customPrompt.ph': '空欄の場合はクライアントデータから自動生成。自分で書くこともできます。例:青い服の可愛い 3D キツネ マスコット、クレイトイ風、透過背景⋯',
+    'mascot.advanced.summary': '🔧 詳細:参考画像プロンプトを編集',
+    'mascot.advanced.ph': '空欄の場合はデフォルトを使用。参考画像がある時はスタイルロックプロンプトの後ろに追記されます。',
+    'mascot.advanced.note': 'デフォルトの参考画像指示を上書きします。空欄の場合は選択モードの組み込みプロンプトを使用します。',
+    'mascot.generateBtn': '🎨 AI で 9 つのマスコット案を生成',
+    'mascot.or': '— または —',
+    'mascot.uploadA': '📁 Option A をアップロード',
+    'mascot.uploadB': '📁 Option B をアップロード',
+    'mascot.uploadTip': 'ヒント:プレゼンでは透過背景 PNG が最適です',
+    'mascot.loading': 'マスコットデザインを生成中⋯',
+    'mascot.loadingNote': '30–60 秒ほどかかる場合があります',
+    'mascot.selectHint': 'カードをクリックして割り当て:A(カバー+メイン)→ B → C → 解除。最低 1 つ選択。',
+    'mascot.regenerate': '🔄 再生成',
+    'mascot.confirm': '選択を確定 →',
   },
 };
 
@@ -942,6 +1035,75 @@ document.addEventListener('DOMContentLoaded', () => {
     if (/^#[0-9A-Fa-f]{6}$/.test(v)) pick.value = v;
   });
 });
+
+/* ─── BRAND COLOR AUTO-FETCH (via /api/brandfetch) ──────────────────
+ * Hits the server-side Brandfetch proxy to pull up to 4 brand colors
+ * from the client's website and fills the 4 color slots. Preserves
+ * manually-entered colors unless the user actually has something to
+ * overwrite (we only fill slots that are still at default values or
+ * empty, to avoid clobbering work).
+ */
+function _extractDomain(rawUrl) {
+  if (!rawUrl) return '';
+  let s = rawUrl.trim();
+  s = s.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+  s = s.split('/')[0].split('?')[0].split('#')[0];
+  return s.toLowerCase();
+}
+
+async function autoFetchBrandColors() {
+  const raw = (document.getElementById('clientWebsite') || {}).value || '';
+  const domain = _extractDomain(raw);
+  const status = document.getElementById('fetchBrandStatus');
+  const btn = document.getElementById('fetchBrandBtn');
+  if (!domain) {
+    status.style.display = 'block';
+    status.style.color = '#DC2626';
+    status.textContent = '⚠ Please enter a website URL first (e.g. jumbo.com)';
+    return;
+  }
+  status.style.display = 'block';
+  status.style.color = 'var(--gray-400)';
+  status.textContent = `Fetching brand colors for ${domain}…`;
+  btn.disabled = true;
+  btn.textContent = '⏳ Fetching…';
+  try {
+    const resp = await fetch('/api/brandfetch?domain=' + encodeURIComponent(domain));
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    const colors = Array.isArray(data.colors) ? data.colors : [];
+    if (colors.length === 0) throw new Error('No brand colors returned');
+    // Sort: primary/accent first, then by darkness (darker = more likely brand-ink)
+    const sorted = [...colors].sort((a, b) => {
+      const pri = (x) => x.type === 'brand' || x.type === 'primary' ? 0 : x.type === 'accent' ? 1 : 2;
+      return pri(a) - pri(b);
+    });
+    const topFour = sorted.slice(0, 4).map(c => c.hex);
+    topFour.forEach((hex, idx) => {
+      if (!hex) return;
+      const pick = document.getElementById('color' + (idx + 1));
+      const hexInput = document.getElementById('color' + (idx + 1) + 'hex');
+      if (pick && hexInput) {
+        pick.value = hex;
+        hexInput.value = hex.toUpperCase();
+      }
+    });
+    status.style.color = '#059669';
+    status.textContent = `✓ Filled ${topFour.length} color${topFour.length > 1 ? 's' : ''} from ${domain}`;
+  } catch (err) {
+    status.style.color = '#DC2626';
+    const msg = err.message || String(err);
+    // Friendly fallback when the server doesn't have a Brandfetch key.
+    if (/BRANDFETCH_API_KEY|not configured/i.test(msg)) {
+      status.innerHTML = '⚠ Brand auto-fetch needs a Brandfetch key on the server. <a href="https://developers.brandfetch.com" target="_blank" style="color:inherit;text-decoration:underline">Get one free (500 req/mo)</a> and set <code>BRANDFETCH_API_KEY</code>.';
+    } else {
+      status.textContent = '⚠ ' + msg;
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🎨 Auto-fill colors';
+  }
+}
 
 /* ─── BRAND THEME (main + 3 accents → CSS vars) ─── */
 function applyBrandTheme(c) {
@@ -1006,6 +1168,48 @@ function showError(msg) {
 }
 function hideError() {
   document.getElementById('errorBox').style.display = 'none';
+}
+
+/*
+ * showInlineError(hostId, msg, [retryLabel, onRetry])
+ *
+ * Unified non-blocking error panel for anywhere outside Step 1. Keeps the
+ * user's entered data intact (never reloads, never alerts), shows a red
+ * inline banner inside the caller's container, and optionally renders a
+ * Retry button wired to a callback.
+ *
+ * Usage:
+ *   showInlineError('mascotGenArea', 'Gemini returned 429', 'Retry', generateMascots);
+ */
+function showInlineError(hostId, msg, retryLabel, onRetry) {
+  const host = document.getElementById(hostId);
+  if (!host) { console.error('showInlineError: host not found', hostId); return; }
+  // Reuse a single banner node per host so repeat errors don't stack.
+  let banner = host.querySelector('.inline-error-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.className = 'inline-error-banner';
+    banner.style.cssText = 'background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13px;color:#991B1B;font-weight:600;display:flex;align-items:center;gap:12px;';
+    host.prepend(banner);
+  }
+  banner.innerHTML = `<span style="flex:1">⚠ ${String(msg).replace(/</g,'&lt;')}</span>`;
+  if (retryLabel && typeof onRetry === 'function') {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.style.cssText = 'font-size:12px;padding:6px 14px;flex-shrink:0;';
+    btn.textContent = retryLabel;
+    btn.onclick = () => {
+      banner.remove();
+      try { onRetry(); } catch (e) { showInlineError(hostId, e.message || String(e), retryLabel, onRetry); }
+    };
+    banner.appendChild(btn);
+  }
+  const dismiss = document.createElement('button');
+  dismiss.textContent = '×';
+  dismiss.style.cssText = 'background:transparent;border:none;color:#991B1B;font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0;font-weight:700;';
+  dismiss.onclick = () => banner.remove();
+  banner.appendChild(dismiss);
+  banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1146,10 +1350,11 @@ document.addEventListener('DOMContentLoaded', () => {
   _wireDrop('clientSiteDrop', handleSiteUpload);
 
   // ── API Key persistence ──
-  // NOTE: input id="geminiKey" is legacy — it's actually the Claude key field.
-  // Don't rename without audit: ~10+ sites reference it. Keeping as-is.
+  // Two separate inputs: #claudeKey (Anthropic, for proposal text) and
+  // #googleGeminiKey (Google, for mascot images). Both persist to
+  // localStorage on input/change/blur.
   const _keyFields = [
-    { id: 'geminiKey',       storageKey: 'notso_claude_api_key' },
+    { id: 'claudeKey',       storageKey: 'notso_claude_api_key' },
     { id: 'googleGeminiKey', storageKey: 'notso_gemini_api_key' },
   ];
   _keyFields.forEach(({ id, storageKey }) => {
@@ -1168,6 +1373,54 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('change', persist);
     el.addEventListener('blur', persist);
   });
+
+  // ── Step-1 form auto-save (excludes API keys + file uploads) ──
+  // Persists the client info panel between refreshes. API keys are saved
+  // above in their own slots; file uploads are too large for localStorage
+  // and are intentionally left out.
+  const _formAutoSaveKey = 'notso_step1_form_v1';
+  const _formFieldIds = [
+    'clientName', 'industry', 'useCase', 'clientDesc',
+    'color1', 'color1hex', 'color2', 'color2hex',
+    'color3', 'color3hex', 'color4', 'color4hex',
+    'mascotName',
+  ];
+  // Restore saved values
+  try {
+    const raw = localStorage.getItem(_formAutoSaveKey);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      _formFieldIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && saved[id] != null && !el.value) el.value = saved[id];
+      });
+    }
+  } catch (e) { console.warn('form auto-save restore failed:', e); }
+  // Debounced save on any change
+  let _formSaveTimer = null;
+  const _persistForm = () => {
+    clearTimeout(_formSaveTimer);
+    _formSaveTimer = setTimeout(() => {
+      try {
+        const data = {};
+        _formFieldIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) data[id] = el.value;
+        });
+        localStorage.setItem(_formAutoSaveKey, JSON.stringify(data));
+      } catch (e) { /* localStorage full or disabled — ignore */ }
+    }, 400);
+  };
+  _formFieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', _persistForm);
+    el.addEventListener('change', _persistForm);
+  });
+  // Expose clear-form helper so resetAll() can wipe the saved state
+  window.clearStep1AutoSave = () => {
+    try { localStorage.removeItem(_formAutoSaveKey); } catch (_) {}
+  };
 
   // ── Bootstrap from /api/config: env flag, dev keys, preset fixtures ──
   bootstrapFromServerConfig().catch(err => console.warn('config bootstrap failed:', err));
@@ -1204,8 +1457,23 @@ async function bootstrapFromServerConfig() {
     const el = document.getElementById(id);
     if (el && !el.value) el.value = val;
   };
-  _fill('geminiKey', cfg.claudeKey);          // the "geminiKey" input is actually Claude
+  _fill('claudeKey', cfg.claudeKey);
   _fill('googleGeminiKey', cfg.geminiKey);
+
+  // One-time localStorage migration: prior versions stored Claude key under
+  // the legacy input id "geminiKey". The storageKey was already correct
+  // (notso_claude_api_key), so nothing to migrate there — but if any code
+  // paths briefly saved it under notso_gemini_key pointing to a Claude key,
+  // we prefer the claudeKey-specific slot now.
+  try {
+    const legacyWrong = localStorage.getItem('notso_gemini_key');
+    if (legacyWrong && legacyWrong.startsWith('sk-ant-') && !localStorage.getItem('notso_claude_api_key')) {
+      localStorage.setItem('notso_claude_api_key', legacyWrong);
+      localStorage.removeItem('notso_gemini_key');
+      const el = document.getElementById('claudeKey');
+      if (el && !el.value) el.value = legacyWrong;
+    }
+  } catch (_) { /* localStorage unavailable — skip */ }
 
   // (2) Hide server-side export buttons when running on Vercel.
   //     PPTX + Google Slides require binaries (python3, Puppeteer-in-Chromium
@@ -1329,7 +1597,7 @@ async function startGeneration() {
   const industry = document.getElementById('industry').value.trim();
   const useCase = document.getElementById('useCase').value;
   const desc = document.getElementById('clientDesc').value.trim();
-  const key = document.getElementById('geminiKey').value.trim();
+  const key = document.getElementById('claudeKey').value.trim();
 
   if (!name) { showError('Please enter the Client Name.'); return; }
   if (!industry) { showError('Please enter the Industry / Sector.'); return; }
@@ -2366,15 +2634,70 @@ async function previewAndEdit() {
     // Parse the HTML and inject each slide into the preview container as editable
     const parser = new DOMParser();
     const doc = parser.parseFromString(data.html, 'text/html');
-    const slides = doc.querySelectorAll('.slide');
 
     content.innerHTML = '';
+
+    // 1. Copy ALL <style> blocks FIRST — before any slide is appended.
+    //    This guarantees .slide { width:1440px; height:810px } and :root brand
+    //    vars are in the stylesheet before slides trigger layout. If styles go
+    //    in after, flex-layout can shrink wrappers to near-zero height before
+    //    the rules re-apply, producing the "squished strip" bug.
+    const styles = doc.querySelectorAll('style');
+    styles.forEach(s => {
+      const styleEl = document.createElement('style');
+      styleEl.textContent = s.textContent;
+      content.appendChild(styleEl);
+    });
+
+    // 2. Defensive scoped stylesheet: lock slide + wrapper dimensions regardless
+    //    of parent flex/shrink rules. Without flex-shrink:0 the column flex on
+    //    #previewEditContent can collapse the wrapper.
+    const defensive = document.createElement('style');
+    defensive.textContent = `
+      #previewEditContent .preview-slide-wrap {
+        width: 1440px !important;
+        height: 810px !important;
+        flex: 0 0 810px !important;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,.1);
+        overflow: hidden;
+        position: relative;
+        transform-origin: top center;
+        transform: scale(0.65);
+        margin-bottom: -200px;
+      }
+      #previewEditContent .preview-slide-wrap .slide {
+        width: 1440px !important;
+        height: 810px !important;
+        flex-shrink: 0 !important;
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+      #previewEditContent .preview-slide-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0,0,0,.7);
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        z-index: 10;
+        font-family: Poppins, sans-serif;
+      }
+    `;
+    content.appendChild(defensive);
+
+    // 3. Append each slide wrapped in a .preview-slide-wrap
+    const slides = doc.querySelectorAll('.slide');
     slides.forEach((slide, i) => {
       const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'background:white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);overflow:hidden;position:relative;width:1440px;transform-origin:top center;transform:scale(0.65);margin-bottom:-200px;';
-      // Slide number badge
+      wrapper.className = 'preview-slide-wrap';
+
       const badge = document.createElement('div');
-      badge.style.cssText = 'position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;z-index:10;font-family:Poppins,sans-serif;';
+      badge.className = 'preview-slide-badge';
       badge.textContent = `Slide ${i + 1}`;
       wrapper.appendChild(badge);
 
@@ -2394,14 +2717,6 @@ async function previewAndEdit() {
       content.appendChild(wrapper);
     });
 
-    // Copy the styles from the generated HTML
-    const styles = doc.querySelectorAll('style');
-    styles.forEach(s => {
-      const styleEl = document.createElement('style');
-      styleEl.textContent = s.textContent;
-      content.appendChild(styleEl);
-    });
-
   } catch (err) {
     content.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>${err.message}</div>`;
   }
@@ -2416,7 +2731,7 @@ async function exportPDFFromPreview() {
   // Re-read edited content from the preview DOM, rebuild HTML, send to PDF export
   const content = document.getElementById('previewEditContent');
   const slides = content.querySelectorAll('.slide');
-  if (!slides.length) { alert('No slides to export'); return; }
+  if (!slides.length) { showInlineError('previewEditContent', 'No slides to export'); return; }
 
   // Rebuild the HTML from the edited slides
   const slideHtmls = Array.from(slides).map(s => {
@@ -2430,12 +2745,21 @@ async function exportPDFFromPreview() {
     return clone.outerHTML;
   }).join('\n');
 
-  // Get styles from the preview
+  // Use EXACTLY the same stylesheet set that the server's buildProposalHtml()
+  // injected — we copied those <style> blocks into the modal in
+  // previewAndEdit(). Skip the preview-only defensive stylesheet (marked by
+  // the .preview-slide-wrap selector) since that's modal-scaling chrome, not
+  // PDF layout. This keeps preview and PDF output pixel-identical with no
+  // duplicated CSS to drift out of sync.
   const styles = content.querySelectorAll('style');
   let styleText = '';
-  styles.forEach(s => { styleText += s.textContent; });
+  styles.forEach(s => {
+    const css = s.textContent || '';
+    if (css.indexOf('.preview-slide-wrap') !== -1) return; // skip preview chrome
+    styleText += css + '\n';
+  });
 
-  const fullHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Poppins',sans-serif;background:#fff}.slides-container{display:flex;flex-direction:column}* { box-sizing: border-box; }.slide{width:1440px;height:810px;page-break-after:always;break-after:page;position:relative;overflow:hidden !important}@media print{.slide{margin:0;padding:0}}${styleText}</style></head><body><div class="slides-container">${slideHtmls}</div></body></html>`;
+  const fullHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>${styleText}</style></head><body><div class="slides-container">${slideHtmls}</div></body></html>`;
 
   // Send edited HTML to server for PDF conversion
   try {
@@ -2464,7 +2788,12 @@ async function exportPDFFromPreview() {
     btn.textContent = '📄 Export PDF';
     btn.disabled = false;
   } catch (err) {
-    alert('Export failed: ' + err.message);
+    showInlineError(
+      'previewEditContent',
+      'Export failed: ' + err.message,
+      '🔄 Retry',
+      exportPDFFromPreview
+    );
     const btn = document.querySelector('#previewEditModal .btn-primary');
     btn.textContent = '📄 Export PDF';
     btn.disabled = false;
@@ -2732,6 +3061,8 @@ function resetAll() {
   document.getElementById('useCase').value='';
   document.getElementById('clientDesc').value='';
   document.getElementById('mascotName').value='';
+  // Also wipe auto-saved Step-1 state so the fresh form stays blank on refresh.
+  if (typeof window.clearStep1AutoSave === 'function') window.clearStep1AutoSave();
 }
 
 /* ─── HISTORY ─── */
@@ -2937,6 +3268,61 @@ loadGSConfig().then(() => {
 });
 
 /* ═══════════════════════════════════════════════
+   CLIENT-SIDE BACKGROUND REMOVAL (fallback for Vercel)
+   ═══════════════════════════════════════════════
+   Gemini often returns mascots on a white/near-white background even when
+   asked for a transparent PNG. Server-side rembg (see post_process.py) can't
+   run on Vercel — onnxruntime is too large. So we chroma-key white to
+   transparent in the browser: fully transparent above WHITE_FULL_THRESHOLD,
+   feathered alpha in the soft band, fully opaque below SOFT_THRESHOLD. */
+async function chromaKeyWhiteBackground(dataUrl) {
+  // Thresholds chosen to preserve subtle highlights on the mascot (lightest
+  // parts of the character can be ~235–245 on each channel) while nuking
+  // solid white backgrounds (~250–255).
+  const WHITE_FULL_THRESHOLD = 248;  // >= this on min(r,g,b) → alpha 0
+  const SOFT_THRESHOLD = 230;        // <= this → keep alpha
+  const SATURATION_GUARD = 12;       // if max-min > 12, pixel is colored → keep
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], g = d[i+1], b = d[i+2];
+          const minC = Math.min(r, g, b);
+          const maxC = Math.max(r, g, b);
+          // Keep colored pixels untouched (mascot body).
+          if (maxC - minC > SATURATION_GUARD) continue;
+          if (minC >= WHITE_FULL_THRESHOLD) {
+            d[i+3] = 0;
+          } else if (minC > SOFT_THRESHOLD) {
+            // Soft edge feather: linear ramp from 1→0 across the band.
+            const band = WHITE_FULL_THRESHOLD - SOFT_THRESHOLD;
+            const t = (minC - SOFT_THRESHOLD) / band;
+            d[i+3] = Math.round(d[i+3] * (1 - t));
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = dataUrl;
+  });
+}
+
+/* ═══════════════════════════════════════════════
    MASCOT GENERATION (Gemini Imagen)
    ═══════════════════════════════════════════════ */
 let mascotImages = [];     // Array of { id, data_url }
@@ -2966,7 +3352,7 @@ async function generateMascots() {
   let customVariations = null;
   let claudeKey = '';
   try { claudeKey = sessionStorage.getItem('claudeKey') || ''; } catch {}
-  if (!claudeKey) claudeKey = (document.getElementById('geminiKey') || {}).value || '';
+  if (!claudeKey) claudeKey = (document.getElementById('claudeKey') || {}).value || '';
   if (claudeKey && claudeKey.startsWith('sk-ant-')) {
     try {
       console.log('🧠 Asking Claude for bespoke archetypes…');
@@ -3031,13 +3417,42 @@ async function generateMascots() {
 
     // Reset selections
     mascotSelections = {};
+
+    // Client-side transparency fallback: on Vercel the server cannot run rembg
+    // (onnxruntime exceeds the 50MB bundle limit). Apply a canvas-based
+    // white-bg chroma key so mascots render with transparent backgrounds in
+    // both the preview and PDF export.
+    try {
+      const processed = await Promise.all(
+        mascotImages.map(async (img, idx) => {
+          try {
+            const transparent = await chromaKeyWhiteBackground(img.data_url);
+            return { ...img, data_url: transparent };
+          } catch (e) {
+            console.warn(`Mascot ${idx} chroma-key failed, using original:`, e.message);
+            return img;
+          }
+        })
+      );
+      mascotImages = processed;
+    } catch (e) {
+      console.warn('Batch chroma-key failed, using raw images:', e);
+    }
+
     renderMascotGrid();
     document.getElementById('mascotLoading').classList.add('hidden');
     document.getElementById('mascotOptions').classList.remove('hidden');
   } catch (err) {
     document.getElementById('mascotLoading').classList.add('hidden');
     document.getElementById('mascotGenArea').classList.remove('hidden');
-    alert('Mascot generation error: ' + err.message);
+    // Keep the user's form state + engine / prompt selections intact and
+    // offer a one-click retry instead of a disruptive alert.
+    showInlineError(
+      'mascotGenArea',
+      'Mascot generation failed — ' + err.message,
+      '🔄 Retry',
+      generateMascots
+    );
   }
 }
 
@@ -3591,7 +4006,7 @@ async function applySlideEdit() {
 
   let key = '';
   try { key = sessionStorage.getItem('claudeKey') || ''; } catch {}
-  if (!key) key = (document.getElementById('geminiKey') || {}).value || '';
+  if (!key) key = (document.getElementById('claudeKey') || {}).value || '';
   if (!key) {
     statusEl.textContent = 'No Claude API key found. Please regenerate a proposal first.';
     statusEl.style.color = 'var(--red)';

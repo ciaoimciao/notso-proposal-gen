@@ -243,6 +243,65 @@ const handler = async (req, res) => {
   }
 
   // ──────────────────────────────────────
+  // API: Brandfetch proxy — auto-fetch brand colors from a client's website
+  // GET /api/brandfetch?domain=jumbo.com
+  // Returns: { colors: [{ hex, type, brightness }], name, domain }
+  //
+  // Free tier: 500 requests/month. Key lives in BRANDFETCH_API_KEY env var
+  // (or .secrets.json for local dev). Without a key we 503 with a clear
+  // message so the frontend can point the user at the signup page.
+  // ──────────────────────────────────────
+  if (url.pathname === '/api/brandfetch' && req.method === 'GET') {
+    try {
+      const domain = (url.searchParams.get('domain') || '').trim().toLowerCase();
+      if (!domain) return json(res, 400, { error: 'Missing ?domain=' });
+      if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain)) {
+        return json(res, 400, { error: 'Invalid domain — expected something like jumbo.com' });
+      }
+
+      let bfKey = process.env.BRANDFETCH_API_KEY || '';
+      if (!bfKey) {
+        try {
+          const secretsPath = path.join(__dirname, '.secrets.json');
+          if (fs.existsSync(secretsPath)) {
+            const secrets = JSON.parse(fs.readFileSync(secretsPath, 'utf8'));
+            bfKey = secrets.BRANDFETCH_API_KEY || '';
+          }
+        } catch (_) { /* ignore */ }
+      }
+      if (!bfKey) {
+        return json(res, 503, { error: 'BRANDFETCH_API_KEY not configured on the server' });
+      }
+
+      const bfUrl = `https://api.brandfetch.io/v2/brands/${encodeURIComponent(domain)}`;
+      const bfRes = await fetch(bfUrl, {
+        headers: { 'Authorization': `Bearer ${bfKey}`, 'Accept': 'application/json' },
+      });
+      if (!bfRes.ok) {
+        const body = await bfRes.text();
+        return json(res, bfRes.status, {
+          error: `Brandfetch ${bfRes.status}: ${body.slice(0, 200)}`,
+        });
+      }
+      const data = await bfRes.json();
+      const colors = Array.isArray(data.colors)
+        ? data.colors.filter(c => c && typeof c.hex === 'string')
+        : [];
+      return json(res, 200, {
+        domain,
+        name: data.name || '',
+        colors: colors.map(c => ({
+          hex: c.hex,
+          type: c.type || 'unknown',
+          brightness: typeof c.brightness === 'number' ? c.brightness : null,
+        })),
+      });
+    } catch (err) {
+      return json(res, 500, { error: 'Brandfetch request failed: ' + err.message });
+    }
+  }
+
+  // ──────────────────────────────────────
   // API: Google Slides OAuth config (for frontend)
   // GET /api/gslides/config
   // ──────────────────────────────────────
