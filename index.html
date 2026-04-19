@@ -713,6 +713,11 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
   </div>
 </div>
 
+<!-- JSZip for client-side Asset Pack ZIP assembly. Self-hosted on Vercel
+     serverless would fail (no file system for static assets at runtime),
+     so we load from the Cloudflare CDN. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
 <script>
 /* ─── STATE ─── */
 let proposal = null;
@@ -3756,11 +3761,14 @@ let _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
 // Tracks which asset images are assigned to which slides: { slideKey: { assetId, file } }
 let _assetSlideAssignments = {};
 
-// Assign an asset pack image to a specific slide
+// Assign an asset pack image to a specific slide.
+// Stores the DATA URL in savedMascotPaths so the PDF generator never has to
+// reach back to the server's /tmp for the file (which evaporates on Vercel
+// cold starts). generate_html.js has been taught to pass data: URIs through
+// `readImageAsDataURI` unchanged.
 function assignAssetToSlide(assetId, encodedFile, slideKey) {
   const file = decodeURIComponent(encodedFile);
   if (!slideKey) {
-    // Unassign: remove any assignment for this assetId
     for (const k of Object.keys(_assetSlideAssignments)) {
       if (_assetSlideAssignments[k].assetId === assetId) delete _assetSlideAssignments[k];
     }
@@ -3768,23 +3776,33 @@ function assignAssetToSlide(assetId, encodedFile, slideKey) {
     return;
   }
   _assetSlideAssignments[slideKey] = { assetId, file };
-  console.log('Assigned', assetId, '→', slideKey, file);
 
-  // Build image URL and save to savedMascotPaths for PDF generation
-  const sid = _assetPackSession.sessionId;
-  if (sid) {
-    const imgUrl = `/api/assetpack/image?sessionId=${encodeURIComponent(sid)}&file=${encodeURIComponent(file)}`;
-    // Map slide keys to mascotImages keys used by generate_html.js
-    const slideToImageKey = {
-      s1: 'cover', s7: 'cover', s9: 'cover', s18: 'cover',
-      s6: 'option_a', s8: 'expression_0', s12: 'dashboard', s16: 'material_0'
-    };
-    const imageKey = slideToImageKey[slideKey];
-    if (imageKey) {
-      savedMascotPaths[imageKey] = imgUrl;
-      console.log('Updated savedMascotPaths:', imageKey, '→', imgUrl);
-    }
+  // Look up the cached data URL for this asset.
+  const item = (_assetPackSession.results || []).find(r => r.id === assetId);
+  if (!item || !item.dataUrl) {
+    console.warn('No dataUrl cached for asset', assetId, '— slide will fall back to placeholder');
+    return;
   }
+
+  const slideToImageKey = {
+    s1: 'cover', s7: 'cover', s9: 'cover', s18: 'cover',
+    s6: 'option_a', s8: 'expression_0', s12: 'dashboard', s16: 'material_0'
+  };
+  const imageKey = slideToImageKey[slideKey];
+  if (imageKey) {
+    savedMascotPaths[imageKey] = item.dataUrl;
+    console.log('Assigned', assetId, '→', slideKey, '(stored as dataUrl)');
+  }
+}
+
+// Return the currently-picked mascot data URL from the Asset Pack modal.
+// Used by BOTH fresh generation and regenerate so the server never has to
+// depend on its own Map surviving a cold start.
+function _pickedMascotDataUrl() {
+  const role = document.getElementById('assetPackMascotPick').value;
+  const idx = mascotSelections && mascotSelections[role];
+  const entry = (typeof idx === 'number') ? mascotImages[idx] : null;
+  return (entry && entry.data_url) || '';
 }
 
 async function generateAssetPack(opts = {}) {
@@ -3795,19 +3813,16 @@ async function generateAssetPack(opts = {}) {
     return;
   }
 
-  // On first call: read the selected mascot from the picker.
-  // On regenerate calls (opts.onlyIds set): reuse existing session's stored mascot on the server.
-  let mascotImage = '';
+  // ALWAYS send mascotImage — on Vercel serverless the previous session's
+  // in-memory reference may have been dropped during a cold start. Cheap
+  // insurance; the body is only ~1MB and Gemini needs it anyway.
+  const mascotImage = _pickedMascotDataUrl();
+  if (!mascotImage) {
+    document.getElementById('assetPackError').style.display = 'block';
+    document.getElementById('assetPackErrorMsg').textContent = 'Please generate and select a mascot first.';
+    return;
+  }
   if (!opts.onlyIds) {
-    const role = document.getElementById('assetPackMascotPick').value;
-    const idx = mascotSelections && mascotSelections[role];
-    const entry = (typeof idx === 'number') ? mascotImages[idx] : null;
-    mascotImage = entry && entry.data_url;
-    if (!mascotImage) {
-      document.getElementById('assetPackError').style.display = 'block';
-      document.getElementById('assetPackErrorMsg').textContent = 'Please generate and select a mascot first.';
-      return;
-    }
     // Reset session on fresh run
     _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
   }
@@ -3859,7 +3874,20 @@ async function generateAssetPack(opts = {}) {
     }
 
     _assetPackSession.sessionId = data.sessionId;
-    _assetPackSession.results = data.results || [];
+    // Merge server results with the local cache so that regenerate calls
+    // don't wipe earlier successes when Vercel cold-started between runs.
+    const incoming = data.results || [];
+    const existing = _assetPackSession.results || [];
+    const byId = new Map();
+    for (const r of existing) byId.set(r.id, r);
+    for (const r of incoming) {
+      const prev = byId.get(r.id);
+      // Preserve a previous dataUrl if the server didn't re-send one (e.g.
+      // it's echoing back old `existingResults` metadata from cold-rebuild).
+      if (r.ok && !r.dataUrl && prev && prev.dataUrl) r.dataUrl = prev.dataUrl;
+      byId.set(r.id, r);
+    }
+    _assetPackSession.results = Array.from(byId.values());
     _assetPackSession.downloadUrl = data.downloadUrl || '';
 
     bar.style.width = '100%';
@@ -3918,8 +3946,13 @@ function renderAssetPackResults() {
     for (const r of items) {
       const bc = r.ok ? '#E5E7EB' : '#FCA5A5';
       if (r.ok) {
-        // Build image URL from session
-        const imgUrl = `/api/assetpack/image?sessionId=${encodeURIComponent(sid)}&file=${encodeURIComponent(r.file)}`;
+        // Prefer the data URL returned directly by the generate call —
+        // it's cold-start-proof (no dependency on /tmp or an in-memory
+        // session Map). Fall back to the API URL only if it's missing
+        // (e.g. legacy cached results from before this change shipped).
+        const imgUrl = r.dataUrl
+          ? r.dataUrl
+          : `/api/assetpack/image?sessionId=${encodeURIComponent(sid)}&file=${encodeURIComponent(r.file)}`;
         const checkBg = r.transparent
           ? 'background-image:linear-gradient(45deg,#e0e0e0 25%,transparent 25%,transparent 75%,#e0e0e0 75%),linear-gradient(45deg,#e0e0e0 25%,transparent 25%,transparent 75%,#e0e0e0 75%);background-size:12px 12px;background-position:0 0,6px 6px;background-color:#f0f0f0'
           : 'background:#f0f0f0';
@@ -4007,6 +4040,9 @@ async function regenerateAssetPackItem(id) {
   try {
     const greeting = (proposal && proposal.s1 && proposal.s1.greeting) || '';
     const mascotName = (proposal && proposal.s1 && proposal.s1.mascot_name) || client.mascotName || 'Buddy';
+    // Re-send the mascot ref each time. Covers Vercel cold starts where
+    // the server-side session may have dropped its stored reference.
+    const mascotImage = _pickedMascotDataUrl();
     const resp = await fetch('/api/assetpack/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4016,8 +4052,8 @@ async function regenerateAssetPackItem(id) {
         mascotName,
         brandColor: client.color1,
         greeting,
-        mascotImage: '',
-        clientSiteImage: '',
+        mascotImage,
+        clientSiteImage: client.clientSiteImage || '',
         sessionId: _assetPackSession.sessionId,
         onlyIds: [id],
       })
@@ -4025,24 +4061,90 @@ async function regenerateAssetPackItem(id) {
     const data = await resp.json().catch(() => null);
     if (!resp.ok || !data) throw new Error((data && data.error) || ('Server error ' + resp.status));
 
-    _assetPackSession.results = data.results || [];
+    // Merge into local cache, preserving previously-generated dataUrls.
+    const existing = _assetPackSession.results || [];
+    const byId = new Map();
+    for (const r of existing) byId.set(r.id, r);
+    for (const r of (data.results || [])) {
+      const prev = byId.get(r.id);
+      if (r.ok && !r.dataUrl && prev && prev.dataUrl) r.dataUrl = prev.dataUrl;
+      byId.set(r.id, r);
+    }
+    _assetPackSession.results = Array.from(byId.values());
     _assetPackSession.downloadUrl = data.downloadUrl || '';
     renderAssetPackResults();
   } catch (err) {
     console.error('Regen item error:', err);
-    alert('Regenerate failed: ' + err.message);
+    showInlineError('assetPackDone', 'Regenerate failed: ' + err.message, '🔄 Retry', () => regenerateAssetPackItem(id));
     renderAssetPackResults(); // re-render to remove spinner
   }
 }
 
-// Download the zip from the current session
+// Build the Asset Pack ZIP in the browser from the cached data URLs.
+// Vercel serverless dropped the `python3 zip_assetpack.py` path because
+// there's no Python runtime — and even with a Node-native zipper, /tmp
+// can evaporate between invocations, so the file paths the server remembers
+// may not exist. Doing it client-side side-steps both problems: all the
+// PNG bytes are already in memory (we used them to render the <img>s).
 async function downloadAssetPackZip() {
-  if (!_assetPackSession.sessionId) return;
-  const url = _assetPackSession.downloadUrl || `/api/assetpack/download?sessionId=${encodeURIComponent(_assetPackSession.sessionId)}`;
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (client.name || 'client').replace(/[^\w\-]/g, '_') + '-mascot-assetpack.zip';
-  a.click();
+  const results = (_assetPackSession.results || []).filter(r => r.ok && r.dataUrl);
+  if (!results.length) {
+    showInlineError('assetPackDone', 'No images available to package yet — generate or regenerate first.', '');
+    return;
+  }
+  if (typeof JSZip === 'undefined') {
+    // Fallback: hand the browser the individual data URLs one at a time.
+    // This is a slightly worse UX but guarantees the user still gets their
+    // files even if the JSZip CDN is blocked.
+    showInlineError('assetPackDone', 'ZIP library failed to load from CDN — downloading images one at a time instead.', '');
+    for (const r of results) {
+      const a = document.createElement('a');
+      a.href = r.dataUrl;
+      a.download = r.file.replace(/^.*\//, '');
+      a.click();
+      // Give the browser a breather so sequential clicks register.
+      await new Promise(r => setTimeout(r, 150));
+    }
+    return;
+  }
+
+  const dlBtn = document.getElementById('assetPackDownloadBtn');
+  const originalLabel = dlBtn ? dlBtn.textContent : '';
+  if (dlBtn) { dlBtn.disabled = true; dlBtn.textContent = 'Packing…'; }
+
+  try {
+    const zip = new JSZip();
+    // Group into subfolders by category (expressions/, actions/, etc.)
+    for (const r of results) {
+      // r.file is e.g. "expressions/expr-happy.png"
+      const relPath = r.file || `${r.category || 'assets'}/${r.id}.png`;
+      // Strip the data URL prefix to get raw base64.
+      const b64 = (r.dataUrl.split(',')[1] || '');
+      zip.file(relPath, b64, { base64: true });
+    }
+    // Toss in a small manifest so the package is self-describing.
+    zip.file('manifest.json', JSON.stringify({
+      clientName: client.name || '',
+      mascotName: (proposal && proposal.s1 && proposal.s1.mascot_name) || client.mascotName || '',
+      generatedAt: new Date().toISOString(),
+      items: results.map(r => ({ id: r.id, category: r.category, label: r.label, file: r.file })),
+    }, null, 2));
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const fname = (client.name || 'client').replace(/[^\w\-]/g, '_') + '-mascot-assetpack.zip';
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
+  } catch (err) {
+    console.error('client-side zip failed:', err);
+    showInlineError('assetPackDone', 'ZIP build failed: ' + err.message, '🔄 Retry', downloadAssetPackZip);
+  } finally {
+    if (dlBtn) { dlBtn.disabled = false; dlBtn.textContent = originalLabel; }
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════

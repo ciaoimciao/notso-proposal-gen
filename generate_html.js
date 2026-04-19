@@ -72,6 +72,12 @@ function buildBrandCSS(client) {
 
 function readImageAsDataURI(imagePath) {
   try {
+    // Callers increasingly pass a data: URI directly (Asset Pack images are
+    // cached client-side as data URLs to survive Vercel cold starts, where
+    // /tmp may have evaporated). Pass those through unchanged.
+    if (typeof imagePath === 'string' && imagePath.startsWith('data:')) {
+      return imagePath;
+    }
     if (!fs.existsSync(imagePath)) {
       return null;
     }

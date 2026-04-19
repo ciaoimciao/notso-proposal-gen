@@ -1030,17 +1030,62 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
       let session = sessionId ? assetpackSessions.get(sessionId) : null;
       let outDir, existingResults;
 
+      // ── Cold-start resilience ─────────────────────────────────────
+      // On Vercel serverless, `global.__assetpackSessions` (the Map) and
+      // `/tmp` both evaporate between cold-started invocations. We can't
+      // rely on either persisting. Strategy:
+      //   1. If the client provided `sessionId` but we've lost state,
+      //      silently rebuild using `mascotImage` from the body.
+      //   2. Persist mascot-ref.png to {outDir}/mascot-ref.png so that
+      //      warm containers (where /tmp survived) can still reuse it.
+      //   3. If neither mascot-from-body nor mascot-from-disk is
+      //      available, THEN fail and ask client to restart.
+      // ─────────────────────────────────────────────────────────────
+      const tryReadMascotFromDisk = (dir) => {
+        try {
+          const p = path.join(dir, 'mascot-ref.png');
+          if (!fs.existsSync(p)) return null;
+          const buf = fs.readFileSync(p);
+          return { inlineData: { mimeType: 'image/png', data: buf.toString('base64') } };
+        } catch (_) { return null; }
+      };
+      const tryReadSiteFromDisk = (dir) => {
+        try {
+          const p = path.join(dir, 'site-ref.png');
+          if (!fs.existsSync(p)) return null;
+          const buf = fs.readFileSync(p);
+          return { inlineData: { mimeType: 'image/png', data: buf.toString('base64') } };
+        } catch (_) { return null; }
+      };
+
       if (session) {
         outDir = session.outDir;
         existingResults = session.results || [];
-        // Reuse stored mascot/site parts so the client doesn't have to re-upload on regen
-        if (!mascotImage) {
-          // caller is a pure regenerate — use stored mascot part
-        }
         console.log(`  ♻️  Reusing session ${sessionId} (${existingResults.length} existing results)`);
-        // If onlyIds provided, filter finalTasks down to only those ids (using stored defaults + hasSite)
         if (Array.isArray(onlyIds) && onlyIds.length) {
-          const pool = defaultTasks; // re-use default pool; task prompts are deterministic
+          const pool = defaultTasks;
+          finalTasks = pool.filter(t => onlyIds.includes(t.id));
+          console.log(`  🎯 Regenerating only: ${finalTasks.map(t=>t.id).join(', ')}`);
+        }
+      } else if (sessionId) {
+        // Known sessionId but we've lost state (cold start). Rebuild around
+        // the same sessionId so the /tmp layout stays consistent if it's
+        // there, and try to recover mascot reference from disk.
+        outDir = path.join(require('os').tmpdir(), `assetpack-${sessionId}`);
+        try { fs.mkdirSync(outDir, { recursive: true }); } catch (_) {}
+        existingResults = [];
+        session = {
+          outDir,
+          meta: { clientName, mascotName, brandColor, greeting },
+          results: [],
+          mascotPart: mascotPart || tryReadMascotFromDisk(outDir),
+          sitePart: sitePart || tryReadSiteFromDisk(outDir),
+          createdAt: Date.now(),
+        };
+        assetpackSessions.set(sessionId, session);
+        console.log(`  🧊 Cold-start rebuild for ${sessionId} → ${outDir}`);
+        if (Array.isArray(onlyIds) && onlyIds.length) {
+          const pool = defaultTasks;
           finalTasks = pool.filter(t => onlyIds.includes(t.id));
           console.log(`  🎯 Regenerating only: ${finalTasks.map(t=>t.id).join(', ')}`);
         }
@@ -1065,8 +1110,29 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
       const effectiveMascotPart = mascotPart || session.mascotPart;
       const effectiveSitePart = sitePart || session.sitePart;
       if (!effectiveMascotPart) {
-        return json(res, 400, { error: 'Missing mascot image — session has no stored mascot, please start a new Asset Pack.' });
+        return json(res, 400, {
+          error: 'Missing mascot image — session has no stored mascot, please start a new Asset Pack.',
+          code: 'SESSION_MASCOT_MISSING',
+        });
       }
+
+      // Persist mascot / site reference to disk so warm containers can
+      // reuse them even if the in-memory Map was dropped. Best-effort.
+      try {
+        const mpath = path.join(outDir, 'mascot-ref.png');
+        if (!fs.existsSync(mpath) && effectiveMascotPart?.inlineData?.data) {
+          fs.writeFileSync(mpath, Buffer.from(effectiveMascotPart.inlineData.data, 'base64'));
+        }
+        if (effectiveSitePart?.inlineData?.data) {
+          const spath = path.join(outDir, 'site-ref.png');
+          if (!fs.existsSync(spath)) {
+            fs.writeFileSync(spath, Buffer.from(effectiveSitePart.inlineData.data, 'base64'));
+          }
+        }
+        // Update the session's cached parts so subsequent calls (warm) don't need the body.
+        session.mascotPart = effectiveMascotPart;
+        if (effectiveSitePart) session.sitePart = effectiveSitePart;
+      } catch (e) { console.warn('  ⚠️ could not persist ref images:', e.message); }
 
       // Ensure per-category subdirs exist
       const categories = new Set(finalTasks.map(t => t.category));
@@ -1128,9 +1194,17 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
                   const fname = `${task.id}.png`;
                   const fpath = path.join(outDir, task.category, fname);
                   fs.writeFileSync(fpath, Buffer.from(imageB64, 'base64'));
+                  // Also return as data URL so the client doesn't depend on
+                  // /tmp or the in-memory Map surviving — both evaporate on
+                  // Vercel cold starts. Client displays images directly
+                  // from the data URL and can bundle them into a ZIP
+                  // without a server round-trip.
+                  const dataUrl = `data:image/png;base64,${imageB64}`;
                   newResults.push({
                     id: task.id, category: task.category, label: task.label,
-                    transparent: task.transparent, ok: true, file: `${task.category}/${fname}`,
+                    transparent: task.transparent, ok: true,
+                    file: `${task.category}/${fname}`,
+                    dataUrl,
                   });
                   console.log(`    ✅ ${task.label} → ${fname} (${m} try ${attempt})`);
                   saved = true;
