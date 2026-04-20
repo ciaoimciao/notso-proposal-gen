@@ -3143,30 +3143,91 @@ async function saveToHistory(clientData, proposalData) {
   let uploadThumbs = [];
   try { uploadThumbs = await _getUploadThumbnails(); } catch (e) { /* ignore */ }
 
+  // Shrink mascot image array + savedMascotPaths + asset pack results so the
+  // history entry actually fits in localStorage. Without this, reopening a
+  // past proposal has `mascotImages = []` and the Asset Pack modal can't
+  // find the originals its `mascotSelections` indexes point to — "no mascot
+  // generated" even though the user clearly already generated one.
+  const shrinkOrNull = async (url) => {
+    try { return await _shrinkDataUrl(url, 384); } catch { return null; }
+  };
+  const mascotImagesLite = [];
+  try {
+    for (const m of (mascotImages || [])) {
+      const url = m && m.data_url ? await shrinkOrNull(m.data_url) : null;
+      mascotImagesLite.push({ id: m && m.id, data_url: url });
+    }
+  } catch (_) {}
+  const mascotPathsLite = {};
+  try {
+    const uniq = new Map();
+    for (const [k, v] of Object.entries(savedMascotPaths || {})) {
+      if (!v) continue;
+      if (!uniq.has(v)) uniq.set(v, await shrinkOrNull(v));
+      mascotPathsLite[k] = uniq.get(v);
+    }
+  } catch (_) {}
+  // Asset pack results can be 17 images; downscale each to 320px to keep
+  // the full history under localStorage's ~5MB ceiling. If we can't fit,
+  // the fallback below drops it.
+  const assetPackLite = { sessionId: null, results: [], downloadUrl: '' };
+  try {
+    const src = _assetPackSession || {};
+    assetPackLite.sessionId = src.sessionId || null;
+    assetPackLite.downloadUrl = src.downloadUrl || '';
+    const thumbCache = new Map();
+    for (const r of (src.results || [])) {
+      const copy = Object.assign({}, r);
+      if (r && r.ok && r.dataUrl) {
+        if (!thumbCache.has(r.dataUrl)) {
+          thumbCache.set(r.dataUrl, await _shrinkDataUrl(r.dataUrl, 320));
+        }
+        copy.dataUrl = thumbCache.get(r.dataUrl);
+      }
+      assetPackLite.results.push(copy);
+    }
+  } catch (_) {}
+
   const entry = {
     id: Date.now(),
     date: new Date().toISOString(),
     client: liteClient,
     proposal: proposalData,
-    mascotPaths: savedMascotPaths || {},
+    mascotPaths: mascotPathsLite,
     mascotSelectionsData: mascotSelections || {},
-    uploadThumbnails: uploadThumbs,  // tiny JPEG thumbnails for history review
+    mascotImages: mascotImagesLite,      // NEW: needed so Asset Pack modal
+                                         // can open after history View
+    assetPackSession: assetPackLite,     // NEW: skips re-generate on View
+    slideAssignments: _assetSlideAssignments || {},
+    uploadThumbnails: uploadThumbs,      // tiny JPEG thumbnails for history
   };
   history.unshift(entry);
   if (history.length > 30) history.length = 30;
 
-  try {
-    localStorage.setItem('notso_history', JSON.stringify(history));
-  } catch (storageErr) {
-    console.warn('History save failed, trimming...', storageErr.message);
-    // Try without thumbnails first
-    entry.uploadThumbnails = [];
-    try { localStorage.setItem('notso_history', JSON.stringify(history)); }
+  // Progressive fallback if we hit the localStorage ~5MB quota: drop the
+  // heaviest fields in order until it fits. assetPackSession goes first
+  // because it's up to 17 images; then mascotImages; then uploadThumbs;
+  // finally start trimming the oldest history entries.
+  const _attempt = () => { localStorage.setItem('notso_history', JSON.stringify(history)); };
+  try { _attempt(); }
+  catch (storageErr) {
+    console.warn('History save failed, trimming asset pack...', storageErr.message);
+    entry.assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
+    try { _attempt(); }
     catch {
-      while (history.length > 1) {
-        history.pop();
-        try { localStorage.setItem('notso_history', JSON.stringify(history)); break; }
-        catch { /* keep trimming */ }
+      console.warn('Trimming mascot images too...');
+      entry.mascotImages = [];
+      try { _attempt(); }
+      catch {
+        entry.uploadThumbnails = [];
+        try { _attempt(); }
+        catch {
+          while (history.length > 1) {
+            history.pop();
+            try { _attempt(); break; }
+            catch { /* keep trimming */ }
+          }
+        }
       }
     }
   }
@@ -3220,13 +3281,16 @@ function loadFromHistory(id) {
   proposal = entry.proposal;
   client = entry.client;
 
-  // Restore mascot state so asset pack works
-  if (entry.mascotPaths) {
-    savedMascotPaths = entry.mascotPaths;
-  }
-  if (entry.mascotSelectionsData) {
-    mascotSelections = entry.mascotSelectionsData;
-  }
+  // Restore mascot state so Asset Pack modal opens with the right options
+  // and the previously-generated asset-pack grid reappears instead of the
+  // intro screen.
+  savedMascotPaths = entry.mascotPaths || {};
+  mascotSelections = entry.mascotSelectionsData || {};
+  mascotImages = Array.isArray(entry.mascotImages) ? entry.mascotImages : [];
+  _assetPackSession = entry.assetPackSession && entry.assetPackSession.sessionId
+    ? entry.assetPackSession
+    : { sessionId: null, results: [], downloadUrl: '' };
+  _assetSlideAssignments = entry.slideAssignments || {};
 
   setStep(3);
   document.getElementById('resultTitle').textContent = 'Proposal for ' + client.name;
@@ -3402,16 +3466,21 @@ async function chromaKeyWhiteBackground(dataUrl) {
   // Saturation guards keep brightly-coloured mascot bodies intact even when
   // their edges happen to be light.
   //
-  // Aggressiveness dial (user asked for fully transparent, so defaults lean
-  // aggressive; if you see a coloured mascot getting eaten, raise
-  // FLOOD_MIN_BRIGHTNESS back toward ~210):
-  const WHITE_FULL_THRESHOLD = 238;    // was 245
-  const SOFT_THRESHOLD = 205;          // was 225
-  const SATURATION_GUARD = 18;         // Pass A: was 14
-  const FLOOD_MIN_BRIGHTNESS = 185;    // Pass B: was 215
-  const FLOOD_SATURATION = 30;         // Pass B: was 18
-  const GLOBAL_MIN_BRIGHTNESS = 220;   // Pass C: global zap threshold
-  const GLOBAL_SATURATION = 22;        // Pass C: global zap saturation guard
+  // Aggressiveness dial (user needs FULLY transparent cutouts suitable for
+  // clippings/collage — no feathered edges, hard 0/255 alpha). Defaults
+  // lean very aggressive; if you see a coloured mascot getting eaten, raise
+  // FLOOD_MIN_BRIGHTNESS back toward ~210:
+  const WHITE_FULL_THRESHOLD = 228;    // was 238
+  const SOFT_THRESHOLD = 195;          // was 205
+  const SATURATION_GUARD = 22;         // Pass A: was 18
+  const FLOOD_MIN_BRIGHTNESS = 170;    // Pass B: was 185
+  const FLOOD_SATURATION = 38;         // Pass B: was 30
+  const GLOBAL_MIN_BRIGHTNESS = 210;   // Pass C: was 220
+  const GLOBAL_SATURATION = 28;        // Pass C: was 22
+  // Pass D hard-snap: after the feather pass, force every alpha value to
+  // 0 or 255 so the cutout has no semi-transparent edge. Threshold is the
+  // alpha value at/above which we keep the pixel fully opaque.
+  const HARD_ALPHA_CUTOFF = 140;
 
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -3489,6 +3558,14 @@ async function chromaKeyWhiteBackground(dataUrl) {
           if (minC >= GLOBAL_MIN_BRIGHTNESS && (maxC - minC) < GLOBAL_SATURATION) {
             d[i+3] = 0;
           }
+        }
+
+        // ── Pass D: hard-snap alpha ────────────────────────────────────
+        // User wants cutouts for clippings, so no semi-transparent feather
+        // edge. Snap every alpha to 0 or 255 above/below a cutoff. This
+        // removes the soft halo that the feather band in Pass A creates.
+        for (let i = 0; i < d.length; i += 4) {
+          d[i+3] = d[i+3] >= HARD_ALPHA_CUTOFF ? 255 : 0;
         }
 
         ctx.putImageData(imgData, 0, 0);
