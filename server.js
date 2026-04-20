@@ -719,6 +719,22 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
         ];
       }
 
+      // ── CRITICAL: Imagen's :predict endpoint takes text-only prompts.
+      //    Any uploaded reference image is silently dropped when that path
+      //    runs. Users reported "only 1 of 9 looks like my reference" —
+      //    cause was this fallback. When refs are present, drop Imagen.
+      if (refImageParts.length) {
+        const before = modelsToTry.length;
+        modelsToTry = modelsToTry.filter(m => m !== '__imagen4__' && m !== '__imagen4fast__');
+        if (!modelsToTry.length) {
+          // User explicitly chose Imagen + provided refs — keep it but warn.
+          modelsToTry = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image-preview'];
+          console.log(`  ⚠️  Reference images provided but engine=${engine} is text-only; forcing Gemini multimodal models instead.`);
+        } else if (modelsToTry.length < before) {
+          console.log(`  🧷 Reference images provided — filtered Imagen out of model list (it can't see images). Remaining: ${modelsToTry.join(', ')}`);
+        }
+      }
+
       // Custom prompt override
       const customPrompt = body.customPrompt || null;
 
@@ -779,7 +795,7 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
           } else if (styleTransferMode) {
             refPromptSuffix = '\n\nREFERENCE IMAGE: This is the client\'s existing mascot. Preserve its identity — same silhouette, species, head features, body colour identity, and face layout. Change the rendering to Notso AI style described above. Keep the character\'s original eye and eyebrow design. Do not invent a new character.';
           } else {
-            refPromptSuffix = '\n\nREFERENCE IMAGE: Use the attached image as a visual style reference for the mascot — match its art style, character proportions, color vibe, material finish, and overall aesthetic. Still apply the single-subject rule (exactly ONE character) and use the specified brand color. Do NOT copy the reference character exactly; instead adapt its style to the animal/creature described in this variation.';
+            refPromptSuffix = '\n\nREFERENCE IMAGE (HIGHEST PRIORITY): The attached image(s) define the REQUIRED art style for this mascot. Match ALL of these properties exactly: art style (e.g. watercolor / vector / 3D clay / flat cartoon), line weight, character proportions (head-to-body ratio), eye style, colour palette (especially the dominant hue — if the reference is blue, your mascot MUST be predominantly blue), material/texture finish, lighting, and overall vibe. Use the SAME body type and silhouette family as the reference (e.g. if the reference is a round blob-like slime creature, generate a round blob-like creature — NOT an unrelated animal). You may vary the species/accessories for each variation, but the reference\'s visual language must be preserved faithfully. Apply the single-subject rule (exactly ONE character). This reference OVERRIDES any generic style hint in the prompt above.';
           }
         }
 
@@ -1155,7 +1171,12 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
               const reqParts = [effectiveMascotPart];
               if (task.needsSite && effectiveSitePart) reqParts.push(effectiveSitePart);
               const retryHint = attempt > 1 ? '\n\n[Retry: previous attempt did not produce an image. Please output a PNG image as the response.]' : '';
-              reqParts.push({ text: task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + retryHint });
+              // Extra background-colour hint — Gemini occasionally returns a
+              // solid black (or cream) studio background even when asked for
+              // transparent PNG. This reminder with an explicit WHITE fallback
+              // makes the client-side chroma-key far more reliable.
+              const bgHint = '\n\n[BACKGROUND: Output MUST be a plain pure #FFFFFF white background or fully transparent PNG. DO NOT use black, dark, gradient, scenery, studio, or coloured backgrounds. A flat pure-white background is strongly preferred if transparency is not possible.]';
+              reqParts.push({ text: task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + bgHint + retryHint });
 
               const geminiRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`,

@@ -94,6 +94,24 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
   background:#fff;display:flex;align-items:center;justify-content:center;
   font-size:22px;color:var(--gray-400);font-weight:300;flex-shrink:0;cursor:pointer
 }
+/* ── Design-style picker (Step 1) ───────────────────────────────────── */
+.design-style-picker{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px
+}
+.ds-card{
+  border:2px solid var(--gray-200);border-radius:12px;background:var(--white);
+  cursor:pointer;padding:10px 10px 12px;transition:all .15s ease;text-align:left;
+  display:flex;flex-direction:column;gap:8px
+}
+.ds-card:hover{border-color:var(--gray-400);transform:translateY(-1px)}
+.ds-card.selected{border-color:var(--black);box-shadow:0 0 0 3px rgba(0,0,0,.08)}
+.ds-card .ds-thumb{
+  width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:var(--gray-100);
+  display:flex;align-items:stretch;justify-content:stretch
+}
+.ds-card .ds-thumb svg{width:100%;height:100%;display:block}
+.ds-card .ds-name{font-size:13px;font-weight:800;color:var(--black)}
+.ds-card .ds-tag{font-size:11px;color:var(--gray-500);line-height:1.35}
 .file-drop-addmore:hover{border-color:var(--black);color:var(--black)}
 
 /* ── LANGUAGE SWITCHER ── */
@@ -171,6 +189,29 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
 
 /* Slide content helpers */
 .s-headline{font-size:19px;font-weight:900;letter-spacing:-.3px;margin-bottom:10px;line-height:1.3}
+/* ── Design-style variants (Bento, Minimal, Editorial, Playful, Dashboard)
+      applied to slide content wherever [data-design-style] is set on an
+      ancestor — live preview root, exported HTML <body>, or the PDF container. */
+[data-design-style='minimal'] .s-headline{font-weight:700;letter-spacing:-.6px;font-size:22px}
+[data-design-style='minimal'] .s-text{color:#555;font-weight:400}
+[data-design-style='minimal'] .slide{background:#fff}
+[data-design-style='editorial'] .s-headline{font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:26px;letter-spacing:-.2px}
+[data-design-style='editorial'] .s-text{font-size:13.5px;line-height:1.75}
+[data-design-style='editorial'] .slide{background:#FAF7F2}
+[data-design-style='playful'] .s-headline{font-weight:900;letter-spacing:-.2px}
+[data-design-style='playful'] .slide{background:#FFF7E8}
+[data-design-style='playful'] .pain-item,
+[data-design-style='playful'] .feature-row,
+[data-design-style='playful'] .mascot-opt{border-radius:16px}
+[data-design-style='dashboard'] .slide{background:#0F172A;color:#E2E8F0}
+[data-design-style='dashboard'] .s-headline{color:#F8FAFC}
+[data-design-style='dashboard'] .s-text,[data-design-style='dashboard'] .feat-desc,
+[data-design-style='dashboard'] .pain-desc{color:#CBD5E1}
+[data-design-style='dashboard'] .s-divider{background:#334155}
+[data-design-style='bento'] .slide{background:#F5F5F0}
+[data-design-style='bento'] .pain-item,
+[data-design-style='bento'] .feature-row,
+[data-design-style='bento'] .mascot-opt{border-radius:14px}
 .s-text{font-size:13px;color:#4A4A46;line-height:1.65}
 .s-divider{height:1px;background:var(--gray-200);margin:14px 0}
 .pain-item{padding-left:14px;border-left:3px solid var(--red);margin-bottom:12px}
@@ -479,6 +520,12 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           </select>
         </div>
       </div>
+
+      <hr class="divider" />
+      <div class="section-label" data-i18n="form.designSection">Design Style</div>
+      <div style="font-size:12px;color:var(--gray-500);margin:-8px 0 10px" data-i18n="form.designHint">Pick the visual style of your proposal. You can change this anytime before export.</div>
+      <div id="designStylePicker" class="design-style-picker"></div>
+      <input type="hidden" id="designStyle" value="bento" />
 
       <hr class="divider" />
       <div class="section-label" data-i18n="form.apiSection">API Configuration</div>
@@ -793,6 +840,8 @@ const I18N = {
     'form.clientSite.cta': 'Click or drop a screenshot here',
     'form.clientSite.sub': 'PNG, JPG — one image',
     'form.outputLang': 'Output Language',
+    'form.designSection': 'Design Style',
+    'form.designHint': 'Pick the visual style of your proposal. You can change this anytime before export.',
     'form.apiSection': 'API Configuration',
     'form.claudeKey': 'Claude API Key <span class="hint">— from Anthropic Console (console.anthropic.com)</span>',
     'form.claudeKey.hint': '— from Anthropic Console (console.anthropic.com)',
@@ -873,6 +922,8 @@ const I18N = {
     'form.clientSite.cta': '點擊或拖放截圖到此',
     'form.clientSite.sub': '支援 PNG、JPG — 單張圖片',
     'form.outputLang': '輸出語言',
+    'form.designSection': '簡報設計風格',
+    'form.designHint': '挑選這份提案的視覺風格，匯出前都可以隨時更換。',
     'form.apiSection': 'API 設定',
     'form.claudeKey': 'Claude API 金鑰 <span class="hint">— 來自 Anthropic Console(console.anthropic.com)</span>',
     'form.claudeKey.hint': '— 來自 Anthropic Console(console.anthropic.com)',
@@ -953,6 +1004,8 @@ const I18N = {
     'form.clientSite.cta': 'クリックまたはドラッグでスクリーンショットを追加',
     'form.clientSite.sub': 'PNG、JPG — 1 枚のみ',
     'form.outputLang': '出力言語',
+    'form.designSection': 'デザインスタイル',
+    'form.designHint': '提案の見た目を選んでください。書き出し前ならいつでも変更できます。',
     'form.apiSection': 'API 設定',
     'form.claudeKey': 'Claude API キー <span class="hint">— Anthropic Console より(console.anthropic.com)</span>',
     'form.claudeKey.hint': '— Anthropic Console より(console.anthropic.com)',
@@ -1388,8 +1441,45 @@ document.addEventListener('DOMContentLoaded', () => {
     'clientName', 'industry', 'useCase', 'clientDesc',
     'color1', 'color1hex', 'color2', 'color2hex',
     'color3', 'color3hex', 'color4', 'color4hex',
-    'mascotName', 'clientWebsite',
+    'mascotName', 'clientWebsite', 'designStyle',
   ];
+  // ── Build design-style card picker (5 curated presets) ──
+  (function buildDesignStylePicker(){
+    const host = document.getElementById('designStylePicker');
+    const hidden = document.getElementById('designStyle');
+    if (!host || !hidden) return;
+    const STYLES = [
+      { id:'bento', name:'Bento Grid', tag:'Asymmetric rounded blocks, modular, Japanese-minimal.',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#F5F5F0'/><rect x='8' y='8' width='70' height='40' rx='8' fill='#111'/><rect x='84' y='8' width='68' height='24' rx='8' fill='#E8A317'/><rect x='84' y='38' width='32' height='44' rx='8' fill='#fff' stroke='#E5E7EB'/><rect x='122' y='38' width='30' height='44' rx='8' fill='#4ECDC4'/><rect x='8' y='54' width='70' height='28' rx='8' fill='#fff' stroke='#E5E7EB'/></svg>` },
+      { id:'minimal', name:'Minimalist', tag:'Generous whitespace, crisp typography, monochrome.',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#fff'/><rect x='14' y='20' width='52' height='6' rx='3' fill='#111'/><rect x='14' y='32' width='90' height='3' rx='1.5' fill='#D4D4D4'/><rect x='14' y='40' width='78' height='3' rx='1.5' fill='#D4D4D4'/><rect x='14' y='48' width='82' height='3' rx='1.5' fill='#D4D4D4'/><circle cx='132' cy='58' r='14' fill='#111'/></svg>` },
+      { id:'editorial', name:'Editorial', tag:'Magazine-style layout, serif display headlines.',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#FAF7F2'/><text x='10' y='30' font-family='Georgia, serif' font-size='16' font-weight='700' fill='#111'>The</text><text x='10' y='46' font-family='Georgia, serif' font-size='16' font-weight='700' fill='#111'>Story.</text><rect x='10' y='54' width='70' height='2' fill='#111'/><rect x='10' y='60' width='62' height='2' rx='1' fill='#D4B895'/><rect x='10' y='66' width='58' height='2' rx='1' fill='#D4B895'/><rect x='94' y='14' width='54' height='64' rx='4' fill='#111'/></svg>` },
+      { id:'playful', name:'Playful', tag:'Rounded shapes, bold colours, illustrated feel.',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#FFF7E8'/><circle cx='36' cy='32' r='18' fill='#FF6B6B'/><circle cx='78' cy='50' r='22' fill='#4ECDC4'/><rect x='100' y='18' width='48' height='48' rx='16' fill='#FFD93D'/><rect x='14' y='66' width='132' height='8' rx='4' fill='#1A1A40'/></svg>` },
+      { id:'dashboard', name:'Data Dashboard', tag:'Structured grid of metrics, charts, tabular data.',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#0F172A'/><rect x='8' y='8' width='44' height='22' rx='4' fill='#1E293B'/><rect x='56' y='8' width='44' height='22' rx='4' fill='#1E293B'/><rect x='104' y='8' width='48' height='22' rx='4' fill='#1E293B'/><rect x='8' y='34' width='92' height='48' rx='4' fill='#1E293B'/><polyline points='14,74 30,60 46,68 62,50 78,58 94,42' fill='none' stroke='#4ECDC4' stroke-width='2'/><rect x='104' y='34' width='48' height='48' rx='4' fill='#1E293B'/><rect x='110' y='62' width='8' height='16' fill='#E8A317'/><rect x='122' y='52' width='8' height='26' fill='#E8A317'/><rect x='134' y='42' width='8' height='36' fill='#E8A317'/></svg>` },
+    ];
+    const render = () => {
+      host.innerHTML = STYLES.map(s => `
+        <button type="button" class="ds-card${hidden.value===s.id?' selected':''}" data-id="${s.id}">
+          <div class="ds-thumb">${s.svg}</div>
+          <div class="ds-name">${s.name}</div>
+          <div class="ds-tag">${s.tag}</div>
+        </button>`).join('');
+    };
+    render();
+    host.addEventListener('click', (e) => {
+      const card = e.target.closest('.ds-card');
+      if (!card) return;
+      hidden.value = card.dataset.id;
+      render();
+      // Trigger change so autosave picks it up.
+      hidden.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    // Re-render after autosave restore (runs right after this block).
+    setTimeout(render, 0);
+  })();
   // Restore saved values. Unconditionally write (no `!el.value` guard) —
   // some fields (color inputs, hex inputs) ship with default values, which
   // would previously block restore. The color pairs are synced manually so
@@ -1654,6 +1744,7 @@ async function startGeneration() {
     color4: document.getElementById('color4hex').value || '#E74C3C',
     mascotName: document.getElementById('mascotName').value.trim(),
     lang: document.getElementById('outputLang').value,
+    designStyle: (document.getElementById('designStyle') || {}).value || 'bento',
     mascotRefImages: Array.isArray(_uploadedImages.mascotRef) ? _uploadedImages.mascotRef.slice() : [],
     mascotRefImage: (Array.isArray(_uploadedImages.mascotRef) && _uploadedImages.mascotRef[0]) || '', // legacy single-image compat
     clientSiteImage: _uploadedImages.clientSite || '',
@@ -1778,6 +1869,11 @@ async function callGemini(info, key) {
 
 IMPORTANT: Generate ALL text content in ${langLabel}. Every headline, description, pain point, feature, mascot personality, chat dialogue, pricing description, and closing message must be written in ${langLabel}. Only keep proper nouns (company names, product names like "notso.ai") in their original form.
 
+STYLE RULES (apply to every field, especially s9 chat bubbles):
+- NEVER end any sentence with "..." or "…" or trailing dots. All sentences must be complete and terminate with a proper "."、"!"、"?" (or their fullwidth equivalents 。！？).
+- Do not write half-finished thoughts. Do not truncate.
+- For s9 chat: each BOT turn (r:"bot") MUST contain exactly 3 full sentences. Each USER turn (r:"user") should contain 1-2 full sentences.
+
 CLIENT NAME: ${info.name}
 INDUSTRY: ${info.industry}
 PRIMARY USE CASE: ${ucMap[info.useCase]||info.useCase}
@@ -1787,6 +1883,13 @@ BRAND ACCENT 1: ${info.color2}
 BRAND ACCENT 2: ${info.color3}
 BRAND ACCENT 3: ${info.color4}
 ${info.mascotName?'SUGGESTED MASCOT NAME: '+info.mascotName:''}
+DESIGN STYLE: ${({
+  bento:'Bento Grid — asymmetric modular grid of rounded boxes, Japanese-minimal. Prefer short punchy copy that reads well inside small tiles.',
+  minimal:'Minimalist — generous whitespace, very crisp typography, monochrome. Prefer confident short sentences and zero filler.',
+  editorial:'Editorial Magazine — serif display headlines, storytelling tone. Headlines can be slightly longer and narrative.',
+  playful:'Playful Illustrated — colourful, rounded, friendly. Copy should feel warm and approachable, a bit conversational.',
+  dashboard:'Data Dashboard — structured, metrics-forward. Lean on concrete numbers and crisp labels.'
+})[info.designStyle] || 'Bento Grid — asymmetric modular grid, punchy copy.'}
 
 Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
 {
@@ -1862,15 +1965,12 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
     "lead": "1-sentence So-What insight on why emotional range matters more than answers for ${info.name}'s audience",
     "personality_summary": "1 sentence personality overview",
     "expressions": [
-      {"emotion":"Happy","context":"when greeting users"},
-      {"emotion":"Empathetic","context":"when user is frustrated"},
-      {"emotion":"Curious","context":"when asking clarifying questions"},
-      {"emotion":"Celebrating","context":"when task is completed"},
-      {"emotion":"Apologetic","context":"when something goes wrong"},
-      {"emotion":"Helpful","context":"when providing guidance"},
-      {"emotion":"Excited","context":"when sharing deals/news"},
-      {"emotion":"Calm","context":"when handling complaints"},
-      {"emotion":"Welcoming","context":"when new users arrive"}
+      {"emotion":"Happy","context":"short phrase (~8 words) when this emotion fires for ${info.name}'s users"},
+      {"emotion":"Empathetic","context":"short phrase (~8 words) when this emotion fires for ${info.name}'s users"},
+      {"emotion":"Curious","context":"short phrase (~8 words) when this emotion fires for ${info.name}'s users"},
+      {"emotion":"Celebrating","context":"short phrase (~8 words) when this emotion fires for ${info.name}'s users"},
+      {"emotion":"Apologetic","context":"short phrase (~8 words) when this emotion fires for ${info.name}'s users"},
+      {"emotion":"Helpful","context":"short phrase (~8 words) when this emotion fires for ${info.name}'s users"}
     ]
   },
   "s9": {
@@ -1878,11 +1978,11 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
     "lead": "1-sentence So-What insight on what the audience will feel when watching this chat play out for ${info.name}",
     "scenario": "brief description of chat scenario",
     "chat": [
-      {"r":"bot","m":"mascot greeting — warm, contextual to ${info.name}"},
-      {"r":"user","m":"opening message relevant to ${info.name} use case"},
-      {"r":"bot","m":"mascot reply — helpful, on-brand, shows personality"},
-      {"r":"user","m":"follow-up question"},
-      {"r":"bot","m":"mascot response — shows depth, guides to outcome"}
+      {"r":"bot","m":"mascot greeting — write EXACTLY 3 complete sentences that each end with . ! or ?. Warm, on-brand for ${info.name}, no ellipsis, no truncation, no trailing dots."},
+      {"r":"user","m":"opening user message — 1 to 2 complete sentences ending with . ! or ?, relevant to ${info.name} use case"},
+      {"r":"bot","m":"mascot reply — write EXACTLY 3 complete sentences ending with . ! or ?. Helpful, on-brand, shows personality. Absolutely no '…' or trailing three dots."},
+      {"r":"user","m":"follow-up question — 1 to 2 complete sentences ending with . ! or ?"},
+      {"r":"bot","m":"mascot closing response — write EXACTLY 3 complete sentences ending with . ! or ?. Shows depth, guides to outcome. Absolutely no '…' or trailing three dots."}
     ]
   },
   "s10": {
@@ -2305,18 +2405,48 @@ function rMascotDesign(d) {
   `;
 }
 
-/* ── s8: Personality & Empathy (Expression Grid) ── */
+/* ── s8: Personality & Empathy (Expression Grid) ──
+   Fixed 6 personalities auto-filled with corresponding asset-pack mascot
+   images (expr-happy, expr-empathetic, ...). Falls back to emoji if the
+   asset pack hasn't been generated yet. No dropdowns, no picker.        */
 function rEmotion(d) {
   if (!d) return '<em>—</em>';
-  const emojiMap = {'Happy':'😊','Empathetic':'😢','Curious':'🤔','Celebrating':'🎉','Apologetic':'🙏','Helpful':'💡','Excited':'🤩','Calm':'😌','Welcoming':'👋',
-    'Frustrated':'😤','Nervous':'😅'};
-  const colors = ['#FEF3C7','#FFEDD5','#CCFBF1','#DBEAFE','#F3F4F6','#FED7AA','#FDE68A','#FCE7F3','#CCFBF1'];
-  const grid = (d.expressions||[]).map((e,i) => `
-    <div style="background:${colors[i%9]};border-radius:10px;padding:10px;text-align:center;min-width:90px">
-      <div style="font-size:28px">${emojiMap[e.emotion]||'😊'}</div>
-      <div style="font-size:11px;font-weight:700;margin-top:4px" ${de('s8.expressions['+i+'].emotion')}>${esc(e.emotion)}</div>
-      <div style="font-size:10px;color:#666;margin-top:2px" ${de('s8.expressions['+i+'].context')}>${esc(e.context)}</div>
-    </div>`).join('');
+  const FIXED = ['Happy','Empathetic','Curious','Celebrating','Apologetic','Helpful'];
+  const emojiMap = {'Happy':'😊','Empathetic':'😢','Curious':'🤔','Celebrating':'🎉','Apologetic':'🙏','Helpful':'💡'};
+  const colors   = ['#FEF3C7','#FFEDD5','#CCFBF1','#DBEAFE','#F3F4F6','#FED7AA'];
+
+  // Build quick lookups from the current asset pack + any AI-generated contexts.
+  const results = (typeof _assetPackSession !== 'undefined' && _assetPackSession &&
+                   Array.isArray(_assetPackSession.results)) ? _assetPackSession.results : [];
+  const sid     = (typeof _assetPackSession !== 'undefined' && _assetPackSession) ?
+                   (_assetPackSession.sessionId || '') : '';
+  const byId    = new Map(results.filter(r=>r&&r.id).map(r=>[r.id,r]));
+  const ctxByEmotion = new Map();
+  (d.expressions||[]).forEach(e=>{
+    if (e && e.emotion) ctxByEmotion.set(String(e.emotion).toLowerCase(), e.context||'');
+  });
+
+  const grid = FIXED.map((emo,i) => {
+    const id     = 'expr-' + emo.toLowerCase();
+    const item   = byId.get(id);
+    const src    = (item && item.dataUrl) ? item.dataUrl
+                 : (item && item.ok && sid && item.file)
+                    ? '/api/assetpack/image?sessionId=' + encodeURIComponent(sid) +
+                      '&file=' + encodeURIComponent(item.file)
+                    : '';
+    const img    = src
+      ? `<img src="${src}" alt="${esc(emo)}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto"/>`
+      : `<div style="font-size:34px;line-height:1">${emojiMap[emo]||'😊'}</div>`;
+    const ctx    = ctxByEmotion.get(emo.toLowerCase()) || '';
+    const ctxIdx = (d.expressions||[]).findIndex(e=>e&&String(e.emotion||'').toLowerCase()===emo.toLowerCase());
+    return `
+      <div style="background:${colors[i%6]};border-radius:12px;padding:12px 10px;text-align:center">
+        <div style="height:68px;display:flex;align-items:center;justify-content:center">${img}</div>
+        <div style="font-size:12px;font-weight:800;margin-top:6px;color:#111">${esc(emo)}</div>
+        <div style="font-size:10px;color:#555;margin-top:3px;min-height:26px"${ctxIdx>=0?' '+de('s8.expressions['+ctxIdx+'].context'):''}>${esc(ctx)}</div>
+      </div>`;
+  }).join('');
+
   return `
     <div class="s-headline">Personality & Empathy — <span ${de('s8.name')}>${esc(d.name)}</span></div>
     ${leadSub('s8',d)}
@@ -2691,6 +2821,10 @@ async function previewAndEdit() {
     const doc = parser.parseFromString(data.html, 'text/html');
 
     content.innerHTML = '';
+    // Tag preview root with the current design style so style-variant CSS
+    // (e.g. body[data-design-style='minimal']) can take effect inside the
+    // live preview panel, not only in the exported PDF.
+    try { content.setAttribute('data-design-style', (client && client.designStyle) || 'bento'); } catch(_) {}
 
     // 1. Copy ALL <style> blocks FIRST — before any slide is appended.
     //    This guarantees .slide { width:1440px; height:810px } and :root brand
@@ -2814,7 +2948,8 @@ async function exportPDFFromPreview() {
     styleText += css + '\n';
   });
 
-  const fullHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>${styleText}</style></head><body><div class="slides-container">${slideHtmls}</div></body></html>`;
+  const _ds = (client && client.designStyle) || 'bento';
+  const fullHtml = `<!DOCTYPE html><html lang="en" data-design-style="${_ds}"><head><meta charset="UTF-8"/><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>${styleText}</style></head><body data-design-style="${_ds}"><div class="slides-container" data-design-style="${_ds}">${slideHtmls}</div></body></html>`;
 
   // Send edited HTML to server for PDF conversion
   try {
@@ -3284,19 +3419,45 @@ function loadFromHistory(id) {
   // Restore mascot state so Asset Pack modal opens with the right options
   // and the previously-generated asset-pack grid reappears instead of the
   // intro screen.
-  savedMascotPaths = entry.mascotPaths || {};
-  mascotSelections = entry.mascotSelectionsData || {};
-  mascotImages = Array.isArray(entry.mascotImages) ? entry.mascotImages : [];
-  _assetPackSession = entry.assetPackSession && entry.assetPackSession.sessionId
-    ? entry.assetPackSession
-    : { sessionId: null, results: [], downloadUrl: '' };
-  _assetSlideAssignments = entry.slideAssignments || {};
+  //
+  // IMPORTANT: pre-fix history entries (from before we started saving
+  // mascotImages/assetPackSession) have these fields missing. Don't
+  // clobber current in-memory state in that case — the user may be mid
+  // session and still have their mascots loaded. Only overwrite a field
+  // if the entry actually has a non-empty value for it.
+  if (entry.mascotPaths && Object.keys(entry.mascotPaths).length) {
+    savedMascotPaths = entry.mascotPaths;
+  }
+  if (entry.mascotSelectionsData && Object.keys(entry.mascotSelectionsData).length) {
+    mascotSelections = entry.mascotSelectionsData;
+  }
+  if (Array.isArray(entry.mascotImages) && entry.mascotImages.length) {
+    mascotImages = entry.mascotImages;
+  }
+  if (entry.assetPackSession && entry.assetPackSession.sessionId &&
+      Array.isArray(entry.assetPackSession.results) &&
+      entry.assetPackSession.results.length) {
+    _assetPackSession = entry.assetPackSession;
+  }
+  if (entry.slideAssignments && Object.keys(entry.slideAssignments).length) {
+    _assetSlideAssignments = entry.slideAssignments;
+  }
 
   setStep(3);
   document.getElementById('resultTitle').textContent = 'Proposal for ' + client.name;
   document.getElementById('resultSub').textContent = client.industry + ' · ' + useCaseLabel(client.useCase) + ' · slides ready';
   renderAllSlides(proposal, client);
   toggleHistory();
+
+  // Back-fill old entries transparently: if the entry is missing the
+  // new persistence fields but we have in-memory state now, resave.
+  const isStaleEntry = !Array.isArray(entry.mascotImages) ||
+    !entry.assetPackSession || !entry.assetPackSession.sessionId;
+  const haveLiveMascots = (mascotImages && mascotImages.length) ||
+    (_assetPackSession && _assetPackSession.sessionId);
+  if (isStaleEntry && haveLiveMascots) {
+    try { saveToHistory(client, proposal); } catch (_) {}
+  }
 }
 
 function reEditFromHistory(id) {
@@ -3318,6 +3479,15 @@ function reEditFromHistory(id) {
   document.getElementById('color4hex').value = c.color4 || '#E74C3C';
   document.getElementById('mascotName').value = c.mascotName || '';
   document.getElementById('outputLang').value = c.lang || 'en';
+  // Restore design-style selection so the card picker shows the right card.
+  const ds = document.getElementById('designStyle');
+  if (ds) {
+    ds.value = c.designStyle || 'bento';
+    // Re-highlight matching card if picker is already built.
+    document.querySelectorAll('#designStylePicker .ds-card').forEach(el => {
+      el.classList.toggle('selected', el.dataset.id === ds.value);
+    });
+  }
   applyBrandTheme(c);
   setStep(1);
   toggleHistory();
@@ -3443,44 +3613,40 @@ async function _shrinkMascotMap(paths, maxSide) {
 /* ═══════════════════════════════════════════════
    CLIENT-SIDE BACKGROUND REMOVAL (fallback for Vercel)
    ═══════════════════════════════════════════════
-   Gemini often returns mascots on a white/near-white background even when
-   asked for a transparent PNG. Server-side rembg (see post_process.py) can't
-   run on Vercel — onnxruntime is too large. So we chroma-key white to
-   transparent in the browser: fully transparent above WHITE_FULL_THRESHOLD,
-   feathered alpha in the soft band, fully opaque below SOFT_THRESHOLD. */
+   Gemini often returns mascots on a solid background (white, black, or a
+   cream) even when asked for a transparent PNG. Server-side rembg can't
+   run on Vercel — onnxruntime is too large. So we chroma-key in the
+   browser with AUTO-DETECTED background color sampled from the image's
+   edges. Works for white, black, or any uniform background.
+
+   Function name kept for backwards compatibility with call sites. */
 async function chromaKeyWhiteBackground(dataUrl) {
-  // Three-pass background removal:
-  //   Pass A  (pixel filter)  — any pixel that is near-white AND near-grey
-  //                             (low saturation) gets alpha 0 or a feather.
-  //                             Safe for high-contrast mascots.
-  //   Pass B  (edge flood)    — starting from every border pixel, flood any
-  //                             light-ish low-saturation region into full
-  //                             transparency. Wider tolerances than Pass A
-  //                             because we know we're walking from outside
-  //                             the mascot.
-  //   Pass C  (global sweep)  — final pass that zaps any remaining near-
-  //                             white low-saturation pixel anywhere in the
-  //                             image, even if Pass B couldn't reach it
-  //                             (e.g. enclosed gap inside the mascot).
+  // Four-pass background removal:
+  //   Pass 0  (sample)        — look at the image's outer ring and pick
+  //                             the dominant color as the "background".
+  //                             Falls back to white if no clear winner.
+  //   Pass A  (pixel filter)  — any pixel within BG_TOLERANCE of the
+  //                             detected background color → alpha 0, with
+  //                             a feather band at BG_FEATHER.
+  //   Pass B  (edge flood)    — starting from every border pixel, flood
+  //                             any region within a wider tolerance of the
+  //                             background color into full transparency.
+  //   Pass C  (global sweep)  — final pass that zaps any remaining pixel
+  //                             close to the background color anywhere in
+  //                             the image (catches enclosed regions the
+  //                             edge flood can't reach).
+  //   Pass D  (hard-snap)     — force every alpha to 0 or 255 so the
+  //                             cutout has hard edges suitable for
+  //                             clippings/collages (no halo).
   //
-  // Saturation guards keep brightly-coloured mascot bodies intact even when
-  // their edges happen to be light.
-  //
-  // Aggressiveness dial (user needs FULLY transparent cutouts suitable for
-  // clippings/collage — no feathered edges, hard 0/255 alpha). Defaults
-  // lean very aggressive; if you see a coloured mascot getting eaten, raise
-  // FLOOD_MIN_BRIGHTNESS back toward ~210:
-  const WHITE_FULL_THRESHOLD = 228;    // was 238
-  const SOFT_THRESHOLD = 195;          // was 205
-  const SATURATION_GUARD = 22;         // Pass A: was 18
-  const FLOOD_MIN_BRIGHTNESS = 170;    // Pass B: was 185
-  const FLOOD_SATURATION = 38;         // Pass B: was 30
-  const GLOBAL_MIN_BRIGHTNESS = 210;   // Pass C: was 220
-  const GLOBAL_SATURATION = 28;        // Pass C: was 22
-  // Pass D hard-snap: after the feather pass, force every alpha value to
-  // 0 or 255 so the cutout has no semi-transparent edge. Threshold is the
-  // alpha value at/above which we keep the pixel fully opaque.
-  const HARD_ALPHA_CUTOFF = 140;
+  // User wants FULLY transparent cutouts — defaults lean aggressive.
+  // Colour-distance tuning dials:
+  const BG_TOLERANCE = 55;       // Pass A: euclidean RGB distance to bg
+  const BG_FEATHER = 75;         // Pass A: soft-edge band above tolerance
+  const FLOOD_TOLERANCE = 90;    // Pass B: wider since we know we start
+                                 //         from outside the mascot
+  const GLOBAL_TOLERANCE = 48;   // Pass C: stricter to avoid eating holes
+  const HARD_ALPHA_CUTOFF = 140; // Pass D: alpha ≥ this → 255 else 0
 
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -3498,18 +3664,61 @@ async function chromaKeyWhiteBackground(dataUrl) {
         const imgData = ctx.getImageData(0, 0, w, h);
         const d = imgData.data;
 
-        // ── Pass A: threshold + feather ─────────────────────────────────
+        // ── Pass 0: sample edge pixels, find dominant colour ────────────
+        // Buckets edge-ring pixels into 32-step RGB cubes and picks the
+        // most common bucket. This automatically handles white, black,
+        // cream, or any other solid background without hardcoded limits.
+        const buckets = new Map();
+        const edgeStep = Math.max(1, Math.floor(Math.min(w, h) / 128));
+        const sampleAt = (x, y) => {
+          if (x < 0 || y < 0 || x >= w || y >= h) return;
+          const i = (y * w + x) * 4;
+          if (d[i+3] < 200) return; // skip already-transparent
+          const key = ((d[i] >> 5) << 10) | ((d[i+1] >> 5) << 5) | (d[i+2] >> 5);
+          const e = buckets.get(key) || { count: 0, r: 0, g: 0, b: 0 };
+          e.count++; e.r += d[i]; e.g += d[i+1]; e.b += d[i+2];
+          buckets.set(key, e);
+        };
+        // Sample two rings (corners + inset) so we don't latch onto a
+        // stray antialiased pixel right on the border.
+        for (let dx = 0; dx < w; dx += edgeStep) {
+          sampleAt(dx, 0); sampleAt(dx, h - 1);
+          sampleAt(dx, 4); sampleAt(dx, h - 5);
+        }
+        for (let dy = 0; dy < h; dy += edgeStep) {
+          sampleAt(0, dy); sampleAt(w - 1, dy);
+          sampleAt(4, dy); sampleAt(w - 5, dy);
+        }
+        let bgR = 255, bgG = 255, bgB = 255, topCount = 0;
+        for (const { count, r, g, b } of buckets.values()) {
+          if (count > topCount) {
+            topCount = count;
+            bgR = Math.round(r / count);
+            bgG = Math.round(g / count);
+            bgB = Math.round(b / count);
+          }
+        }
+        // If the dominant edge colour isn't that dominant (less than ~20%
+        // of samples), the image probably already has a transparent edge
+        // — default to white so we at least strip any white remnants.
+        const totalSamples = Array.from(buckets.values()).reduce((n, e) => n + e.count, 0);
+        if (!totalSamples || topCount / totalSamples < 0.15) {
+          bgR = 255; bgG = 255; bgB = 255;
+        }
+        const colorDist = (r, g, b) => {
+          const dr = r - bgR, dg = g - bgG, db = b - bgB;
+          return Math.sqrt(dr*dr + dg*dg + db*db);
+        };
+
+        // ── Pass A: colour-distance threshold + feather ─────────────────
         for (let i = 0; i < d.length; i += 4) {
-          const r = d[i], g = d[i+1], b = d[i+2];
-          const minC = Math.min(r, g, b);
-          const maxC = Math.max(r, g, b);
-          if (maxC - minC > SATURATION_GUARD) continue;
-          if (minC >= WHITE_FULL_THRESHOLD) {
+          if (d[i+3] === 0) continue;
+          const dist = colorDist(d[i], d[i+1], d[i+2]);
+          if (dist <= BG_TOLERANCE) {
             d[i+3] = 0;
-          } else if (minC > SOFT_THRESHOLD) {
-            const band = WHITE_FULL_THRESHOLD - SOFT_THRESHOLD;
-            const t = (minC - SOFT_THRESHOLD) / band;
-            d[i+3] = Math.round(d[i+3] * (1 - t));
+          } else if (dist < BG_FEATHER) {
+            const t = (dist - BG_TOLERANCE) / (BG_FEATHER - BG_TOLERANCE);
+            d[i+3] = Math.round(d[i+3] * t);
           }
         }
 
@@ -3524,10 +3733,7 @@ async function chromaKeyWhiteBackground(dataUrl) {
           if (visited[p]) return;
           const i = p * 4;
           if (d[i+3] === 0) { visited[p] = 1; return; } // already transparent
-          const r = d[i], g = d[i+1], b = d[i+2];
-          const minC = Math.min(r, g, b);
-          const maxC = Math.max(r, g, b);
-          if (minC >= FLOOD_MIN_BRIGHTNESS && (maxC - minC) < FLOOD_SATURATION) {
+          if (colorDist(d[i], d[i+1], d[i+2]) < FLOOD_TOLERANCE) {
             visited[p] = 1;
             stack.push(p);
           }
@@ -3547,15 +3753,12 @@ async function chromaKeyWhiteBackground(dataUrl) {
         }
 
         // ── Pass C: global sweep ───────────────────────────────────────
-        // Catches enclosed near-white regions (gaps inside mascot shapes
-        // that Pass B can't reach from the edges). Slightly stricter than
-        // Pass A so we don't strip highlights off coloured surfaces.
+        // Catches enclosed bg-coloured regions (gaps inside mascot shapes
+        // that Pass B can't reach). Stricter tolerance than Pass A so we
+        // don't strip highlights/shadows off coloured surfaces.
         for (let i = 0; i < d.length; i += 4) {
           if (d[i+3] === 0) continue;
-          const r = d[i], g = d[i+1], b = d[i+2];
-          const minC = Math.min(r, g, b);
-          const maxC = Math.max(r, g, b);
-          if (minC >= GLOBAL_MIN_BRIGHTNESS && (maxC - minC) < GLOBAL_SATURATION) {
+          if (colorDist(d[i], d[i+1], d[i+2]) < GLOBAL_TOLERANCE) {
             d[i+3] = 0;
           }
         }
