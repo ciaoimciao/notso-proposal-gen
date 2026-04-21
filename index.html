@@ -725,7 +725,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         <div class="export-lead-sub" id="selectedCount">10 / 18 slides selected</div>
       </div>
       <button class="btn btn-primary" onclick="openUnifiedEditor()">✏️ Edit &amp; Assign Assets</button>
-      <button class="btn btn-secondary" onclick="previewAndEdit()" style="font-size:12px;padding:6px 12px" title="Legacy full-scroll editor (no sidebar)">Legacy Edit</button>
+      <button class="btn btn-secondary" onclick="previewAndEdit()" title="Scroll through all slides side-by-side to review before export">🔍 總覽 Overview</button>
       <button class="btn btn-secondary" onclick="exportPDF()">📄 Download PDF</button>
       <button class="btn btn-secondary" onclick="exportPPTX()">📊 Export PPTX</button>
       <button class="btn btn-secondary" onclick="openAssetPackModal()" id="assetPackBtn">🎁 Mascot Asset Pack</button>
@@ -740,8 +740,8 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
   <div style="background:#fff;width:95vw;height:92vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2)">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid #e5e7eb;background:#f9fafb">
       <div>
-        <span style="font-weight:800;font-size:15px">Preview & Edit</span>
-        <span style="font-size:11px;color:#6b7280;margin-left:8px">Click on any text in the preview to edit it. Changes apply to PDF export.</span>
+        <span style="font-weight:800;font-size:15px">🔍 總覽 · Overview</span>
+        <span style="font-size:11px;color:#6b7280;margin-left:8px">Scroll through every slide in one view. Looks good? Hit Export PDF to ship it.</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-primary" onclick="exportPDFFromPreview()" style="font-size:12px;padding:6px 16px">📄 Export PDF</button>
@@ -4974,30 +4974,8 @@ async function generateAssetPack(opts = {}) {
       byId.set(r.id, r);
     }
 
-    // ── Phase 3 client-side chroma-key ───────────────────────────────
-    // On Vercel the server's postProcessImage() (rembg via Python) can't
-    // run because onnxruntime exceeds the serverless bundle size limit —
-    // so asset-pack images come back with the white background INTACT.
-    // Strip it here, same algorithm that Phase 2 uses. We only chroma-key
-    // newly-arrived images (not the existing ones that were processed on
-    // a previous call) and only those marked `transparent: true`.
-    await Promise.all(
-      incoming.map(async (r) => {
-        if (!r.ok || !r.dataUrl) return;
-        if (!r.transparent) return;           // mockups keep their bg
-        if (r._chromaKeyed) return;           // already processed
-        try {
-          const transparent = await chromaKeyWhiteBackground(r.dataUrl);
-          const merged = byId.get(r.id);
-          if (merged) {
-            merged.dataUrl = transparent;
-            merged._chromaKeyed = true;
-          }
-        } catch (e) {
-          console.warn(`Asset-pack chroma-key failed for ${r.id}:`, e.message);
-        }
-      })
-    );
+    // Shared chroma-key pass — see _chromaKeyAssetPackItems() below.
+    await _chromaKeyAssetPackItems(incoming, byId);
 
     _assetPackSession.results = Array.from(byId.values());
     _assetPackSession.downloadUrl = data.downloadUrl || '';
@@ -5188,6 +5166,40 @@ async function regenerateAssetPackMissing() {
   await generateAssetPack({ onlyIds: fail.map(r => r.id) });
 }
 
+// Shared chroma-key pass for asset-pack items. Used by both the bulk
+// generateAssetPack() flow and the single-item regenerateAssetPackItem()
+// flow. On Vercel the server can't run rembg (onnxruntime exceeds the
+// serverless bundle size limit) so asset-pack images come back with the
+// white background INTACT — we strip it client-side here. Only operates
+// on items flagged `transparent:true` (mockups keep their bg).
+//
+// `items` = fresh array from the server this call
+// `byId`  = merged Map<id, item> we'll mutate in place so the cached
+//           result also gets the transparent version (important for
+//           regeneration: the previously-cached entry may have been
+//           chroma-keyed, but the new one hasn't yet).
+async function _chromaKeyAssetPackItems(items, byId) {
+  await Promise.all(
+    items.map(async (r) => {
+      if (!r.ok || !r.dataUrl) return;
+      if (!r.transparent) return;
+      if (r._chromaKeyed) return;
+      try {
+        const transparent = await chromaKeyWhiteBackground(r.dataUrl);
+        const merged = byId.get(r.id);
+        if (merged) {
+          merged.dataUrl = transparent;
+          merged._chromaKeyed = true;
+        }
+        r.dataUrl = transparent;
+        r._chromaKeyed = true;
+      } catch (e) {
+        console.warn(`Asset-pack chroma-key failed for ${r.id}:`, e.message);
+      }
+    })
+  );
+}
+
 // Regenerate one specific item — shows inline loading on the card
 async function regenerateAssetPackItem(id) {
   if (!id || !_assetPackSession.sessionId) return;
@@ -5237,13 +5249,30 @@ async function regenerateAssetPackItem(id) {
     const existing = _assetPackSession.results || [];
     const byId = new Map();
     for (const r of existing) byId.set(r.id, r);
-    for (const r of (data.results || [])) {
+    const incoming = data.results || [];
+    for (const r of incoming) {
       const prev = byId.get(r.id);
       if (r.ok && !r.dataUrl && prev && prev.dataUrl) r.dataUrl = prev.dataUrl;
+      // Clear the processed flag so the new image gets chroma-keyed —
+      // without this, the merged entry keeps the old `_chromaKeyed:true`
+      // and the helper skips it, leaving the white bg in place.
+      r._chromaKeyed = false;
       byId.set(r.id, r);
     }
+    // Same chroma-key pass the bulk generator uses. Without this, the
+    // regenerated image keeps its white background on Vercel.
+    await _chromaKeyAssetPackItems(incoming, byId);
+
     _assetPackSession.results = Array.from(byId.values());
     _assetPackSession.downloadUrl = data.downloadUrl || '';
+    // If this asset is assigned to a slide, refresh the savedMascotPaths
+    // entry with the newly-chroma-keyed data URL so the preview updates.
+    for (const [k, v] of Object.entries(_assetSlideAssignments || {})) {
+      if (v && v.assetId === id) {
+        const fresh = byId.get(id);
+        if (fresh && fresh.dataUrl) savedMascotPaths[k] = fresh.dataUrl;
+      }
+    }
     renderAssetPackResults();
   } catch (err) {
     console.error('Regen item error:', err);
