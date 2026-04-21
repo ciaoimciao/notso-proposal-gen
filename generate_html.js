@@ -424,7 +424,10 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
   const mascotName = stripEmoji(d.mascot_name || proposal.mascot_name || '');
   const tagline = stripEmoji(d.lead || d.greeting || d.tagline || `The AI coach for ${clientName}`);
 
-  const coverImagePath = mascotImages?.cover;
+  // Per-slide cover key (cover_s1) takes precedence so the user can assign a
+  // different asset-pack image to each "cover-style" slide; falls back to the
+  // legacy shared `cover` key (which is what auto-assign + mascot-pick set).
+  const coverImagePath = mascotImages?.cover_s1 || mascotImages?.cover;
 
   return `
     <div class="slide" style="background: #F4F4F3; position: relative; display: flex; flex-direction: column;">
@@ -753,7 +756,8 @@ function renderSlide_S7_MascotDesign(proposal, client, mascotImages) {
   const mascotName = stripEmoji(d.name || proposal.mascot_name || 'Mascot');
   const personality = stripEmoji(d.personality || d.tone_desc || 'Friendly, helpful, and engaging');
   const phrases = (d.phrases || []).slice(0, 3);
-  const coverImagePath = mascotImages?.cover;
+  // Per-slide cover key (cover_s7) — see note in S1.
+  const coverImagePath = mascotImages?.cover_s7 || mascotImages?.cover;
 
   const phrasePills = phrases
     .map(phrase => `
@@ -850,7 +854,8 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   // Keep to 6 turns max (3 user ↔ 3 bot). Claude prompt caps bot turns at
   // 3 full sentences each — we render those sentences in full; NO truncation.
   const messages = (d.messages || d.chat || []).slice(0, 6);
-  const coverImagePath = mascotImages?.cover;
+  // Per-slide cover key (cover_s9) — see note in S1.
+  const coverImagePath = mascotImages?.cover_s9 || mascotImages?.cover;
 
   const chatBubbles = messages
     .map(msg => {
@@ -1411,7 +1416,8 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
   const email = stripEmoji(d.email || 'hello@notso.ai');
   const website = stripEmoji(d.website || 'www.notso.ai');
 
-  const coverImagePath = mascotImages?.cover;
+  // Per-slide cover key (cover_s18) — see note in S1.
+  const coverImagePath = mascotImages?.cover_s18 || mascotImages?.cover;
 
   // Brand color wiring — color1 drives the gradient, color2 is the accent.
   // If the client didn't provide colors, fall back to notso green+yellow.

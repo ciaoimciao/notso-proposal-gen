@@ -4305,21 +4305,35 @@ let _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
 // Tracks which asset images are assigned to which slides: { slideKey: { assetId, file } }
 let _assetSlideAssignments = {};
 
-// Assign an asset pack image to a specific slide.
-// Stores the DATA URL in savedMascotPaths so the PDF generator never has to
-// reach back to the server's /tmp for the file (which evaporates on Vercel
-// cold starts). generate_html.js has been taught to pass data: URIs through
-// `readImageAsDataURI` unchanged.
-function assignAssetToSlide(assetId, encodedFile, slideKey) {
-  const file = decodeURIComponent(encodedFile);
-  if (!slideKey) {
+// Assign an asset pack image to a specific slide slot.
+//
+// The dropdown now uses the STORAGE KEY directly as its value (e.g.
+// 'cover_s1', 'expression_3', 'material_0') instead of a slide id. This
+// avoids the collision where s1/s7/s9/s18 all mapped to the same 'cover'
+// key and where s8/s16 were hardcoded to slot 0 regardless of pick.
+//
+// Keys used by generate_html.js:
+//   cover_s1, cover_s7, cover_s9, cover_s18  — per-cover-slide (fallback
+//                                              to legacy `cover` if the
+//                                              per-slide key is absent)
+//   option_a | option_b | option_c           — S6 mascot selection grid
+//   expression_0..5                          — S8 Personality grid (6 slots)
+//   dashboard                                — S12
+//   material_0..2                            — S16 Promo materials (3 slots)
+//
+// Stores the DATA URL in savedMascotPaths so the PDF generator never has
+// to reach back to the server's /tmp (evaporates on Vercel cold starts).
+function assignAssetToSlide(assetId, encodedFile, imageKey) {
+  if (!imageKey) {
+    // Un-assign: remove any assignment keyed to this asset id.
     for (const k of Object.keys(_assetSlideAssignments)) {
       if (_assetSlideAssignments[k].assetId === assetId) delete _assetSlideAssignments[k];
     }
     console.log('Unassigned asset', assetId);
     return;
   }
-  _assetSlideAssignments[slideKey] = { assetId, file };
+  const file = decodeURIComponent(encodedFile);
+  _assetSlideAssignments[imageKey] = { assetId, file };
 
   // Look up the cached data URL for this asset.
   const item = (_assetPackSession.results || []).find(r => r.id === assetId);
@@ -4328,15 +4342,8 @@ function assignAssetToSlide(assetId, encodedFile, slideKey) {
     return;
   }
 
-  const slideToImageKey = {
-    s1: 'cover', s7: 'cover', s9: 'cover', s18: 'cover',
-    s6: 'option_a', s8: 'expression_0', s12: 'dashboard', s16: 'material_0'
-  };
-  const imageKey = slideToImageKey[slideKey];
-  if (imageKey) {
-    savedMascotPaths[imageKey] = item.dataUrl;
-    console.log('Assigned', assetId, '→', slideKey, '(stored as dataUrl)');
-  }
+  savedMascotPaths[imageKey] = item.dataUrl;
+  console.log('Assigned', assetId, '→', imageKey, '(stored as dataUrl)');
 }
 
 // Return the currently-picked mascot data URL from the Asset Pack modal.
@@ -4500,6 +4507,14 @@ function autoAssignAssetPackToSlides() {
     const item = byId.get(id);
     if (item && item.dataUrl) {
       savedMascotPaths['expression_' + idx] = item.dataUrl;
+      // Mirror into _assetSlideAssignments so the dropdown shows the auto-pick
+      // as the currently-selected option when the modal is reopened. We only
+      // write the auto-assignment if the user hasn't already picked something
+      // for this slot — manual picks always win.
+      const slotKey = 'expression_' + idx;
+      if (!_assetSlideAssignments[slotKey]) {
+        _assetSlideAssignments[slotKey] = { assetId: item.id, file: item.file };
+      }
     }
   });
   // Fallback cover: use the happy expression if nothing else is set.
@@ -4564,17 +4579,40 @@ function renderAssetPackResults() {
               <span style="font-size:11px;font-weight:600;color:#374151">${r.label}</span>
               <button onclick="event.stopPropagation();regenerateAssetPackItem('${r.id}')" style="width:24px;height:24px;border-radius:50%;border:1px solid #E5E7EB;background:#fff;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:opacity .15s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.5'" title="Regenerate">🔄</button>
             </div>
+            ${(() => {
+              // Preserve the current assignment across modal close/reopen.
+              // Look up which slide key (if any) is pointing at this asset id.
+              let currentKey = '';
+              for (const [k, v] of Object.entries(_assetSlideAssignments)) {
+                if (v && v.assetId === r.id) { currentKey = k; break; }
+              }
+              const sel = (k) => (k === currentKey ? ' selected' : '');
+              return `
             <select onchange="assignAssetToSlide('${r.id}','${encodeURIComponent(r.file)}',this.value)" style="width:100%;font-size:10px;padding:2px 4px;border:1px solid #e5e7eb;border-radius:4px;color:#6b7280;background:#f9fafb;cursor:pointer">
-              <option value="">— assign to slide —</option>
-              <option value="s1">S1 Cover</option>
-              <option value="s6">S6 Mascot Selection</option>
-              <option value="s7">S7 Mascot Design</option>
-              <option value="s8">S8 Expressions</option>
-              <option value="s9">S9 Chat Demo</option>
-              <option value="s12">S12 Dashboard</option>
-              <option value="s16">S16 Promo Materials</option>
-              <option value="s18">S18 Thank You</option>
-            </select>
+              <option value=""${sel('')}>— assign to slide —</option>
+              <option value="cover_s1"${sel('cover_s1')}>S1 Cover</option>
+              <option value="option_a"${sel('option_a')}>S6 Option A</option>
+              <option value="option_b"${sel('option_b')}>S6 Option B</option>
+              <option value="option_c"${sel('option_c')}>S6 Option C</option>
+              <option value="cover_s7"${sel('cover_s7')}>S7 Mascot Design</option>
+              <optgroup label="S8 Personality & Expressions">
+                <option value="expression_0"${sel('expression_0')}>S8 Slot 1 — Happy</option>
+                <option value="expression_1"${sel('expression_1')}>S8 Slot 2 — Empathetic</option>
+                <option value="expression_2"${sel('expression_2')}>S8 Slot 3 — Curious</option>
+                <option value="expression_3"${sel('expression_3')}>S8 Slot 4 — Celebrating</option>
+                <option value="expression_4"${sel('expression_4')}>S8 Slot 5 — Apologetic</option>
+                <option value="expression_5"${sel('expression_5')}>S8 Slot 6 — Helpful</option>
+              </optgroup>
+              <option value="cover_s9"${sel('cover_s9')}>S9 Chat Demo</option>
+              <option value="dashboard"${sel('dashboard')}>S12 Dashboard</option>
+              <optgroup label="S16 Promo Materials">
+                <option value="material_0"${sel('material_0')}>S16 Slot 1</option>
+                <option value="material_1"${sel('material_1')}>S16 Slot 2</option>
+                <option value="material_2"${sel('material_2')}>S16 Slot 3</option>
+              </optgroup>
+              <option value="cover_s18"${sel('cover_s18')}>S18 Thank You</option>
+            </select>`;
+            })()}
           </div>
         </div>`;
       } else {
