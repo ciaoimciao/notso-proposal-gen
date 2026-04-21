@@ -805,15 +805,31 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           </div>
         </div>
       </main>
-      <!-- Pane 3: asset pack sidebar -->
-      <aside id="unifiedAssetSidebar" style="border-left:1px solid #e5e7eb;background:#fff;overflow-y:auto;padding:10px 10px 16px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:8px">Asset pack</div>
-        <div id="unifiedAssetSidebarContent">
-          <div style="padding:20px 6px;color:#9ca3af;font-size:12px;line-height:1.5">
-            No asset pack yet.<br>
-            <button class="btn btn-primary" style="margin-top:12px;font-size:11px;padding:6px 12px" onclick="openAssetPackModal()">🎁 Generate Asset Pack</button>
+      <!-- Pane 3: collapsible sections - Asset Pack / Backup Mascots / Design Style -->
+      <aside id="unifiedAssetSidebar" style="border-left:1px solid #e5e7eb;background:#fff;overflow-y:auto;padding:4px 10px 16px">
+        <details class="unified-side-section" open>
+          <summary>🎁 Asset pack</summary>
+          <div id="unifiedAssetSidebarContent">
+            <div style="padding:20px 6px;color:#9ca3af;font-size:12px;line-height:1.5">
+              No asset pack yet.<br>
+              <button class="btn btn-primary" style="margin-top:12px;font-size:11px;padding:6px 12px" onclick="openAssetPackModal()">🎁 Generate Asset Pack</button>
+            </div>
           </div>
-        </div>
+        </details>
+        <details class="unified-side-section" open>
+          <summary>🎭 Backup mascots <span class="side-sub" id="unifiedBackupMascotsCount"></span></summary>
+          <div id="unifiedBackupMascotsContent">
+            <div style="padding:14px 6px;color:#9ca3af;font-size:12px;line-height:1.5">
+              Generate mascots in Step 2 to see backup options here.
+            </div>
+          </div>
+        </details>
+        <details class="unified-side-section">
+          <summary>🎨 Design style</summary>
+          <div id="unifiedDesignStyleContent">
+            <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
+          </div>
+        </details>
       </aside>
     </div>
   </div>
@@ -3207,6 +3223,8 @@ async function openUnifiedEditor() {
     _unifiedRawHtml = data.html;
     _unifiedRenderShell(data.html);
     _unifiedRenderAssetSidebar();
+    _unifiedRenderBackupMascots();
+    _unifiedRenderDesignStyle();
   } catch (err) {
     stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>${err.message}</div>`;
   }
@@ -3214,9 +3232,15 @@ async function openUnifiedEditor() {
 
 function closeUnifiedEditor() {
   document.getElementById('unifiedEditorModal').classList.add('hidden');
-  document.getElementById('unifiedSlideList').innerHTML = '';
-  document.getElementById('unifiedSlideStageContent').innerHTML = '';
-  document.getElementById('unifiedAssetSidebarContent').innerHTML = '';
+  const clearIfExists = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  };
+  clearIfExists('unifiedSlideList');
+  clearIfExists('unifiedSlideStageContent');
+  clearIfExists('unifiedAssetSidebarContent');
+  clearIfExists('unifiedBackupMascotsContent');
+  clearIfExists('unifiedDesignStyleContent');
   _unifiedSlideIds = [];
   _unifiedActiveSlideId = null;
   _unifiedSlideNodes = new Map();
@@ -3347,6 +3371,71 @@ function _unifiedRenderShell(html) {
       display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
       padding: 2px 6px; border: 1px solid #E5E7EB; border-radius: 6px; background: #fff;
     }
+    /* Collapsible side-sections (Asset / Backup / Design Style) */
+    .unified-side-section { border-bottom: 1px solid #F3F4F6; padding: 6px 0; }
+    .unified-side-section > summary {
+      list-style: none; cursor: pointer; padding: 6px 2px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: #374151; display: flex; align-items: center; gap: 6px;
+      user-select: none;
+    }
+    .unified-side-section > summary::-webkit-details-marker { display: none; }
+    .unified-side-section > summary::before {
+      content: '▸'; color: #9CA3AF; font-size: 10px; transition: transform .15s;
+    }
+    .unified-side-section[open] > summary::before { transform: rotate(90deg); }
+    .unified-side-section > summary .side-sub {
+      font-size: 10px; font-weight: 500; text-transform: none;
+      letter-spacing: 0; color: #9CA3AF; margin-left: auto;
+    }
+    /* Backup mascots grid: tighter 2-column tiles since we may have 9 */
+    .unified-backup-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px 2px;
+    }
+    .unified-backup-tile {
+      border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden; background: #fff;
+      position: relative; transition: box-shadow .15s, transform .15s;
+    }
+    .unified-backup-tile:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+    .unified-backup-tile .thumb {
+      width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;
+      background-image: linear-gradient(45deg,#e0e0e0 25%,transparent 25%,transparent 75%,#e0e0e0 75%),
+                        linear-gradient(45deg,#e0e0e0 25%,transparent 25%,transparent 75%,#e0e0e0 75%);
+      background-size: 10px 10px; background-position: 0 0, 5px 5px; background-color: #f0f0f0;
+    }
+    .unified-backup-tile .thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .unified-backup-tile .tile-foot { padding: 4px 6px; border-top: 1px solid #f3f4f6; font-size: 10px; }
+    .unified-backup-tile .badge {
+      position: absolute; top: 4px; left: 4px; background: #10B981; color: #fff;
+      font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 10px;
+    }
+    .unified-backup-tile select, .unified-backup-tile button {
+      width: 100%; margin-top: 3px; font-size: 10px;
+    }
+    .unified-backup-tile button {
+      padding: 4px 6px; background: #10B981; color: #fff; border: none;
+      border-radius: 5px; font-weight: 700; cursor: pointer;
+    }
+    .unified-backup-tile button:hover { background: #059669; }
+    .unified-backup-tile button:disabled { background: #E5E7EB; color: #9CA3AF; cursor: not-allowed; }
+    .unified-backup-tile select {
+      padding: 3px 5px; border: 1px solid #E5E7EB; border-radius: 5px; background: #fff;
+    }
+    /* Design-style mini picker inside sidebar */
+    .unified-ds-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px 2px;
+    }
+    .unified-ds-card {
+      border: 2px solid #E5E7EB; border-radius: 8px; padding: 4px; background: #fff;
+      cursor: pointer; text-align: left; transition: border-color .15s, transform .1s;
+    }
+    .unified-ds-card:hover { border-color: #9CA3AF; transform: translateY(-1px); }
+    .unified-ds-card.selected { border-color: #111; box-shadow: 0 0 0 2px rgba(0,0,0,.08); }
+    .unified-ds-card .mini-thumb {
+      width: 100%; aspect-ratio: 16/9; background: #F3F4F6; border-radius: 4px; overflow: hidden;
+    }
+    .unified-ds-card .mini-thumb svg { width: 100%; height: 100%; display: block; }
+    .unified-ds-card .mini-name { font-size: 10px; font-weight: 700; color: #111; margin-top: 3px; }
   `;
   document.head.appendChild(chrome);
 
@@ -3426,6 +3515,7 @@ function _unifiedShowSlide(slideId) {
   stage.appendChild(wrap);
   _unifiedFitStage();   // scale to fit available width
   _unifiedRenderAssetSidebar(); // refresh "place" button targets for new slide
+  _unifiedRenderBackupMascots();
 }
 
 // Scale the 1440×810 frame so it fits the center pane. The wrapper is
@@ -3529,6 +3619,205 @@ function _unifiedRenderAssetSidebar() {
   host.innerHTML = html;
 }
 
+// ─── BACKUP MASCOTS SIDEBAR ─────────────────────────────────────────
+// User generates 9 mascots in Step 2 but only the main one (option_a)
+// gets a full asset pack. Option_b and option_c often end up empty,
+// and sometimes the user wants to swap in a different step-2 mascot
+// after seeing the slides. This section exposes all 9 mascots so the
+// user can drop any of them into option_b / option_c (or any other
+// slot that accepts a single mascot image — cover_s1, cover_s7, etc).
+function _unifiedRenderBackupMascots() {
+  const host  = document.getElementById('unifiedBackupMascotsContent');
+  const count = document.getElementById('unifiedBackupMascotsCount');
+  if (!host) return;
+
+  const mascots = Array.isArray(mascotImages) ? mascotImages.filter(m => m && m.data_url) : [];
+  if (count) count.textContent = mascots.length ? `(${mascots.length})` : '';
+  if (!mascots.length) {
+    host.innerHTML = `
+      <div style="padding:14px 6px;color:#9ca3af;font-size:12px;line-height:1.5">
+        Generate mascots in Step 2 to see backup options here.
+      </div>`;
+    return;
+  }
+
+  const slots = _UNIFIED_SLOTS[_unifiedActiveSlideId] || [];
+  const disabled = slots.length === 0;
+
+  // Find which mascot index is currently in each slot by comparing
+  // savedMascotPaths[slot] against the mascot data_url. This lets us
+  // show a "→ in option_b" badge so the user knows their current picks.
+  const slotByIdx = new Map();
+  mascots.forEach((m, idx) => {
+    for (const [k, v] of Object.entries(savedMascotPaths || {})) {
+      if (v && v === m.data_url) slotByIdx.set(idx, k);
+    }
+    // Fall back to mascotSelections indices (works when the user is
+    // on step 3 right after confirm, before any placement re-write).
+    if (!slotByIdx.has(idx)) {
+      for (const [k, v] of Object.entries(mascotSelections || {})) {
+        if (Number(v) === idx) slotByIdx.set(idx, k);
+      }
+    }
+  });
+
+  let html = `
+    <div style="padding:4px 4px 8px;color:#6b7280;font-size:11px;line-height:1.4">
+      All 9 mascots from Step 2. Click any to place on the current slide.
+    </div>
+    <div class="unified-backup-grid">`;
+
+  mascots.forEach((m, idx) => {
+    const badge = slotByIdx.get(idx);
+    const slotPicker = (slots.length > 1)
+      ? `<select id="ubm_${idx}">
+           ${slots.map(s => `<option value="${s.key}">${s.label}</option>`).join('')}
+         </select>`
+      : '';
+    const placeLabel = disabled
+      ? 'No slot here'
+      : (slots.length === 1 ? `→ ${slots[0].label}` : 'Place');
+    html += `
+      <div class="unified-backup-tile">
+        ${badge ? `<span class="badge">${badge}</span>` : ''}
+        <div class="thumb"><img src="${m.data_url}" alt="mascot ${idx + 1}" loading="lazy"></div>
+        <div class="tile-foot">
+          <div style="font-weight:600;color:#374151">Mascot ${idx + 1}</div>
+          ${slotPicker}
+          <button type="button"
+                  onclick="_unifiedPlaceBackupMascot(${idx}, ${slots.length > 1 ? `document.getElementById('ubm_${idx}').value` : `'${slots[0] && slots[0].key}'`})"
+                  ${disabled ? 'disabled' : ''}>
+            ${placeLabel}
+          </button>
+        </div>
+      </div>`;
+  });
+  html += `</div>`;
+  host.innerHTML = html;
+}
+
+// Place a step-2 mascot (by index into mascotImages) onto a slot on
+// the current slide. Same wire as _unifiedPlaceAsset but sourced from
+// mascotImages instead of _assetPackSession.results. Clears any prior
+// asset-pack assignment for that slot (so the ledger stays consistent).
+async function _unifiedPlaceBackupMascot(idx, slotKey) {
+  if (!slotKey) return;
+  const m = (mascotImages || [])[idx];
+  if (!m || !m.data_url) {
+    alert('That mascot is missing image data. Try regenerating in Step 2.');
+    return;
+  }
+  // Overwrite the savedMascotPaths so preview/PDF picks this up.
+  savedMascotPaths[slotKey] = m.data_url;
+  // Clear any asset-pack assignment occupying this slot — backup mascots
+  // don't have an assetId in _assetPackSession.results.
+  if (_assetSlideAssignments && _assetSlideAssignments[slotKey]) {
+    delete _assetSlideAssignments[slotKey];
+  }
+
+  // Re-fetch preview so the slot's <img> actually updates.
+  const stage = document.getElementById('unifiedSlideStageContent');
+  const restoreId = _unifiedActiveSlideId;
+  stage.innerHTML = '<div style="text-align:center;color:#6b7280;font-size:14px"><div style="font-size:48px;animation:spin 2s linear infinite;margin-bottom:16px">🔄</div>Placing mascot…</div>';
+
+  try {
+    const selected = getSelectedSlides();
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const resp = await fetch('/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+    });
+    const raw = await resp.text();
+    const data = JSON.parse(raw);
+    if (!resp.ok || !data.success) throw new Error(data.error || 'Preview refresh failed');
+    _unifiedRawHtml = data.html;
+    _unifiedRenderShell(data.html);
+    if (restoreId && _unifiedSlideNodes.has(restoreId)) {
+      _unifiedShowSlide(restoreId);
+    }
+    _unifiedRenderAssetSidebar();
+    _unifiedRenderBackupMascots();
+  } catch (err) {
+    stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>Placement failed: ${err.message}</div>`;
+  }
+}
+
+// ─── DESIGN STYLE PICKER SIDEBAR ────────────────────────────────────
+// Mirrors the Step 1 picker so the user can try a different visual
+// style without going back. Changing the style writes client.designStyle
+// and re-fetches the preview so all slides re-render with the new CSS.
+const _UNIFIED_DS_STYLES = [
+  { id:'notso-signature', name:'notso.ai ★',
+    svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#F5F5F5'/><rect x='10' y='14' width='38' height='10' rx='5' fill='#E5E7EB'/><rect x='10' y='30' width='90' height='6' rx='3' fill='#111'/><rect x='10' y='42' width='62' height='3' rx='1.5' fill='#9CA3AF'/><rect x='10' y='50' width='80' height='3' rx='1.5' fill='#9CA3AF'/><rect x='10' y='62' width='44' height='20' rx='10' fill='#fff' stroke='#E5E7EB'/><rect x='58' y='62' width='44' height='20' rx='10' fill='#fff' stroke='#E5E7EB'/><circle cx='134' cy='60' r='16' fill='#F97316'/></svg>` },
+  { id:'minimal', name:'Minimalist',
+    svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#fff'/><rect x='14' y='20' width='52' height='6' rx='1' fill='#111'/><rect x='14' y='32' width='90' height='2' fill='#D4D4D4'/><rect x='14' y='40' width='78' height='2' fill='#D4D4D4'/><rect x='14' y='48' width='82' height='2' fill='#D4D4D4'/><rect x='14' y='62' width='60' height='2' fill='#111'/><circle cx='132' cy='58' r='14' fill='#111'/></svg>` },
+  { id:'bento', name:'Bento',
+    svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#F5F5F0'/><rect x='8' y='8' width='70' height='40' rx='8' fill='#111'/><rect x='84' y='8' width='68' height='24' rx='8' fill='#E8A317'/><rect x='84' y='38' width='32' height='44' rx='8' fill='#fff' stroke='#E5E7EB'/><rect x='122' y='38' width='30' height='44' rx='8' fill='#4ECDC4'/><rect x='8' y='54' width='70' height='28' rx='8' fill='#fff' stroke='#E5E7EB'/></svg>` },
+  { id:'editorial', name:'Editorial',
+    svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#FAF7F2'/><rect x='10' y='20' width='78' height='2' fill='#111'/><rect x='10' y='28' width='56' height='7' rx='1' fill='#111'/><rect x='10' y='40' width='48' height='7' rx='1' fill='#111'/><rect x='10' y='54' width='78' height='2' fill='#111'/><rect x='94' y='14' width='54' height='64' rx='4' fill='#111'/></svg>` },
+  { id:'neo', name:'Neobrutal',
+    svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#FFF6D5' stroke='#111' stroke-width='3'/><rect x='10' y='10' width='40' height='10' fill='#111'/><rect x='10' y='26' width='70' height='8' fill='#111'/><rect x='10' y='42' width='60' height='30' fill='#FF6B6B' stroke='#111' stroke-width='2.5'/><rect x='86' y='42' width='60' height='30' fill='#4ECDC4' stroke='#111' stroke-width='2.5'/></svg>` },
+  { id:'clay', name:'Claymorph',
+    svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#F0ECFF'/><rect x='12' y='14' width='60' height='30' rx='12' fill='#FFE4E6'/><rect x='80' y='14' width='68' height='30' rx='12' fill='#F7F5FF'/><rect x='12' y='50' width='44' height='30' rx='12' fill='#F7F5FF'/><rect x='62' y='50' width='44' height='30' rx='12' fill='#F7F5FF'/><circle cx='132' cy='64' r='16' fill='#A78BFA'/></svg>` },
+];
+
+function _unifiedRenderDesignStyle() {
+  const host = document.getElementById('unifiedDesignStyleContent');
+  if (!host) return;
+  const current = (client && client.designStyle) || 'notso-signature';
+  host.innerHTML = `
+    <div style="padding:4px 4px 8px;color:#6b7280;font-size:11px;line-height:1.4">
+      Change visual style. All slides re-render.
+    </div>
+    <div class="unified-ds-grid">
+      ${_UNIFIED_DS_STYLES.map(s => `
+        <button type="button" class="unified-ds-card${current === s.id ? ' selected' : ''}"
+                data-id="${s.id}" onclick="_unifiedSetDesignStyle('${s.id}')">
+          <div class="mini-thumb">${s.svg}</div>
+          <div class="mini-name">${s.name}</div>
+        </button>`).join('')}
+    </div>`;
+}
+
+async function _unifiedSetDesignStyle(styleId) {
+  if (!client) return;
+  if (client.designStyle === styleId) return;
+  client.designStyle = styleId;
+
+  // Re-render sidebar to update the ".selected" state.
+  _unifiedRenderDesignStyle();
+
+  // Refresh preview so all slides pick up the new data-design-style.
+  const stage = document.getElementById('unifiedSlideStageContent');
+  const restoreId = _unifiedActiveSlideId;
+  stage.innerHTML = '<div style="text-align:center;color:#6b7280;font-size:14px"><div style="font-size:48px;animation:spin 2s linear infinite;margin-bottom:16px">🎨</div>Applying style…</div>';
+
+  try {
+    const selected = getSelectedSlides();
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const resp = await fetch('/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+    });
+    const raw = await resp.text();
+    const data = JSON.parse(raw);
+    if (!resp.ok || !data.success) throw new Error(data.error || 'Preview refresh failed');
+    _unifiedRawHtml = data.html;
+    _unifiedRenderShell(data.html);
+    if (restoreId && _unifiedSlideNodes.has(restoreId)) {
+      _unifiedShowSlide(restoreId);
+    }
+    // Also re-render all three side-sections so slot lists stay in sync.
+    _unifiedRenderAssetSidebar();
+    _unifiedRenderBackupMascots();
+    _unifiedRenderDesignStyle();
+  } catch (err) {
+    stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>Style change failed: ${err.message}</div>`;
+  }
+}
+
 // Place an asset on the current slide's chosen slot. Updates global
 // state, refreshes the sidebar, and re-fetches the preview so the
 // new image actually shows on the stage. (The preview must come from
@@ -3568,6 +3857,7 @@ async function _unifiedPlaceAsset(assetId, slotKey) {
       _unifiedShowSlide(restoreId);
     }
     _unifiedRenderAssetSidebar();
+    _unifiedRenderBackupMascots();
   } catch (err) {
     stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>Refresh failed: ${err.message}</div>`;
   }
