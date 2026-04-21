@@ -3701,40 +3701,37 @@ async function _shrinkMascotMap(paths, maxSide) {
 
    Function name kept for backwards compatibility with call sites. */
 async function chromaKeyWhiteBackground(dataUrl) {
-  // Four-pass background removal:
-  //   Pass 0  (sample)        — look at the image's outer ring and pick
-  //                             the dominant color as the "background".
-  //                             Falls back to white if no clear winner.
-  //   Pass A  (pixel filter)  — any pixel within BG_TOLERANCE of the
-  //                             detected background color → alpha 0, with
-  //                             a feather band at BG_FEATHER.
-  //   Pass B  (edge flood)    — starting from every border pixel, flood
-  //                             any region within a wider tolerance of the
-  //                             background color into full transparency.
-  //   Pass C  (global sweep)  — final pass that zaps any remaining pixel
-  //                             close to the background color anywhere in
-  //                             the image (catches enclosed regions the
-  //                             edge flood can't reach).
-  //   Pass D  (hard-snap)     — force every alpha to 0 or 255 so the
-  //                             cutout has hard edges suitable for
-  //                             clippings/collages (no halo).
-  //   Pass E  (island drop)   — BFS-label every remaining opaque region;
-  //                             keep only the largest blob (the mascot)
-  //                             and any runner-ups ≥ MIN_ISLAND_RATIO of
-  //                             it. This is what kills stray dark chunks
-  //                             that sit on top of the hair / float near
-  //                             the character — they're colour-far from
-  //                             the bg so Passes A-C can't see them, but
-  //                             they're topologically disconnected from
-  //                             the main mascot silhouette.
+  // Edge-connected background removal — preserves enclosed features.
   //
-  // User wants FULLY transparent cutouts — defaults lean aggressive.
-  // Colour-distance tuning dials:
-  const BG_TOLERANCE = 55;       // Pass A: euclidean RGB distance to bg
-  const BG_FEATHER = 75;         // Pass A: soft-edge band above tolerance
-  const FLOOD_TOLERANCE = 90;    // Pass B: wider since we know we start
-                                 //         from outside the mascot
-  const GLOBAL_TOLERANCE = 48;   // Pass C: stricter to avoid eating holes
+  //   Pass 0  (sample)      — look at the image's outer ring and pick
+  //                           the dominant color as the "background".
+  //                           Falls back to white if no clear winner.
+  //   Pass B  (edge flood)  — starting from every border pixel, flood
+  //                           any region within FLOOD_TOLERANCE of the
+  //                           background color to alpha 0. This is the
+  //                           ONLY pixel-removal pass. Eye whites, inner
+  //                           highlights, and any bg-coloured region
+  //                           fully enclosed by the mascot body are
+  //                           NEVER touched because flood-fill can't
+  //                           reach them from the edges.
+  //   Pass D  (hard-snap)   — snap every alpha to 0 or 255 above/below
+  //                           HARD_ALPHA_CUTOFF so the cutout has hard
+  //                           edges (no halo).
+  //   Pass E  (island drop) — BFS-label every remaining opaque region;
+  //                           keep only the largest blob (the mascot)
+  //                           and any runner-ups ≥ MIN_ISLAND_RATIO of
+  //                           it. Kills stray dark chunks floating near
+  //                           the character — they're topologically
+  //                           disconnected from the main silhouette.
+  //
+  // IMPORTANT: earlier versions had global color-distance passes (Pass A
+  // and Pass C) that zapped ANY bg-coloured pixel anywhere in the image.
+  // They ate the mascot's eye whites (same colour as the white bg). We
+  // deliberately dropped them. Edge-connectivity via Pass B is enough to
+  // strip the background cleanly without destroying enclosed features.
+  const FLOOD_TOLERANCE = 90;    // Pass B: wide enough to absorb AA edge
+                                 //         and soft transition pixels
+                                 //         around the mascot silhouette
   const HARD_ALPHA_CUTOFF = 140; // Pass D: alpha ≥ this → 255 else 0
   const MIN_ISLAND_RATIO = 0.05; // Pass E: keep islands ≥ 5% of biggest
                                  //         (covers held objects like cups
@@ -3804,21 +3801,13 @@ async function chromaKeyWhiteBackground(dataUrl) {
           return Math.sqrt(dr*dr + dg*dg + db*db);
         };
 
-        // ── Pass A: colour-distance threshold + feather ─────────────────
-        for (let i = 0; i < d.length; i += 4) {
-          if (d[i+3] === 0) continue;
-          const dist = colorDist(d[i], d[i+1], d[i+2]);
-          if (dist <= BG_TOLERANCE) {
-            d[i+3] = 0;
-          } else if (dist < BG_FEATHER) {
-            const t = (dist - BG_TOLERANCE) / (BG_FEATHER - BG_TOLERANCE);
-            d[i+3] = Math.round(d[i+3] * t);
-          }
-        }
-
         // ── Pass B: flood-fill from all edge pixels ─────────────────────
-        // Uses a stack + "visited" bitmap sized w*h. Safe on mobile since
-        // typical mascot is 1024×1024 (~1M bytes).
+        // The ONLY pass that removes pixels. By flooding only from image
+        // borders, we guarantee any bg-coloured region enclosed by the
+        // mascot body (eye whites, mouth highlights, sparkles, tooth
+        // shine) is PRESERVED — flood-fill cannot reach them from the
+        // edge. Uses a stack + "visited" bitmap sized w*h. Safe on mobile
+        // since typical mascot is 1024×1024 (~1M bytes).
         const visited = new Uint8Array(w * h);
         const stack = [];
         const pushIfBg = (x, y) => {
@@ -3846,34 +3835,23 @@ async function chromaKeyWhiteBackground(dataUrl) {
           pushIfBg(x, y - 1);
         }
 
-        // ── Pass C: global sweep ───────────────────────────────────────
-        // Catches enclosed bg-coloured regions (gaps inside mascot shapes
-        // that Pass B can't reach). Stricter tolerance than Pass A so we
-        // don't strip highlights/shadows off coloured surfaces.
-        for (let i = 0; i < d.length; i += 4) {
-          if (d[i+3] === 0) continue;
-          if (colorDist(d[i], d[i+1], d[i+2]) < GLOBAL_TOLERANCE) {
-            d[i+3] = 0;
-          }
-        }
-
         // ── Pass D: hard-snap alpha ────────────────────────────────────
-        // User wants cutouts for clippings, so no semi-transparent feather
-        // edge. Snap every alpha to 0 or 255 above/below a cutoff. This
-        // removes the soft halo that the feather band in Pass A creates.
+        // No semi-transparent halo — snap every alpha to 0 or 255 above
+        // /below the cutoff so the cutout has hard edges suitable for
+        // clippings/collages. Edge-flooded pixels are already alpha 0.
         for (let i = 0; i < d.length; i += 4) {
           d[i+3] = d[i+3] >= HARD_ALPHA_CUTOFF ? 255 : 0;
         }
 
         // ── Pass E: connected-component island drop ─────────────────────
-        // After the colour passes we're left with a clean mascot PLUS any
-        // opaque-but-colour-far debris (dark edge chunks on top of hair,
-        // tiny antialiasing halos, stray background rectangles that the
-        // colour passes can't touch because they're not close enough to
-        // the sampled bg colour). These debris pieces are topologically
-        // disconnected from the main mascot silhouette, so we BFS-label
-        // every opaque region, pick the biggest = mascot, and drop any
-        // island that's smaller than MIN_ISLAND_RATIO × biggest.
+        // After edge-flood + hard-snap, we're left with a clean mascot
+        // PLUS any opaque debris (dark chunks on top of hair, stray
+        // rectangles from image borders, etc.) that Pass B couldn't
+        // touch because they're NOT near the sampled bg colour. These
+        // debris pieces are topologically disconnected from the main
+        // mascot silhouette, so we BFS-label every opaque region, pick
+        // the biggest = mascot, and drop any island smaller than
+        // MIN_ISLAND_RATIO × biggest.
         //
         // Uses iterative DFS with an explicit stack (not recursion) because
         // at 1024×1024 the mascot blob can be ~300k pixels deep which would
@@ -4453,6 +4431,32 @@ async function generateAssetPack(opts = {}) {
       if (r.ok && !r.dataUrl && prev && prev.dataUrl) r.dataUrl = prev.dataUrl;
       byId.set(r.id, r);
     }
+
+    // ── Phase 3 client-side chroma-key ───────────────────────────────
+    // On Vercel the server's postProcessImage() (rembg via Python) can't
+    // run because onnxruntime exceeds the serverless bundle size limit —
+    // so asset-pack images come back with the white background INTACT.
+    // Strip it here, same algorithm that Phase 2 uses. We only chroma-key
+    // newly-arrived images (not the existing ones that were processed on
+    // a previous call) and only those marked `transparent: true`.
+    await Promise.all(
+      incoming.map(async (r) => {
+        if (!r.ok || !r.dataUrl) return;
+        if (!r.transparent) return;           // mockups keep their bg
+        if (r._chromaKeyed) return;           // already processed
+        try {
+          const transparent = await chromaKeyWhiteBackground(r.dataUrl);
+          const merged = byId.get(r.id);
+          if (merged) {
+            merged.dataUrl = transparent;
+            merged._chromaKeyed = true;
+          }
+        } catch (e) {
+          console.warn(`Asset-pack chroma-key failed for ${r.id}:`, e.message);
+        }
+      })
+    );
+
     _assetPackSession.results = Array.from(byId.values());
     _assetPackSession.downloadUrl = data.downloadUrl || '';
 

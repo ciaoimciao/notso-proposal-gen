@@ -3,24 +3,28 @@
  * Test harness for the browser chroma-key pipeline in index.html.
  *
  * Why: the function runs in-browser on <canvas>, but we want to verify
- * algorithmic correctness (especially the new Pass E island-drop) without
- * spinning up a browser or a real Gemini call.
+ * algorithmic correctness without spinning up a browser or a real Gemini
+ * call.
  *
  * What this does:
  *   1. Synthesizes a PNG that reproduces the user's bug pattern:
  *        • white background (what Gemini usually outputs)
  *        • a big blue "mascot body" blob in the middle
- *        • a few small dark-grey "debris" chunks on top of the head (these
- *          are what survive all colour-distance passes in the old code)
- *        • a single small stray speckle far from the blob
- *   2. Ports the SAME five-pass algorithm to pure JS / Uint8Array
+ *        • a cloud-head shape with two WHITE EYES (enclosed white regions
+ *          exactly the same colour as the bg — these MUST be preserved)
+ *        • dark "debris" chunks floating near the head (topologically
+ *          disconnected — Pass E should drop them)
+ *   2. Ports the SAME three-pass algorithm to pure JS / Uint8Array:
+ *        Pass B (edge flood) → Pass D (hard snap) → Pass E (island drop)
  *   3. Writes two PNGs:
  *        test_chroma_input.png   — the synthesized buggy image
  *        test_chroma_output.png  — after the full pipeline
  *   4. Asserts:
- *        • main mascot blob center is still fully opaque (body not damaged)
- *        • every debris chunk is now transparent (bg removed completely)
- *        • edge-ring is transparent (original white bg gone)
+ *        • main mascot body center is still fully opaque
+ *        • cloud-head center is still opaque
+ *        • WHITE EYES are still opaque (the bug we just fixed!)
+ *        • every debris chunk is now transparent
+ *        • edge-ring is transparent
  */
 
 const fs = require('fs');
@@ -32,10 +36,7 @@ const { PNG } = require('pngjs');
 // index.html. If that one changes, update this one too.
 // ─────────────────────────────────────────────────────────────────────────
 function chromaKey(d, w, h) {
-  const BG_TOLERANCE = 55;
-  const BG_FEATHER = 75;
   const FLOOD_TOLERANCE = 90;
-  const GLOBAL_TOLERANCE = 48;
   const HARD_ALPHA_CUTOFF = 140;
   const MIN_ISLAND_RATIO = 0.05;
 
@@ -77,19 +78,7 @@ function chromaKey(d, w, h) {
     return Math.sqrt(dr*dr + dg*dg + db*db);
   };
 
-  // Pass A
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i+3] === 0) continue;
-    const dist = colorDist(d[i], d[i+1], d[i+2]);
-    if (dist <= BG_TOLERANCE) {
-      d[i+3] = 0;
-    } else if (dist < BG_FEATHER) {
-      const t = (dist - BG_TOLERANCE) / (BG_FEATHER - BG_TOLERANCE);
-      d[i+3] = Math.round(d[i+3] * t);
-    }
-  }
-
-  // Pass B
+  // Pass B — edge flood fill (ONLY pixel-removal pass)
   const visited = new Uint8Array(w * h);
   const stack = [];
   const pushIfBg = (x, y) => {
@@ -117,15 +106,7 @@ function chromaKey(d, w, h) {
     pushIfBg(x, y - 1);
   }
 
-  // Pass C
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i+3] === 0) continue;
-    if (colorDist(d[i], d[i+1], d[i+2]) < GLOBAL_TOLERANCE) {
-      d[i+3] = 0;
-    }
-  }
-
-  // Pass D
+  // Pass D — hard snap alpha
   for (let i = 0; i < d.length; i += 4) {
     d[i+3] = d[i+3] >= HARD_ALPHA_CUTOFF ? 255 : 0;
   }
@@ -190,7 +171,7 @@ function chromaKey(d, w, h) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Build synthetic test image: 512×512 with blue mascot + debris
+// Build synthetic test image: 512×512 with blue mascot + eyes + debris
 // ─────────────────────────────────────────────────────────────────────────
 function synthesize() {
   const w = 512, h = 512;
@@ -205,7 +186,6 @@ function synthesize() {
     png.data[i+3] = 255;
   }
 
-  // Mascot body: big blue disc centered at (256, 256) r=140
   const setPixel = (x, y, r, g, b) => {
     if (x < 0 || y < 0 || x >= w || y >= h) return;
     const i = (y * w + x) * 4;
@@ -222,31 +202,41 @@ function synthesize() {
       }
     }
   };
-  // Main blue body
-  filledDisc(256, 256, 140, 170, 200, 230);
-  // Cloud head (slightly lighter blue) on top
-  filledDisc(256, 170, 95, 195, 215, 240);
-  filledDisc(220, 160, 55, 195, 215, 240);
-  filledDisc(292, 160, 55, 195, 215, 240);
+  // Main orange body (saturated — like the real mascot; clearly outside
+  // FLOOD_TOLERANCE of white so Pass B doesn't eat through it).
+  filledDisc(256, 256, 140, 240, 110, 50);
+  // Cloud head (same saturated orange) on top
+  filledDisc(256, 170, 95, 240, 110, 50);
+  filledDisc(220, 160, 55, 240, 110, 50);
+  filledDisc(292, 160, 55, 240, 110, 50);
 
-  // ✗ BUG DEBRIS — dark chunks floating NEAR but not touching the head.
-  //   These simulate Gemini's "dark corner artefacts" that the colour
-  //   passes can't clean because they're colour-far from white bg.
-  //   (Placed with >=8px air gap to the head blob so they form genuinely
-  //   disconnected islands — the real Gemini debris is also not fused
-  //   to the mascot silhouette.)
-  const debrisChunks = [
-    { cx: 180, cy: 55,  rad: 10 }, // debris upper-left, well above head
-    { cx: 330, cy: 50,  rad: 12 }, // debris upper-right, well above head
-    { cx: 260, cy: 30,  rad: 7  }, // small debris, far above
-    { cx: 420, cy: 200, rad: 8  }, // stray speckle right of body
-    { cx: 90,  cy: 350, rad: 9  }, // stray speckle left-lower
+  // ★ EYES — white (#FFFFFF) circles ENCLOSED by the cloud-head. These
+  //   are the same colour as the bg. Old algorithm (Pass A / Pass C) zapped
+  //   them. New algorithm (Pass B edge-flood only) must preserve them.
+  const eyes = [
+    { cx: 232, cy: 168, rad: 12 },  // left eye
+    { cx: 280, cy: 168, rad: 12 },  // right eye
   ];
-  for (const c of debrisChunks) {
-    filledDisc(c.cx, c.cy, c.rad, 40, 40, 40); // dark grey
+  for (const e of eyes) {
+    filledDisc(e.cx, e.cy, e.rad, 255, 255, 255);
+    // Add a dark pupil inside each eye (so the eye-white is partially
+    // visible as a donut around the pupil). Pupil at 0,0,0 — far from bg.
+    filledDisc(e.cx + 2, e.cy, 5, 20, 20, 20);
   }
 
-  return { png, w, h, debrisChunks };
+  // ✗ BUG DEBRIS — dark chunks floating NEAR but not touching the head.
+  const debrisChunks = [
+    { cx: 180, cy: 55,  rad: 10 },
+    { cx: 330, cy: 50,  rad: 12 },
+    { cx: 260, cy: 30,  rad: 7  },
+    { cx: 420, cy: 200, rad: 8  },
+    { cx: 90,  cy: 350, rad: 9  },
+  ];
+  for (const c of debrisChunks) {
+    filledDisc(c.cx, c.cy, c.rad, 40, 40, 40);
+  }
+
+  return { png, w, h, debrisChunks, eyes };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -256,7 +246,7 @@ const outDir = __dirname;
 const inputPath = path.join(outDir, 'test_chroma_input.png');
 const outputPath = path.join(outDir, 'test_chroma_output.png');
 
-const { png: inputPng, w, h, debrisChunks } = synthesize();
+const { png: inputPng, w, h, debrisChunks, eyes } = synthesize();
 fs.writeFileSync(inputPath, PNG.sync.write(inputPng));
 console.log(`✔ wrote synthesized input  → ${inputPath}  (${w}×${h})`);
 
@@ -289,7 +279,29 @@ results.push({
   pass: headA === 255,
 });
 
-// 3. Every debris chunk should be fully transparent
+// 3. ★ EYE WHITES — must stay opaque (this is the bug we fixed).
+//    Sample the outer ring of the eye (avoiding the pupil).
+for (const e of eyes) {
+  const ringX = e.cx - e.rad + 2; // just inside the eye outline
+  const ringY = e.cy;
+  const a = alphaAt(ringX, ringY);
+  results.push({
+    test: `Eye white outer ring at (${ringX},${ringY}) preserved (RGB=255,255,255 enclosed)`,
+    expect: 'alpha=255',
+    got: `alpha=${a}`,
+    pass: a === 255,
+  });
+  // Also sample the top of the eye
+  const topA = alphaAt(e.cx, e.cy - e.rad + 2);
+  results.push({
+    test: `Eye white top at (${e.cx},${e.cy - e.rad + 2}) preserved`,
+    expect: 'alpha=255',
+    got: `alpha=${topA}`,
+    pass: topA === 255,
+  });
+}
+
+// 4. Every debris chunk should be fully transparent
 for (const c of debrisChunks) {
   const a = alphaAt(c.cx, c.cy);
   results.push({
@@ -300,7 +312,7 @@ for (const c of debrisChunks) {
   });
 }
 
-// 4. Corner pixels (original white bg) transparent
+// 5. Corner pixels (original white bg) transparent
 const corners = [[0,0], [w-1,0], [0,h-1], [w-1,h-1]];
 for (const [x,y] of corners) {
   const a = alphaAt(x, y);
@@ -312,7 +324,7 @@ for (const [x,y] of corners) {
   });
 }
 
-// 5. Body not riddled with holes — sample 9 interior points
+// 6. Body not riddled with holes — sample 9 interior points
 const bodyCheckPoints = [
   [230, 230], [256, 230], [280, 230],
   [230, 260], [256, 260], [280, 260],
@@ -329,7 +341,7 @@ results.push({
   pass: bodyHoles === 0,
 });
 
-// 6. Edge-ring cleaned (no stray opaque pixels at y=2)
+// 7. Edge-ring cleaned (no stray opaque pixels at y=2)
 let edgeOpaque = 0;
 for (let x = 0; x < w; x++) {
   if (alphaAt(x, 2) === 255) edgeOpaque++;
