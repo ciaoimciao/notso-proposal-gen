@@ -712,19 +712,45 @@ function renderSlide_S6_MascotSelection(proposal, client, mascotImages) {
   const d = proposal.s6 || {};
   const headline = stripEmoji(d.headline || 'Mascot Selection');
   const lead = stripEmoji(d.lead || d.intro || '');
-  const options = (d.options || []).slice(0, 3);
+
+  // Normalize to an array of exactly 3 entries. Claude's current prompt
+  // emits option_a / option_b (and sometimes option_c) as OBJECTS at the
+  // top of s6, while the legacy / array path uses s6.options = [...].
+  // We pad to 3 so the Mascot Selection page always renders three slots —
+  // otherwise there's no UI to drop option_b / option_c backup mascots
+  // into, which was the exact bug the user hit.
+  const fromArray = Array.isArray(d.options) ? d.options.slice(0, 3) : [];
+  const fromObj = [d.option_a, d.option_b, d.option_c].filter(Boolean);
+  const merged = fromArray.length ? fromArray : fromObj;
+  const options = [0, 1, 2].map(i => merged[i] || {});
 
   const optionCards = options
     .map((opt, i) => {
       const optionKey = ['option_a', 'option_b', 'option_c'][i];
       const imagePath = mascotImages?.[optionKey];
+      // Prompt uses `desc`; legacy uses `description`; keep both compat.
+      const descText = stripEmoji(opt.desc || opt.description || '');
+      // Prompt uses `name` + `archetype`; show archetype as small italic.
+      const nameText = stripEmoji(opt.name || `Option ${String.fromCharCode(65 + i)}`);
+      const archetype = stripEmoji(opt.archetype || '');
+      // "Why this fits" sub-note is a single sentence from the prompt.
+      const whyText = stripEmoji(opt.why || '');
+      // Traits = up to 4 short labels, shown as pills.
+      const traits = Array.isArray(opt.traits) ? opt.traits.slice(0, 4) : [];
+      const traitPills = traits.length ? `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:10px;">
+          ${traits.map(t => `<span style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:3px 10px;font-size:11px;color:#374151;">${stripEmoji(t)}</span>`).join('')}
+        </div>` : '';
       return `
-        <div style="background: #F4F4F3; padding: 24px; border-radius: 16px; text-align: center;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 20px;">${stripEmoji(opt.name || `Option ${i + 1}`)}</div>
-          <div style="width: 100%; height: 220px; background: transparent; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <div style="background: #F4F4F3; padding: 24px; border-radius: 16px; text-align: center; display:flex; flex-direction:column;">
+          <div style="font-family:'Poppins',sans-serif;font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:4px;">${nameText}</div>
+          ${archetype ? `<div style="font-family:'Poppins',sans-serif;font-size:11px;color:var(--brand-c1);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">${archetype}</div>` : '<div style="margin-bottom:14px;"></div>'}
+          <div style="width: 100%; height: 200px; background: transparent; border-radius: 12px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
             ${getImageHTML(imagePath, `Mascot Option ${i + 1}`)}
           </div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; line-height: 1.6;">${stripEmoji(opt.description || '')}</div>
+          ${traitPills}
+          ${descText ? `<div style="font-family:'Poppins',sans-serif;font-size:12px;color:#6b7280;line-height:1.55;margin-bottom:${whyText ? '8px' : '0'};">${descText}</div>` : ''}
+          ${whyText ? `<div style="font-family:'Poppins',sans-serif;font-size:11px;color:#1a1a1a;font-style:italic;line-height:1.5;margin-top:auto;padding-top:8px;border-top:1px solid #E5E7EB;">${whyText}</div>` : ''}
         </div>
       `;
     })
