@@ -774,12 +774,34 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
       <aside id="unifiedSlideList" style="border-right:1px solid #e5e7eb;background:#fff;overflow-y:auto;padding:10px 8px">
         <div style="text-align:center;padding:20px;color:#9ca3af;font-size:12px">Loading slides…</div>
       </aside>
-      <!-- Pane 2: current-slide preview -->
-      <main id="unifiedSlideStage" style="overflow:auto;background:#e5e7eb;padding:24px;display:flex;align-items:flex-start;justify-content:center">
-        <div id="unifiedSlideStageContent" style="width:100%;display:flex;align-items:center;justify-content:center;min-height:100%">
-          <div style="text-align:center;color:#6b7280;font-size:14px">
-            <div style="font-size:48px;animation:spin 2s linear infinite;margin-bottom:16px">⏳</div>
-            Generating preview…
+      <!-- Pane 2: formatting toolbar + current-slide preview -->
+      <main style="display:flex;flex-direction:column;min-height:0;background:#e5e7eb">
+        <!-- Text formatting toolbar. Acts on whatever contenteditable
+             range is currently selected in the slide stage. -->
+        <div id="unifiedTextToolbar" style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:#fff;border-bottom:1px solid #e5e7eb;flex-shrink:0;font-size:12px;flex-wrap:wrap">
+          <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbExec('bold')" title="Bold"><b>B</b></button>
+          <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbExec('italic')" title="Italic"><i>I</i></button>
+          <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbExec('underline')" title="Underline"><u>U</u></button>
+          <span class="utb-sep"></span>
+          <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbFontSize(-2)" title="Smaller">A−</button>
+          <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbFontSize(+2)" title="Larger">A+</button>
+          <span class="utb-sep"></span>
+          <label class="utb-color-wrap" title="Text color">
+            <span style="font-weight:600">A</span>
+            <input type="color" id="utbColor" onchange="_utbColor(this.value)" style="width:26px;height:22px;border:none;background:transparent;cursor:pointer;padding:0">
+          </label>
+          <span class="utb-sep"></span>
+          <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbExec('justifyLeft')" title="Align left">⬅</button>
+          <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbExec('justifyCenter')" title="Align center">⬌</button>
+          <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbExec('justifyRight')" title="Align right">➡</button>
+          <span style="margin-left:auto;color:#9ca3af;font-size:11px" id="utbHint">Select text in the preview first</span>
+        </div>
+        <div id="unifiedSlideStage" style="flex:1;overflow:auto;padding:24px;display:flex;align-items:flex-start;justify-content:center">
+          <div id="unifiedSlideStageContent" style="width:100%;display:flex;align-items:center;justify-content:center;min-height:100%">
+            <div style="text-align:center;color:#6b7280;font-size:14px">
+              <div style="font-size:48px;animation:spin 2s linear infinite;margin-bottom:16px">⏳</div>
+              Generating preview…
+            </div>
           </div>
         </div>
       </main>
@@ -3154,6 +3176,7 @@ async function openUnifiedEditor() {
   const stage = document.getElementById('unifiedSlideStageContent');
   const list  = document.getElementById('unifiedSlideList');
   modal.classList.remove('hidden');
+  _utbInstallSelectionTracking();
 
   // Reset state on open
   _unifiedSlideIds = [];
@@ -3306,6 +3329,23 @@ function _unifiedRenderShell(html) {
     .unified-asset-cat-head {
       font-size: 10px; font-weight: 700; text-transform: uppercase;
       letter-spacing: .5px; color: #9CA3AF; margin: 12px 0 6px;
+    }
+    /* Text formatting toolbar buttons */
+    #unifiedTextToolbar .utb-btn {
+      min-width: 28px; height: 28px; padding: 0 6px;
+      border: 1px solid #E5E7EB; border-radius: 6px; background: #fff;
+      font-size: 13px; cursor: pointer; color: #374151;
+      display: inline-flex; align-items: center; justify-content: center;
+      user-select: none;
+    }
+    #unifiedTextToolbar .utb-btn:hover { background: #F3F4F6; }
+    #unifiedTextToolbar .utb-btn:active { background: #E5E7EB; }
+    #unifiedTextToolbar .utb-sep {
+      width: 1px; height: 18px; background: #E5E7EB; margin: 0 2px;
+    }
+    #unifiedTextToolbar .utb-color-wrap {
+      display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+      padding: 2px 6px; border: 1px solid #E5E7EB; border-radius: 6px; background: #fff;
     }
   `;
   document.head.appendChild(chrome);
@@ -3531,6 +3571,110 @@ async function _unifiedPlaceAsset(assetId, slotKey) {
   } catch (err) {
     stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>Refresh failed: ${err.message}</div>`;
   }
+}
+
+// ─── TEXT FORMATTING TOOLBAR (sticky at top of center pane) ────────
+//
+// The toolbar operates on whatever text range is selected inside the
+// center-stage slide. We track the "last non-toolbar selection" in a
+// saved Range so that when the user clicks a toolbar button (which
+// would otherwise blur the editable element and wipe the selection),
+// we can restore it just before running the command.
+let _utbSavedRange = null;
+
+// Listen for selection changes inside the center pane so we remember
+// where to apply formatting when the toolbar is clicked.
+function _utbInstallSelectionTracking() {
+  if (_utbInstallSelectionTracking._installed) return;
+  _utbInstallSelectionTracking._installed = true;
+  document.addEventListener('selectionchange', () => {
+    const stage = document.getElementById('unifiedSlideStageContent');
+    if (!stage) return;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (!range) return;
+    // Only save if the selection is inside the stage (not the toolbar
+    // or elsewhere in the document).
+    const anchor = sel.anchorNode;
+    if (!anchor) return;
+    if (!stage.contains(anchor.nodeType === 1 ? anchor : anchor.parentElement)) return;
+    _utbSavedRange = range.cloneRange();
+    // Show hint in toolbar.
+    const hint = document.getElementById('utbHint');
+    if (hint) {
+      if (range.collapsed) {
+        hint.textContent = 'Select text first, then click a format button';
+        hint.style.color = '#9ca3af';
+      } else {
+        hint.textContent = '✓ Selection ready';
+        hint.style.color = '#10B981';
+      }
+    }
+  });
+}
+
+// Restore the saved selection so execCommand operates on it.
+function _utbRestoreSelection() {
+  if (!_utbSavedRange) return false;
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(_utbSavedRange);
+  return true;
+}
+
+// Generic execCommand wrapper — restores saved selection first.
+function _utbExec(cmd, value) {
+  if (!_utbRestoreSelection()) return;
+  document.execCommand(cmd, false, value != null ? value : null);
+  // Keep focus in the stage so subsequent clicks keep editing.
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount) _utbSavedRange = sel.getRangeAt(0).cloneRange();
+}
+
+// Change font size by wrapping the selection in a span with an
+// explicit pixel size. execCommand('fontSize') is too crude (7
+// fixed buckets) and doesn't give us +/- 2px control.
+function _utbFontSize(delta) {
+  if (!_utbRestoreSelection()) return;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+  const range = sel.getRangeAt(0);
+  if (range.collapsed) return;
+
+  // Read current computed size from the selection's starting element.
+  const startEl = range.startContainer.nodeType === 1
+    ? range.startContainer
+    : range.startContainer.parentElement;
+  const current = parseFloat(window.getComputedStyle(startEl).fontSize) || 16;
+  const next = Math.max(8, Math.min(120, current + delta));
+
+  const span = document.createElement('span');
+  span.style.fontSize = next + 'px';
+  try {
+    // surroundContents fails if the range crosses an element boundary;
+    // fall back to extract/insert in that case.
+    try { range.surroundContents(span); }
+    catch (_) {
+      span.appendChild(range.extractContents());
+      range.insertNode(span);
+    }
+  } catch (e) {
+    console.warn('Font size change failed:', e.message);
+    return;
+  }
+  // Re-select the new span contents so repeated A+/A− clicks stack.
+  const newRange = document.createRange();
+  newRange.selectNodeContents(span);
+  sel.removeAllRanges();
+  sel.addRange(newRange);
+  _utbSavedRange = newRange.cloneRange();
+}
+
+// Apply foreground color via execCommand — works reliably across
+// browsers and inlines as <font color> or <span style="color:">.
+function _utbColor(value) {
+  _utbExec('foreColor', value);
 }
 
 // Export PDF using the edited DOM in the unified editor. We collect
