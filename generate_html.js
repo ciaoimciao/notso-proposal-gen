@@ -62,10 +62,309 @@ function buildBrandCSS(client) {
       --brand-c2: ${c2};
       --brand-c3: ${c3};
       --brand-c4: ${c4};
+      --brand-main: ${c1};
+      --accent: ${c2};
       --c1-tint: ${tintColorString(c1)};
       --c2-tint: ${tintColorString(c2)};
       --c3-tint: ${tintColorString(c3)};
       --c4-tint: ${tintColorString(c4)};
+    }
+  `;
+}
+
+// Emit CSS for the 6 approved design-style variants. The slide renderers in
+// this file hard-code inline styles on every card/bubble/headline (because
+// we originally only had one style). Rather than refactor all 18 renderers
+// into class-based markup, we use attribute selectors like
+// `div[style*="background: white"]` to grip those inline styles and override
+// them. Every rule uses !important because it's competing against inline style.
+//
+// The shared "card" patterns in the slide renderers are:
+//   - Card bg:       background: white;                 padding: 32px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05)
+//   - Alt card bg:   background: #F4F4F3;               padding: 24px; border-radius: 16px
+//   - Chat window:   background: #F9F9F9;               padding: 24px; border-radius: 16px
+//   - Chat bubble:   background: #f3f4f6 / brand;       padding: 10px 14px; border-radius: 16px
+//   - Big headline:  font-size: 48px; font-weight: 800; color: #1a1a1a
+//   - Giant cover:   font-size: 72px / 90px; font-weight: 800
+//
+// Styles targeted:
+//   notso-signature — rounded white cards, pill eyebrows, orange glow halo (default)
+//   minimal         — pure white, no card bg, just hairlines, black/yellow mascot
+//   editorial       — cream bg, italic brand/eyebrow, larger headline, hairline dividers
+//   neo             — bright yellow bg + thick 3px black frame + hard 5px 5px 0 #111 shadows + CAPS
+//   bento           — soft off-white, colored bento tiles (orange/teal/black alternating)
+//   clay            — lavender bg + inset+outset neumorphic shadows + 22px radius
+function buildStyleVariantCSS() {
+  // Attribute-selector tokens that match the inline-styled elements the slide
+  // renderers emit. Keep them as constants so adding a new style is just a
+  // matter of adding a block below.
+  const WHITE_CARD = `div[style*="background: white"]`;        // s3/s4/s5/s11 cards
+  const ALT_CARD   = `div[style*="background: #F4F4F3"]`;      // s6/s8 option cards + page bg
+  const CHAT_WIN   = `div[style*="background: #F9F9F9"]`;      // s9 chat window bg
+  const BUBBLE     = `div[style*="padding: 10px 14px"]`;       // chat bubbles
+
+  return `
+    /* ═════════════════════════════════════════════════════════════════ */
+    /* ① NOTSO.AI SIGNATURE — rounded white cards, pill eyebrows,       */
+    /*    orange glow halo on mascot — the default / official look       */
+    /* ═════════════════════════════════════════════════════════════════ */
+    [data-design-style='notso-signature'] .slide{background:#F5F5F5 !important;color:#111 !important}
+    [data-design-style='notso-signature'] .slide h1,
+    [data-design-style='notso-signature'] .slide h2,
+    [data-design-style='notso-signature'] .slide h3{letter-spacing:-.5px}
+    [data-design-style='notso-signature'] .slide ${WHITE_CARD}{
+      border-radius:18px !important;
+      box-shadow:0 2px 14px rgba(0,0,0,.05) !important;
+    }
+    [data-design-style='notso-signature'] .slide ${ALT_CARD}{
+      background:#fff !important;
+      border-radius:18px !important;
+      box-shadow:0 2px 14px rgba(0,0,0,.04) !important;
+    }
+    [data-design-style='notso-signature'] .slide ${CHAT_WIN}{
+      background:#fff !important;
+      border-radius:18px !important;
+      box-shadow:0 2px 14px rgba(0,0,0,.04) !important;
+    }
+    [data-design-style='notso-signature'] .slide ${BUBBLE}{
+      border-radius:18px !important;
+      box-shadow:0 2px 10px rgba(0,0,0,.05);
+    }
+
+    /* ═════════════════════════════════════════════════════════════════ */
+    /* ② MINIMALIST (Swiss) — no card backgrounds, just hairlines,      */
+    /*    maximum whitespace, tighter tracking                           */
+    /* ═════════════════════════════════════════════════════════════════ */
+    [data-design-style='minimal'] .slide{background:#FFFFFF !important;color:#111 !important}
+    [data-design-style='minimal'] .slide h1,
+    [data-design-style='minimal'] .slide h2,
+    [data-design-style='minimal'] .slide h3{letter-spacing:-.8px;font-weight:700}
+    /* Strip the cards bare — flat, no bg, just a top hairline */
+    [data-design-style='minimal'] .slide ${WHITE_CARD}{
+      background:transparent !important;
+      border-radius:0 !important;
+      box-shadow:none !important;
+      border-top:2px solid #111 !important;
+      border-left:none !important;
+      padding:20px 0 0 0 !important;
+    }
+    [data-design-style='minimal'] .slide ${ALT_CARD}{
+      background:transparent !important;
+      border:none !important;
+      border-top:1px solid #E5E7EB !important;
+      border-radius:0 !important;
+      padding-top:18px !important;
+    }
+    [data-design-style='minimal'] .slide ${CHAT_WIN}{
+      background:transparent !important;
+      border:1px solid #E5E7EB !important;
+      border-radius:0 !important;
+    }
+    [data-design-style='minimal'] .slide ${BUBBLE}{
+      border-radius:4px !important;
+      border:1px solid #E5E7EB;
+    }
+    /* Kill decorative dividers that become redundant against new borders */
+    [data-design-style='minimal'] .slide div[style*="border-bottom: 1px solid rgba(0,0,0,0.1)"]{
+      border-bottom:1px solid #111 !important;
+    }
+    /* Insight boxes become plain blockquotes */
+    [data-design-style='minimal'] .slide div[style*="border-left: 4px solid"]{
+      background:transparent !important;
+      border-left:2px solid #111 !important;
+      border-radius:0 !important;
+      padding-left:20px !important;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════ */
+    /* ③ BENTO GRID — soft off-white bg, alternating colored tiles,     */
+    /*    Japanese-minimal vibes                                         */
+    /* ═════════════════════════════════════════════════════════════════ */
+    [data-design-style='bento'] .slide{background:#F5F5F0 !important;color:#111 !important}
+    [data-design-style='bento'] .slide ${WHITE_CARD}{
+      border-radius:14px !important;
+      box-shadow:0 2px 8px rgba(0,0,0,.04) !important;
+    }
+    /* Alternating tile colors via nth-child targeting the grid parent */
+    [data-design-style='bento'] .slide div[style*="grid-template-columns: repeat(3, 1fr)"] > ${WHITE_CARD}:nth-child(1){
+      background:#111 !important;color:#fff !important;
+    }
+    [data-design-style='bento'] .slide div[style*="grid-template-columns: repeat(3, 1fr)"] > ${WHITE_CARD}:nth-child(2){
+      background:#E8A317 !important;color:#fff !important;
+    }
+    [data-design-style='bento'] .slide div[style*="grid-template-columns: repeat(3, 1fr)"] > ${WHITE_CARD}:nth-child(3){
+      background:#4ECDC4 !important;color:#fff !important;
+    }
+    [data-design-style='bento'] .slide div[style*="grid-template-columns: repeat(3, 1fr)"] > ${WHITE_CARD} div{color:inherit !important}
+    [data-design-style='bento'] .slide ${ALT_CARD}{
+      background:#fff !important;border-radius:14px !important;
+      box-shadow:0 2px 8px rgba(0,0,0,.04) !important;
+    }
+    [data-design-style='bento'] .slide ${CHAT_WIN}{
+      background:#fff !important;border-radius:14px !important;
+      box-shadow:0 2px 8px rgba(0,0,0,.04) !important;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════ */
+    /* ④ EDITORIAL MAGAZINE — cream bg, italic brand marks, larger      */
+    /*    headlines with tighter tracking, hairline-divider cards        */
+    /* ═════════════════════════════════════════════════════════════════ */
+    [data-design-style='editorial'] .slide{background:#FAF7F2 !important;color:#2a2a2a !important}
+    [data-design-style='editorial'] .slide div[style*="font-size: 48px"]{
+      font-size:58px !important;letter-spacing:-1.2px !important;line-height:1.02 !important;
+      font-weight:800 !important;
+    }
+    [data-design-style='editorial'] .slide div[style*="font-size: 72px"]{
+      font-size:92px !important;letter-spacing:-2px !important;line-height:.98 !important;
+    }
+    [data-design-style='editorial'] .slide div[style*="font-size: 90px"]{
+      font-size:108px !important;letter-spacing:-2.5px !important;line-height:.96 !important;
+    }
+    /* Strip card chrome; use hairlines and left-rule dividers instead */
+    [data-design-style='editorial'] .slide ${WHITE_CARD}{
+      background:transparent !important;
+      border-radius:0 !important;
+      box-shadow:none !important;
+      border-top:1.5px solid #2a2a2a !important;
+      border-left:none !important;
+      padding:22px 0 0 0 !important;
+    }
+    [data-design-style='editorial'] .slide ${ALT_CARD}{
+      background:transparent !important;
+      border-left:1px solid #D4B895 !important;
+      border-radius:0 !important;
+      padding:8px 0 8px 20px !important;
+    }
+    [data-design-style='editorial'] .slide ${CHAT_WIN}{
+      background:#fff !important;
+      border:1px solid #E5DDD0 !important;
+      border-radius:0 !important;
+    }
+    [data-design-style='editorial'] .slide ${BUBBLE}{
+      border-radius:2px !important;
+      border:1px solid #E5DDD0;
+      font-style:italic;
+    }
+    /* Italicise the small muted "presents:" / "prepared for" marks */
+    [data-design-style='editorial'] .slide div[style*="color: #9ca3af"]{
+      font-style:italic !important;color:#8a7a5e !important;
+    }
+    /* Insight / market-gap panels: warm-tinted block instead of green */
+    [data-design-style='editorial'] .slide div[style*="border-left: 4px solid"]{
+      background:rgba(212,184,149,.18) !important;
+      border-left:3px solid #8a7a5e !important;
+      border-radius:0 !important;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════ */
+    /* ⑤ NEOBRUTALISM — bright yellow bg, thick 3px black frame,        */
+    /*    hard 5px 5px 0 black drop shadows, ALL CAPS headlines          */
+    /* ═════════════════════════════════════════════════════════════════ */
+    [data-design-style='neo'] .slide{
+      background:#FFF6D5 !important;color:#111 !important;
+      border:3px solid #111 !important;border-radius:0 !important;
+    }
+    [data-design-style='neo'] .slide *{border-radius:0 !important}
+    [data-design-style='neo'] .slide h1,
+    [data-design-style='neo'] .slide h2{
+      text-transform:uppercase;letter-spacing:-.2px;font-weight:900;
+    }
+    [data-design-style='neo'] .slide div[style*="font-size: 48px"],
+    [data-design-style='neo'] .slide div[style*="font-size: 64px"],
+    [data-design-style='neo'] .slide div[style*="font-size: 72px"],
+    [data-design-style='neo'] .slide div[style*="font-size: 90px"]{
+      text-transform:uppercase !important;font-weight:900 !important;letter-spacing:-.3px !important;
+    }
+    [data-design-style='neo'] .slide ${WHITE_CARD}{
+      background:#fff !important;
+      border:2.5px solid #111 !important;
+      box-shadow:5px 5px 0 #111 !important;
+      border-radius:0 !important;
+    }
+    /* Alternate accent colors across card rows so it looks punchy */
+    [data-design-style='neo'] .slide div[style*="grid-template-columns: repeat(3, 1fr)"] > ${WHITE_CARD}:nth-child(1){
+      background:#FF6B6B !important;color:#fff !important;
+    }
+    [data-design-style='neo'] .slide div[style*="grid-template-columns: repeat(3, 1fr)"] > ${WHITE_CARD}:nth-child(2){
+      background:#4ECDC4 !important;color:#111 !important;
+    }
+    [data-design-style='neo'] .slide div[style*="grid-template-columns: repeat(3, 1fr)"] > ${WHITE_CARD}:nth-child(3){
+      background:#111 !important;color:#FFD93D !important;
+    }
+    [data-design-style='neo'] .slide div[style*="grid-template-columns: repeat(3, 1fr)"] > ${WHITE_CARD} div{color:inherit !important}
+    [data-design-style='neo'] .slide ${ALT_CARD}{
+      background:#fff !important;
+      border:2.5px solid #111 !important;
+      box-shadow:5px 5px 0 #111 !important;
+      border-radius:0 !important;
+    }
+    [data-design-style='neo'] .slide ${CHAT_WIN}{
+      background:#fff !important;
+      border:2.5px solid #111 !important;
+      box-shadow:5px 5px 0 #111 !important;
+      border-radius:0 !important;
+    }
+    [data-design-style='neo'] .slide ${BUBBLE}{
+      border:2.5px solid #111 !important;
+      box-shadow:3px 3px 0 #111 !important;
+      border-radius:0 !important;
+      font-weight:700 !important;text-transform:uppercase;
+    }
+    /* The "AI Mascot Proposal" / "Contents" pill badges become hard blocks */
+    [data-design-style='neo'] .slide div[style*="border-radius: 20px"]{
+      border-radius:0 !important;
+      border:2.5px solid #111 !important;
+      box-shadow:3px 3px 0 #111 !important;
+      text-transform:uppercase;font-weight:900;
+    }
+    /* Insight block: hard yellow block with thick border */
+    [data-design-style='neo'] .slide div[style*="border-left: 4px solid"]{
+      background:#FFD93D !important;
+      border:2.5px solid #111 !important;
+      box-shadow:5px 5px 0 #111 !important;
+      border-radius:0 !important;
+    }
+
+    /* ═════════════════════════════════════════════════════════════════ */
+    /* ⑥ CLAYMORPHISM — lavender bg, puffy 22px radius, inset+outset    */
+    /*    neumorphic shadows, soft pastel mascot halos                   */
+    /* ═════════════════════════════════════════════════════════════════ */
+    [data-design-style='clay'] .slide{background:#F0ECFF !important;color:#2d2a50 !important}
+    [data-design-style='clay'] .slide ${WHITE_CARD}{
+      background:#F7F5FF !important;
+      border-radius:22px !important;
+      box-shadow:
+        inset -4px -4px 10px rgba(255,255,255,.9),
+        inset 4px 4px 10px rgba(163,150,220,.35),
+        6px 6px 16px rgba(163,150,220,.25) !important;
+    }
+    [data-design-style='clay'] .slide ${ALT_CARD}{
+      background:#F7F5FF !important;
+      border-radius:22px !important;
+      box-shadow:
+        inset -3px -3px 8px rgba(255,255,255,.9),
+        inset 3px 3px 8px rgba(163,150,220,.3),
+        5px 5px 12px rgba(163,150,220,.2) !important;
+    }
+    [data-design-style='clay'] .slide ${CHAT_WIN}{
+      background:#F7F5FF !important;
+      border-radius:22px !important;
+      box-shadow:
+        inset -4px -4px 10px rgba(255,255,255,.9),
+        inset 4px 4px 10px rgba(163,150,220,.25),
+        6px 6px 16px rgba(163,150,220,.2) !important;
+    }
+    [data-design-style='clay'] .slide ${BUBBLE}{
+      border-radius:18px !important;
+      box-shadow:
+        inset -2px -2px 6px rgba(255,255,255,.9),
+        inset 2px 2px 6px rgba(163,150,220,.25),
+        3px 3px 8px rgba(163,150,220,.15);
+    }
+    /* Round every pill/badge harder */
+    [data-design-style='clay'] .slide div[style*="border-radius: 20px"]{
+      border-radius:22px !important;
+      box-shadow:4px 4px 10px rgba(163,150,220,.25);
     }
   `;
 }
@@ -548,7 +847,9 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   const d = proposal.s9 || {};
   const headline = stripEmoji(d.headline || 'Chat Experience');
   const lead = stripEmoji(d.lead || d.intro || '');
-  const messages = (d.messages || d.chat || []).slice(0, 4); // 3-5 messages max, keep concise
+  // Keep to 6 turns max (3 user ↔ 3 bot). Claude prompt caps bot turns at
+  // 3 full sentences each — we render those sentences in full; NO truncation.
+  const messages = (d.messages || d.chat || []).slice(0, 6);
   const coverImagePath = mascotImages?.cover;
 
   const chatBubbles = messages
@@ -556,12 +857,14 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
       const role = msg.sender || msg.role || msg.r || msg.who || '';
       const isUser = role === 'user' || role === 'User' || role === 'u';
       const text = msg.text || msg.message || msg.m || msg.content || '';
-      // Truncate long messages to ~80 chars for slide readability
-      const truncated = String(text).length > 80 ? String(text).substring(0, 77) + '...' : String(text);
+      // NO truncation — the prompt already requires complete sentences and
+      // ≤3 sentences per bot bubble. Truncating here forced every bubble to
+      // end in "..." which the user explicitly called out.
+      const body = stripEmoji(String(text)).trim();
       return `
         <div style="display: flex; justify-content: ${isUser ? 'flex-end' : 'flex-start'}; margin-bottom: 10px;">
-          <div style="background: ${isUser ? 'var(--brand-c1)' : '#f3f4f6'}; color: ${isUser ? 'white' : '#1a1a1a'}; padding: 10px 14px; border-radius: 16px; max-width: 75%; font-family: 'Poppins', sans-serif; font-size: 13px; line-height: 1.4;">
-            ${stripEmoji(truncated)}
+          <div style="background: ${isUser ? 'var(--brand-main, var(--brand-c1))' : '#f3f4f6'}; color: ${isUser ? 'white' : '#1a1a1a'}; padding: 10px 14px; border-radius: 16px; max-width: 82%; font-family: 'Poppins', sans-serif; font-size: 13px; line-height: 1.5;">
+            ${body}
           </div>
         </div>
       `;
@@ -1110,8 +1413,22 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
 
   const coverImagePath = mascotImages?.cover;
 
+  // Brand color wiring — color1 drives the gradient, color2 is the accent.
+  // If the client didn't provide colors, fall back to notso green+yellow.
+  const c1 = client.color1 || '#1a5c4a';
+  const c2 = client.color2 || '#F5D547';
+  // Derive a deeper shade of c1 for the gradient's bottom-right stop.
+  const deeperC1 = (() => {
+    const h = c1.replace('#','');
+    if (h.length !== 6) return '#0f3d2e';
+    const r = Math.max(0, parseInt(h.slice(0,2),16) - 40);
+    const g = Math.max(0, parseInt(h.slice(2,4),16) - 40);
+    const b = Math.max(0, parseInt(h.slice(4,6),16) - 40);
+    return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+  })();
+
   return `
-    <div class="slide" style="background: linear-gradient(135deg, #1a5c4a 0%, #0f3d2e 100%); position: relative; display: flex; gap: 60px; align-items: stretch;">
+    <div class="slide" style="background: linear-gradient(135deg, ${c1} 0%, ${deeperC1} 100%); position: relative; display: flex; gap: 60px; align-items: stretch;">
       <!-- Left: Mascot Image -->
       <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
         <div style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); border-radius: 50%; z-index: 0;"></div>
@@ -1128,7 +1445,7 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
         <!-- Title: "Thank you!" -->
         <div style="margin-bottom: 24px;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 96px; font-weight: 800; line-height: 0.95; color: white; margin: 0;">${closingTitle}</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 96px; font-weight: 800; line-height: 0.95; color: #F5D547; margin: 0;">you!</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 96px; font-weight: 800; line-height: 0.95; color: ${c2}; margin: 0;">you!</div>
         </div>
 
         <!-- Message -->
@@ -1139,26 +1456,26 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
         <!-- Contact Grid: 2x2 -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: #F5D547; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Email</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Email</div>
             <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: white; font-weight: 600;">${email}</div>
           </div>
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: #F5D547; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Phone</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Phone</div>
             <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: white; font-weight: 600;">${phone}</div>
           </div>
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: #F5D547; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Web</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Web</div>
             <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: white; font-weight: 600;">${website}</div>
           </div>
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: #F5D547; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Office</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Office</div>
             <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: white; font-weight: 600;">Amsterdam, NL</div>
           </div>
         </div>
       </div>
 
       <!-- Decorative color strip -->
-      <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: #F5D547;"></div>
+      <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: ${c2};"></div>
     </div>
   `;
 }
@@ -1316,9 +1633,11 @@ function buildProposalHtml(data) {
     .join('\n');
 
   const brandCSS = buildBrandCSS(client);
+  const variantCSS = buildStyleVariantCSS();
+  const ds = (client && client.designStyle) || 'notso-signature';
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-design-style="${ds}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -1354,6 +1673,7 @@ function buildProposalHtml(data) {
     }
 
     ${brandCSS}
+    ${variantCSS}
 
     @media print {
       .slide {
@@ -1363,8 +1683,8 @@ function buildProposalHtml(data) {
     }
   </style>
 </head>
-<body>
-  <div class="slides-container">
+<body data-design-style="${ds}">
+  <div class="slides-container" data-design-style="${ds}">
     ${slides}
   </div>
 </body>

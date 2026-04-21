@@ -954,11 +954,253 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
   }
 
   // ──────────────────────────────────────
+  // API: Mascot 4-mode comparison test
+  // POST /api/mascot-mode-test
+  //   { mode: 1|2|3|4, prompt: string, referenceImages: ["data:image/png;base64,..."] }
+  //   - mode 1: existing mascot — 1 reference, use SAME-character prompt
+  //   - mode 2: single style ref — 1 reference, use style-transfer prompt
+  //   - mode 3: multi style refs — N references, blend styles
+  //   - mode 4: pure prompt — no references
+  // Returns: { ok, dataUrl, model, latencyMs, error? }
+  // Used by /sessions/exciting-bold-ptolemy/mnt/VibeCoding/mascot-mode-comparison.html
+  // ──────────────────────────────────────
+  if (url.pathname === '/api/mascot-mode-test' && req.method === 'POST') {
+    const started = Date.now();
+    try {
+      const body = JSON.parse((await collectBody(req)).toString());
+      const {
+        mode,
+        prompt,
+        referenceImages,
+        applyStyleLock = false,       // wrap prompt via buildStylePrompt()
+        brandColorName = 'brand color',
+        species = 'human',
+        mood = 'friendly',
+        tier = 'hero',
+      } = body || {};
+      if (!prompt) return json(res, 400, { error: 'Missing prompt' });
+      if (![1,2,3,4].includes(Number(mode))) return json(res, 400, { error: 'mode must be 1|2|3|4' });
+
+      // Resolve Gemini key — env var first, then .secrets.json fallback.
+      let geminiKey = process.env.GEMINI_API_KEY || '';
+      if (!geminiKey) {
+        try {
+          const secretsPath = path.join(__dirname, '.secrets.json');
+          if (fs.existsSync(secretsPath)) {
+            geminiKey = JSON.parse(fs.readFileSync(secretsPath,'utf8')).GEMINI_API_KEY || '';
+          }
+        } catch(_) {}
+      }
+      if (!geminiKey) return json(res, 400, { error: 'No Gemini key configured (set GEMINI_API_KEY or .secrets.json)' });
+
+      // Build Gemini request parts based on mode.
+      const refs = Array.isArray(referenceImages) ? referenceImages : [];
+      const parts = [];
+
+      // Attach reference images (strip data: prefix, keep inlineData).
+      const toInlinePart = (dataUrl) => {
+        const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl || '');
+        if (!m) return null;
+        return { inlineData: { mimeType: m[1], data: m[2] } };
+      };
+
+      if (mode === 1 || mode === 2) {
+        if (refs.length < 1) return json(res, 400, { error: `Mode ${mode} requires 1 reference image` });
+        const p = toInlinePart(refs[0]);
+        if (p) parts.push(p);
+      } else if (mode === 3) {
+        if (refs.length < 2) return json(res, 400, { error: 'Mode 3 requires 2+ reference images' });
+        refs.slice(0, 5).forEach(r => { const p = toInlinePart(r); if (p) parts.push(p); });
+      }
+      // mode 4: no images
+
+      // Mode-specific text hint appended to the user prompt so Gemini
+      // interprets the references the way this test intends.
+      const modeHints = {
+        1: 'The first image is the EXACT mascot character — preserve its face, outfit, color palette and art style precisely. Only the pose or expression can vary.',
+        2: 'The reference image represents a brand/style direction. Design a NEW mascot that fits this visual style.',
+        3: 'The reference images together describe a visual style direction. Synthesise a NEW mascot that blends these styles coherently.',
+        4: 'No reference image is provided. Design the mascot purely from the written description below.',
+      };
+
+      // Optionally wrap user's description via the production Notso style lock.
+      // Mode 1 uses FAITHFUL transfer (100% preserve ref character).
+      // Mode 2 uses STYLE transfer (re-render ref in Notso style but with user description).
+      // Modes 3 & 4 use standard Notso clay prefix only.
+      let positivePrompt = String(prompt);
+      let negativeTail = '';
+      let styleLockVersion = '';
+      let styleLockError = '';
+      if (applyStyleLock) {
+        try {
+          const built = buildStylePrompt({
+            characterDescription: prompt,
+            brandColorName: String(brandColorName || 'brand color'),
+            tier,
+            species,
+            mood,
+            styleTransfer: Number(mode) === 2,
+            faithfulTransfer: Number(mode) === 1,
+          });
+          positivePrompt = built.positive;
+          negativeTail = `\n\n[AVOID: ${built.negative}]`;
+          styleLockVersion = built.version;
+        } catch (styleErr) {
+          styleLockError = styleErr.message;
+        }
+      }
+
+      const finalText = `[MODE ${mode} — ${modeHints[mode]}]\n\n${positivePrompt}${negativeTail}\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates. Output MUST be a PNG image with a plain white (#FFFFFF) or transparent background — no scenery, no studio backdrop, no dark backgrounds.]`;
+      parts.push({ text: finalText });
+
+      const modelName = 'gemini-2.5-flash-image';
+      const fallbackModels = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image-preview'];
+      let dataUrl = null;
+      let usedModel = null;
+      let lastErr = '';
+      outer:
+      for (const m of fallbackModels) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const gRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts }],
+                  generationConfig: { responseModalities: ['TEXT','IMAGE'] },
+                }),
+              }
+            );
+            if (!gRes.ok) {
+              const text = await gRes.text();
+              lastErr = `HTTP ${gRes.status}: ${text.slice(0,200)}`;
+              continue;
+            }
+            const data = await gRes.json();
+            const respParts = data?.candidates?.[0]?.content?.parts || [];
+            for (const p of respParts) {
+              if (p.inlineData?.data) {
+                let b64 = p.inlineData.data;
+                try { b64 = await postProcessImage(b64, p.inlineData.mimeType || 'image/png'); } catch(_) {}
+                dataUrl = `data:image/png;base64,${b64}`;
+                usedModel = m;
+                break outer;
+              }
+            }
+            lastErr = `No image in response (${m}, try ${attempt})`;
+          } catch (e) {
+            lastErr = `${m} try ${attempt}: ${e.message}`;
+          }
+        }
+      }
+
+      if (!dataUrl) {
+        return json(res, 502, { ok: false, error: lastErr || 'no image', latencyMs: Date.now() - started, styleLock: applyStyleLock ? (styleLockVersion || 'error: '+styleLockError) : 'off' });
+      }
+      return json(res, 200, { ok: true, dataUrl, model: usedModel, latencyMs: Date.now() - started, styleLock: applyStyleLock ? (styleLockVersion || 'error: '+styleLockError) : 'off' });
+    } catch (err) {
+      return json(res, 500, { ok: false, error: err.message, latencyMs: Date.now() - started });
+    }
+  }
+
+  // ──────────────────────────────────────
   // In-memory session registry for Asset Pack (sessionId -> { outDir, meta, results })
   // Used to support incremental regeneration of failed items and on-demand zip download.
   // ──────────────────────────────────────
   if (!global.__assetpackSessions) global.__assetpackSessions = new Map();
   const assetpackSessions = global.__assetpackSessions;
+
+  // ──────────────────────────────────────
+  // API: List active Asset Pack sessions (for comparison harness picker)
+  // GET /api/assetpack/sessions → { sessions: [{ sessionId, clientName, createdAt, resultCount }] }
+  // ──────────────────────────────────────
+  if (url.pathname === '/api/assetpack/sessions' && req.method === 'GET') {
+    const list = [];
+    for (const [sid, s] of assetpackSessions.entries()) {
+      list.push({
+        sessionId: sid,
+        clientName: (s.meta && s.meta.clientName) || '',
+        mascotName: (s.meta && s.meta.mascotName) || '',
+        createdAt: s.createdAt || 0,
+        resultCount: (s.results || []).length,
+      });
+    }
+    list.sort((a, b) => b.createdAt - a.createdAt);
+    return json(res, 200, { sessions: list });
+  }
+
+  // ──────────────────────────────────────
+  // API: Push a single image into an Asset Pack session (for comparison harness)
+  // POST /api/assetpack/push-image
+  //   { sessionId?, dataUrl, label?, id?, category? }
+  //   - sessionId optional; if omitted uses most-recent session in memory
+  //   - dataUrl required (image to inject)
+  //   - label/id/category optional; defaults make a fresh "manual-push-<ts>" entry
+  // Returns: { ok, sessionId, id, totalResults }
+  // ──────────────────────────────────────
+  if (url.pathname === '/api/assetpack/push-image' && req.method === 'POST') {
+    try {
+      const body = JSON.parse((await collectBody(req)).toString());
+      let { sessionId, dataUrl, label, id, category } = body || {};
+      if (!dataUrl || !dataUrl.startsWith('data:')) return json(res, 400, { error: 'dataUrl required (data: URL)' });
+
+      // Resolve sessionId: prefer explicit, else most-recent session
+      let session = null;
+      if (sessionId) {
+        session = assetpackSessions.get(sessionId);
+        if (!session) return json(res, 404, { error: `Session ${sessionId} not found. Start an Asset Pack in the main app first.` });
+      } else {
+        let bestSid = null, bestCreated = 0;
+        for (const [sid, s] of assetpackSessions.entries()) {
+          if ((s.createdAt || 0) > bestCreated) { bestSid = sid; bestCreated = s.createdAt || 0; }
+        }
+        if (!bestSid) return json(res, 404, { error: 'No active Asset Pack session. Start one in the main app first.' });
+        sessionId = bestSid;
+        session = assetpackSessions.get(bestSid);
+      }
+
+      // Create the result entry
+      const ts = Date.now();
+      const finalId = id || `manual-${ts}`;
+      const finalCategory = category || 'manual';
+      const finalLabel = label || `Manual push ${new Date(ts).toLocaleTimeString()}`;
+      const fileName = `${finalCategory}/${finalId}.png`;
+
+      // Persist to disk so it's in the zip
+      try {
+        const m = /^data:[^;]+;base64,(.+)$/.exec(dataUrl);
+        if (m && session.outDir) {
+          const catDir = path.join(session.outDir, finalCategory);
+          fs.mkdirSync(catDir, { recursive: true });
+          fs.writeFileSync(path.join(session.outDir, fileName), Buffer.from(m[1], 'base64'));
+        }
+      } catch (e) {
+        console.warn('  ⚠️ Could not persist pushed image:', e.message);
+      }
+
+      // Upsert in session.results (replace if same id)
+      const entry = {
+        id: finalId, category: finalCategory, label: finalLabel,
+        transparent: true, ok: true, dataUrl, fileName,
+      };
+      session.results = session.results || [];
+      const existingIdx = session.results.findIndex(r => r && r.id === finalId);
+      if (existingIdx >= 0) session.results[existingIdx] = entry;
+      else session.results.push(entry);
+
+      console.log(`  📦 Pushed image to ${sessionId} (id=${finalId}, ${(dataUrl.length/1024)|0}KB)`);
+      return json(res, 200, {
+        ok: true,
+        sessionId,
+        id: finalId,
+        totalResults: session.results.length,
+      });
+    } catch (err) {
+      return json(res, 500, { error: err.message });
+    }
+  }
 
   // ──────────────────────────────────────
   // API: Generate Asset Pack (expressions + actions + mockups)
@@ -1176,7 +1418,26 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
               // transparent PNG. This reminder with an explicit WHITE fallback
               // makes the client-side chroma-key far more reliable.
               const bgHint = '\n\n[BACKGROUND: Output MUST be a plain pure #FFFFFF white background or fully transparent PNG. DO NOT use black, dark, gradient, scenery, studio, or coloured backgrounds. A flat pure-white background is strongly preferred if transparency is not possible.]';
-              reqParts.push({ text: task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + bgHint + retryHint });
+
+              // CONSISTENCY LOCK — every asset MUST be visually identical to
+              // the reference mascot at the part-level (eyes, mouth shape,
+              // body proportions, outline weight, color palette). Without this
+              // explicit lock Gemini drifts across calls — especially on eye
+              // shape/size, which the user flagged as the worst offender.
+              const consistencyLock = [
+                '',
+                '[CONSISTENCY LOCK — READ CAREFULLY]',
+                'This image MUST match the reference mascot EXACTLY at the part level:',
+                '• EYES: identical eye shape, size, color, pupil style, and eyelash/brow pattern as the reference. Do not shrink, enlarge, restyle, or recolor the eyes.',
+                '• MOUTH: same mouth shape family as the reference (a smile may open/close for emotion but line weight and corner style stay identical).',
+                '• BODY: identical head-to-body ratio, limb length, hand style, foot/shoe style.',
+                '• OUTLINE: identical outline thickness and color. No new outlines, no removed outlines.',
+                '• COLORS: identical palette — every hex value from the reference must be reused unchanged.',
+                '• ART STYLE: identical rendering technique (flat vs. shaded, 2D vs. 3D). No style switching.',
+                'Only the pose, gesture, and facial expression are allowed to vary. Everything else is LOCKED to the reference.',
+              ].join('\n');
+
+              reqParts.push({ text: task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + consistencyLock + bgHint + retryHint });
 
               const geminiRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`,

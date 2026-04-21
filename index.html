@@ -21,6 +21,9 @@ body{font-family:var(--font);background:var(--gray-100);color:var(--black);min-h
 header{background:var(--black);padding:14px 32px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
 .logo{background:var(--white);color:var(--black);font-weight:900;font-size:16px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:5px;letter-spacing:-1px;flex-shrink:0}
 .logo-name{color:var(--white);font-size:16px;font-weight:700;letter-spacing:-0.3px}
+.logo-link{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;background:none;border:none;padding:0;transition:opacity .15s ease}
+.logo-link:hover{opacity:.78}
+.logo-link:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:3px;border-radius:6px}
 .logo-badge{background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);font-size:11px;padding:3px 10px;border-radius:20px;margin-left:4px}
 .header-spacer{flex:1}
 .header-right{color:rgba(255,255,255,.4);font-size:12px;margin-right:4px}
@@ -189,29 +192,74 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
 
 /* Slide content helpers */
 .s-headline{font-size:19px;font-weight:900;letter-spacing:-.3px;margin-bottom:10px;line-height:1.3}
-/* ── Design-style variants (Bento, Minimal, Editorial, Playful, Dashboard)
-      applied to slide content wherever [data-design-style] is set on an
-      ancestor — live preview root, exported HTML <body>, or the PDF container. */
-[data-design-style='minimal'] .s-headline{font-weight:700;letter-spacing:-.6px;font-size:22px}
-[data-design-style='minimal'] .s-text{color:#555;font-weight:400}
-[data-design-style='minimal'] .slide{background:#fff}
-[data-design-style='editorial'] .s-headline{font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:26px;letter-spacing:-.2px}
-[data-design-style='editorial'] .s-text{font-size:13.5px;line-height:1.75}
-[data-design-style='editorial'] .slide{background:#FAF7F2}
-[data-design-style='playful'] .s-headline{font-weight:900;letter-spacing:-.2px}
-[data-design-style='playful'] .slide{background:#FFF7E8}
-[data-design-style='playful'] .pain-item,
-[data-design-style='playful'] .feature-row,
-[data-design-style='playful'] .mascot-opt{border-radius:16px}
-[data-design-style='dashboard'] .slide{background:#0F172A;color:#E2E8F0}
-[data-design-style='dashboard'] .s-headline{color:#F8FAFC}
-[data-design-style='dashboard'] .s-text,[data-design-style='dashboard'] .feat-desc,
-[data-design-style='dashboard'] .pain-desc{color:#CBD5E1}
-[data-design-style='dashboard'] .s-divider{background:#334155}
-[data-design-style='bento'] .slide{background:#F5F5F0}
+/* ── Design-style variants (6 approved presets: notso-signature, minimal,
+      bento, editorial, neo, clay). Every style uses Poppins sans-serif — the
+      differences are layout/shape/color, never typeface. Accent roles use
+      var(--accent) / var(--brand-main) so the live client's brand color
+      drives pills, halos, and CTAs for every style. Applied wherever
+      [data-design-style] is set on an ancestor — live preview root,
+      exported HTML <body>, or the PDF container. */
+
+/* ① notso.ai Signature ★ — 圓角白卡 + 膠囊 pill + 黑底 + 3D mascot 光暈
+      NB: inline style="background:..." on each .slide means we need !important
+      on the background/color here or the variant never wins. */
+[data-design-style='notso-signature'] .slide{background:#F5F5F5 !important;color:#111 !important}
+[data-design-style='notso-signature'] .s-headline{font-weight:800;letter-spacing:-.6px}
+[data-design-style='notso-signature'] .s-text{color:#6B7280}
+[data-design-style='notso-signature'] .pain-item,
+[data-design-style='notso-signature'] .feature-row,
+[data-design-style='notso-signature'] .mascot-opt{background:#fff;border-radius:18px;padding:14px 16px;box-shadow:0 2px 14px rgba(0,0,0,.04);border-left:none}
+[data-design-style='notso-signature'] .s-divider{background:#E5E7EB}
+
+/* ② Minimalist (Swiss) — 大量留白、單色、細線 */
+[data-design-style='minimal'] .slide{background:#fff !important;color:#111 !important}
+[data-design-style='minimal'] .s-headline{font-weight:700;letter-spacing:-.8px;font-size:24px}
+[data-design-style='minimal'] .s-text{color:#555;font-weight:400;line-height:1.7}
+[data-design-style='minimal'] .pain-item{border-left:none;border-top:1px solid #E5E7EB;padding:12px 0}
+[data-design-style='minimal'] .feature-row{border-top:2px solid #111;padding-top:10px}
+[data-design-style='minimal'] .s-divider{background:#111;height:2px}
+
+/* ③ Bento Grid — 分塊模組、日系極簡、圓角塊狀色彩 */
+[data-design-style='bento'] .slide{background:#F5F5F0 !important;color:#111 !important}
+[data-design-style='bento'] .s-headline{font-weight:800;letter-spacing:-.3px}
 [data-design-style='bento'] .pain-item,
 [data-design-style='bento'] .feature-row,
-[data-design-style='bento'] .mascot-opt{border-radius:14px}
+[data-design-style='bento'] .mascot-opt{background:#fff;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.04);border-left:none;padding:14px}
+[data-design-style='bento'] .feature-row:nth-child(1){background:var(--brand-main,#111);color:#fff}
+[data-design-style='bento'] .feature-row:nth-child(1) .feat-desc{color:rgba(255,255,255,.85)}
+[data-design-style='bento'] .feature-row:nth-child(2){background:var(--accent,#4ECDC4);color:#fff}
+[data-design-style='bento'] .feature-row:nth-child(2) .feat-desc{color:rgba(255,255,255,.9)}
+
+/* ④ Editorial Magazine — 雜誌感但仍然無襯線 (全系列統一 Poppins) */
+[data-design-style='editorial'] .slide{background:#FAF7F2 !important;color:#2a2a2a !important}
+[data-design-style='editorial'] .s-headline{font-weight:800;font-size:26px;letter-spacing:-.3px;line-height:1.15}
+[data-design-style='editorial'] .s-text{font-size:13.5px;line-height:1.75;color:#3a3a3a}
+[data-design-style='editorial'] .pain-item{border-left:none;border-top:2px solid #111;padding:10px 0 4px}
+[data-design-style='editorial'] .pain-title{text-transform:uppercase;letter-spacing:2px;font-style:italic;font-size:11px;color:#8a7a5a}
+[data-design-style='editorial'] .feature-row{border-top:2px solid #111;padding:10px 6px 4px}
+[data-design-style='editorial'] .s-divider{background:#111;height:2px}
+
+/* ⑤ Neobrutalism — 粗邊框 + 硬陰影 + CAPS (靠 CSS text-transform) */
+[data-design-style='neo'] .slide{background:#FFF6D5 !important;color:#111 !important;border:3px solid #111 !important}
+[data-design-style='neo'] .s-headline{font-weight:900;letter-spacing:-.2px;text-transform:uppercase}
+[data-design-style='neo'] .pain-item,
+[data-design-style='neo'] .feature-row,
+[data-design-style='neo'] .mascot-opt{background:#fff;border:2.5px solid #111;box-shadow:4px 4px 0 #111;border-radius:0;padding:12px}
+[data-design-style='neo'] .pain-item{border-left:2.5px solid #111}
+[data-design-style='neo'] .pain-title{text-transform:uppercase;letter-spacing:1px;font-weight:900}
+[data-design-style='neo'] .feature-row:nth-child(2){background:var(--accent,#4ECDC4);color:#111}
+[data-design-style='neo'] .feature-row:nth-child(3){background:#111;color:var(--brand-main,#FFD93D)}
+[data-design-style='neo'] .s-divider{background:#111;height:3px}
+
+/* ⑥ Claymorphism — 柔軟 3D 圓潤感、淡紫 palette、內外陰影 */
+[data-design-style='clay'] .slide{background:#F0ECFF !important;color:#2d2a50 !important}
+[data-design-style='clay'] .s-headline{font-weight:800;letter-spacing:-.3px;color:#2d2a50}
+[data-design-style='clay'] .s-text{color:#4a456e}
+[data-design-style='clay'] .pain-item,
+[data-design-style='clay'] .feature-row,
+[data-design-style='clay'] .mascot-opt{background:#F7F5FF;border-radius:22px;padding:14px 16px;border-left:none;
+  box-shadow:inset -3px -3px 8px rgba(255,255,255,.8),inset 3px 3px 8px rgba(130,110,180,.15),4px 4px 12px rgba(90,70,150,.1)}
+[data-design-style='clay'] .s-divider{background:rgba(130,110,180,.2);height:2px;border-radius:2px}
 .s-text{font-size:13px;color:#4A4A46;line-height:1.65}
 .s-divider{height:1px;background:var(--gray-200);margin:14px 0}
 .pain-item{padding-left:14px;border-left:3px solid var(--red);margin-bottom:12px}
@@ -353,8 +401,10 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
 <body>
 
 <header>
-  <div class="logo">N</div>
-  <span class="logo-name">notso.ai</span>
+  <button class="logo-link" type="button" onclick="goHome()" title="Back to start" aria-label="notso.ai — back to start">
+    <span class="logo">N</span>
+    <span class="logo-name">notso.ai</span>
+  </button>
   <span class="logo-badge" data-i18n="header.badge">Proposal Generator</span>
   <div class="header-spacer"></div>
   <span class="header-right" data-i18n="header.poweredBy">Powered by Claude AI</span>
@@ -525,7 +575,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
       <div class="section-label" data-i18n="form.designSection">Design Style</div>
       <div style="font-size:12px;color:var(--gray-500);margin:-8px 0 10px" data-i18n="form.designHint">Pick the visual style of your proposal. You can change this anytime before export.</div>
       <div id="designStylePicker" class="design-style-picker"></div>
-      <input type="hidden" id="designStyle" value="bento" />
+      <input type="hidden" id="designStyle" value="notso-signature" />
 
       <hr class="divider" />
       <div class="section-label" data-i18n="form.apiSection">API Configuration</div>
@@ -1443,22 +1493,27 @@ document.addEventListener('DOMContentLoaded', () => {
     'color3', 'color3hex', 'color4', 'color4hex',
     'mascotName', 'clientWebsite', 'designStyle',
   ];
-  // ── Build design-style card picker (5 curated presets) ──
+  // ── Build design-style card picker (6 curated presets) ──
+  //    Order matches the approved comparison: notso.ai Signature ★ first,
+  //    then Minimalist → Bento → Editorial → Neobrutalism → Claymorphism.
+  //    All styles use Poppins — the differences are layout/shape/color only.
   (function buildDesignStylePicker(){
     const host = document.getElementById('designStylePicker');
     const hidden = document.getElementById('designStyle');
     if (!host || !hidden) return;
     const STYLES = [
+      { id:'notso-signature', name:'notso.ai Signature ★', tag:'Rounded white cards, pill tags, mono + bright accent. Matches notso.ai site DNA.',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#F5F5F5'/><rect x='10' y='14' width='38' height='10' rx='5' fill='#E5E7EB'/><rect x='10' y='30' width='90' height='6' rx='3' fill='#111'/><rect x='10' y='42' width='62' height='3' rx='1.5' fill='#9CA3AF'/><rect x='10' y='50' width='80' height='3' rx='1.5' fill='#9CA3AF'/><rect x='10' y='62' width='44' height='20' rx='10' fill='#fff' stroke='#E5E7EB'/><rect x='58' y='62' width='44' height='20' rx='10' fill='#fff' stroke='#E5E7EB'/><circle cx='134' cy='60' r='16' fill='url(#g1)'/><circle cx='134' cy='60' r='22' fill='none' stroke='#F97316' stroke-opacity='.2' stroke-width='4'/><defs><linearGradient id='g1' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#FFE08A'/><stop offset='1' stop-color='#F97316'/></linearGradient></defs></svg>` },
+      { id:'minimal', name:'Minimalist', tag:'Generous whitespace, crisp typography, monochrome. Swiss poster vibe.',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#fff'/><rect x='14' y='20' width='52' height='6' rx='1' fill='#111'/><rect x='14' y='32' width='90' height='2' fill='#D4D4D4'/><rect x='14' y='40' width='78' height='2' fill='#D4D4D4'/><rect x='14' y='48' width='82' height='2' fill='#D4D4D4'/><rect x='14' y='62' width='60' height='2' fill='#111'/><circle cx='132' cy='58' r='14' fill='#111'/></svg>` },
       { id:'bento', name:'Bento Grid', tag:'Asymmetric rounded blocks, modular, Japanese-minimal.',
         svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#F5F5F0'/><rect x='8' y='8' width='70' height='40' rx='8' fill='#111'/><rect x='84' y='8' width='68' height='24' rx='8' fill='#E8A317'/><rect x='84' y='38' width='32' height='44' rx='8' fill='#fff' stroke='#E5E7EB'/><rect x='122' y='38' width='30' height='44' rx='8' fill='#4ECDC4'/><rect x='8' y='54' width='70' height='28' rx='8' fill='#fff' stroke='#E5E7EB'/></svg>` },
-      { id:'minimal', name:'Minimalist', tag:'Generous whitespace, crisp typography, monochrome.',
-        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#fff'/><rect x='14' y='20' width='52' height='6' rx='3' fill='#111'/><rect x='14' y='32' width='90' height='3' rx='1.5' fill='#D4D4D4'/><rect x='14' y='40' width='78' height='3' rx='1.5' fill='#D4D4D4'/><rect x='14' y='48' width='82' height='3' rx='1.5' fill='#D4D4D4'/><circle cx='132' cy='58' r='14' fill='#111'/></svg>` },
-      { id:'editorial', name:'Editorial', tag:'Magazine-style layout, serif display headlines.',
-        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#FAF7F2'/><text x='10' y='30' font-family='Georgia, serif' font-size='16' font-weight='700' fill='#111'>The</text><text x='10' y='46' font-family='Georgia, serif' font-size='16' font-weight='700' fill='#111'>Story.</text><rect x='10' y='54' width='70' height='2' fill='#111'/><rect x='10' y='60' width='62' height='2' rx='1' fill='#D4B895'/><rect x='10' y='66' width='58' height='2' rx='1' fill='#D4B895'/><rect x='94' y='14' width='54' height='64' rx='4' fill='#111'/></svg>` },
-      { id:'playful', name:'Playful', tag:'Rounded shapes, bold colours, illustrated feel.',
-        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#FFF7E8'/><circle cx='36' cy='32' r='18' fill='#FF6B6B'/><circle cx='78' cy='50' r='22' fill='#4ECDC4'/><rect x='100' y='18' width='48' height='48' rx='16' fill='#FFD93D'/><rect x='14' y='66' width='132' height='8' rx='4' fill='#1A1A40'/></svg>` },
-      { id:'dashboard', name:'Data Dashboard', tag:'Structured grid of metrics, charts, tabular data.',
-        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#0F172A'/><rect x='8' y='8' width='44' height='22' rx='4' fill='#1E293B'/><rect x='56' y='8' width='44' height='22' rx='4' fill='#1E293B'/><rect x='104' y='8' width='48' height='22' rx='4' fill='#1E293B'/><rect x='8' y='34' width='92' height='48' rx='4' fill='#1E293B'/><polyline points='14,74 30,60 46,68 62,50 78,58 94,42' fill='none' stroke='#4ECDC4' stroke-width='2'/><rect x='104' y='34' width='48' height='48' rx='4' fill='#1E293B'/><rect x='110' y='62' width='8' height='16' fill='#E8A317'/><rect x='122' y='52' width='8' height='26' fill='#E8A317'/><rect x='134' y='42' width='8' height='36' fill='#E8A317'/></svg>` },
+      { id:'editorial', name:'Editorial', tag:'Magazine-style rules, italic small-caps labels. Still sans-serif (Poppins).',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#FAF7F2'/><rect x='10' y='20' width='78' height='2' fill='#111'/><rect x='10' y='28' width='56' height='7' rx='1' fill='#111'/><rect x='10' y='40' width='48' height='7' rx='1' fill='#111'/><rect x='10' y='54' width='78' height='2' fill='#111'/><rect x='10' y='60' width='60' height='2' rx='1' fill='#8a7a5a'/><rect x='10' y='66' width='52' height='2' rx='1' fill='#8a7a5a'/><rect x='94' y='14' width='54' height='64' rx='4' fill='#111'/></svg>` },
+      { id:'neo', name:'Neobrutalism', tag:'Thick black borders, hard drop-shadows, ALL CAPS punch.',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#FFF6D5' stroke='#111' stroke-width='3'/><rect x='10' y='10' width='40' height='10' fill='#111'/><rect x='10' y='26' width='70' height='8' fill='#111'/><rect x='10' y='42' width='60' height='30' fill='#FF6B6B' stroke='#111' stroke-width='2.5'/><rect x='16' y='48' width='48' height='18' fill='#fff' stroke='#111' stroke-width='2'/><rect x='86' y='42' width='60' height='30' fill='#4ECDC4' stroke='#111' stroke-width='2.5'/><rect x='92' y='48' width='48' height='18' fill='#fff' stroke='#111' stroke-width='2'/></svg>` },
+      { id:'clay', name:'Claymorphism', tag:'Soft 3D puffy shapes, inset highlights, pastel purple palette.',
+        svg:`<svg viewBox='0 0 160 90' xmlns='http://www.w3.org/2000/svg'><rect width='160' height='90' fill='#F0ECFF'/><rect x='12' y='14' width='60' height='30' rx='12' fill='#FFE4E6'/><rect x='80' y='14' width='68' height='30' rx='12' fill='#F7F5FF'/><rect x='12' y='50' width='44' height='30' rx='12' fill='#F7F5FF'/><rect x='62' y='50' width='44' height='30' rx='12' fill='#F7F5FF'/><circle cx='132' cy='64' r='16' fill='url(#cg1)'/><defs><linearGradient id='cg1' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#A78BFA'/><stop offset='1' stop-color='#7C3AED'/></linearGradient></defs></svg>` },
     ];
     const render = () => {
       host.innerHTML = STYLES.map(s => `
@@ -1744,7 +1799,7 @@ async function startGeneration() {
     color4: document.getElementById('color4hex').value || '#E74C3C',
     mascotName: document.getElementById('mascotName').value.trim(),
     lang: document.getElementById('outputLang').value,
-    designStyle: (document.getElementById('designStyle') || {}).value || 'bento',
+    designStyle: (document.getElementById('designStyle') || {}).value || 'notso-signature',
     mascotRefImages: Array.isArray(_uploadedImages.mascotRef) ? _uploadedImages.mascotRef.slice() : [],
     mascotRefImage: (Array.isArray(_uploadedImages.mascotRef) && _uploadedImages.mascotRef[0]) || '', // legacy single-image compat
     clientSiteImage: _uploadedImages.clientSite || '',
@@ -1884,12 +1939,13 @@ BRAND ACCENT 2: ${info.color3}
 BRAND ACCENT 3: ${info.color4}
 ${info.mascotName?'SUGGESTED MASCOT NAME: '+info.mascotName:''}
 DESIGN STYLE: ${({
+  'notso-signature':'notso.ai Signature — rounded white cards, pill-shaped tags, clean mono canvas with bright brand accent. Copy should feel modern, confident and conversational, like the notso.ai marketing site itself.',
+  minimal:'Minimalist (Swiss) — generous whitespace, crisp Poppins typography, monochrome with one accent. Prefer confident short sentences and zero filler.',
   bento:'Bento Grid — asymmetric modular grid of rounded boxes, Japanese-minimal. Prefer short punchy copy that reads well inside small tiles.',
-  minimal:'Minimalist — generous whitespace, very crisp typography, monochrome. Prefer confident short sentences and zero filler.',
-  editorial:'Editorial Magazine — serif display headlines, storytelling tone. Headlines can be slightly longer and narrative.',
-  playful:'Playful Illustrated — colourful, rounded, friendly. Copy should feel warm and approachable, a bit conversational.',
-  dashboard:'Data Dashboard — structured, metrics-forward. Lean on concrete numbers and crisp labels.'
-})[info.designStyle] || 'Bento Grid — asymmetric modular grid, punchy copy.'}
+  editorial:'Editorial Magazine — rule-driven layout with italic small-caps labels, still sans-serif (Poppins). Headlines can be slightly longer and narrative.',
+  neo:'Neobrutalism — thick black borders, hard drop-shadows, ALL CAPS headlines (applied via CSS). Copy should be punchy, declarative, high-energy.',
+  clay:'Claymorphism — soft 3D puffy shapes, pastel purple palette, inset highlights. Copy should feel warm, friendly, approachable.'
+})[info.designStyle] || 'notso.ai Signature — rounded white cards, pill tags, mono + bright accent, confident modern tone.'}
 
 Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
 {
@@ -2244,7 +2300,7 @@ const SLIDE_RENDERERS = {
   s15: (d,info) => rPricing(d.s15),
   s16: (d,info) => rPromo(d.s16),
   s17: (d,info) => rLicensing(d.s17),
-  s18: (d,info) => rThankYou(d.s18),
+  s18: (d,info) => rThankYou(d.s18, info),
 };
 
 function renderAllSlides(d, info) {
@@ -2699,20 +2755,28 @@ function rLicensing(d) {
 }
 
 /* ── s18: Thank You ── */
-function rThankYou(d) {
+function rThankYou(d, info) {
   if (!d) return '<em>—</em>';
+  // Pull the client's main brand color (falls back to black if none provided).
+  // We tint four things on this slide with it so the closing page feels
+  // visually consistent with the rest of the deck:
+  //   1. the numbered circles on the Next Steps list
+  //   2. the left accent bar on the contact-box
+  //   3. the "notso.ai" label inside the contact-box
+  //   4. the s-headline (closing message) so the page feels on-brand
+  const c1 = (info && info.color1) || '#111';
   const steps = (d.next_steps||[]).map((s,i) => `
     <div class="ns-row">
-      <div class="ns-num">${i+1}</div>
+      <div class="ns-num" style="background:${c1};color:#fff">${i+1}</div>
       <div class="ns-text" ${de('s18.next_steps['+i+']')}>${esc(s)}</div>
     </div>`).join('');
   return `
-    <div class="s-headline" ${de('s18.closing')}>${esc(d.closing)}</div>
+    <div class="s-headline" style="color:${c1}" ${de('s18.closing')}>${esc(d.closing)}</div>
     ${leadSub('s18',d)}
     <div class="sub-label" style="margin-top:16px">Next Steps</div>
     <div class="next-steps">${steps}</div>
-    <div class="contact-box">
-      <div class="label">notso.ai</div>
+    <div class="contact-box" style="border-left:4px solid ${c1}">
+      <div class="label" style="color:${c1}">notso.ai</div>
       <div class="detail">📧 <span ${de('s18.email')}>${esc(d.email)}</span> &nbsp;·&nbsp; 📞 <span ${de('s18.phone')}>${esc(d.phone)}</span> &nbsp;·&nbsp; 🌐 <span ${de('s18.website')}>${esc(d.website)}</span></div>
     </div>
   `;
@@ -2824,7 +2888,7 @@ async function previewAndEdit() {
     // Tag preview root with the current design style so style-variant CSS
     // (e.g. body[data-design-style='minimal']) can take effect inside the
     // live preview panel, not only in the exported PDF.
-    try { content.setAttribute('data-design-style', (client && client.designStyle) || 'bento'); } catch(_) {}
+    try { content.setAttribute('data-design-style', (client && client.designStyle) || 'notso-signature'); } catch(_) {}
 
     // 1. Copy ALL <style> blocks FIRST — before any slide is appended.
     //    This guarantees .slide { width:1440px; height:810px } and :root brand
@@ -2948,7 +3012,7 @@ async function exportPDFFromPreview() {
     styleText += css + '\n';
   });
 
-  const _ds = (client && client.designStyle) || 'bento';
+  const _ds = (client && client.designStyle) || 'notso-signature';
   const fullHtml = `<!DOCTYPE html><html lang="en" data-design-style="${_ds}"><head><meta charset="UTF-8"/><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>${styleText}</style></head><body data-design-style="${_ds}"><div class="slides-container" data-design-style="${_ds}">${slideHtmls}</div></body></html>`;
 
   // Send edited HTML to server for PDF conversion
@@ -3245,6 +3309,22 @@ function useCaseLabel(uc){
   return m[uc]||uc;
 }
 
+/* Logo click: jump back to Step 1 WITHOUT wiping the form.
+   Used by the top-left "notso.ai" logo. If the user wants a clean
+   slate they still have the "← New Proposal" button, which calls
+   resetAll() below. */
+function goHome() {
+  // Close the history panel if it happens to be open
+  const hp = document.getElementById('historyPanel');
+  if (hp && hp.classList.contains('open')) hp.classList.remove('open');
+  const bk = document.getElementById('historyBackdrop');
+  if (bk && bk.classList.contains('open')) bk.classList.remove('open');
+  // Jump to Step 1 — keep all form data intact so the user can adjust & regenerate
+  setStep(1);
+  // Scroll back to the top so the form is visible
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function resetAll() {
   proposal = null; client = {};
   setStep(1);
@@ -3482,7 +3562,7 @@ function reEditFromHistory(id) {
   // Restore design-style selection so the card picker shows the right card.
   const ds = document.getElementById('designStyle');
   if (ds) {
-    ds.value = c.designStyle || 'bento';
+    ds.value = c.designStyle || 'notso-signature';
     // Re-highlight matching card if picker is already built.
     document.querySelectorAll('#designStylePicker .ds-card').forEach(el => {
       el.classList.toggle('selected', el.dataset.id === ds.value);
@@ -3638,6 +3718,15 @@ async function chromaKeyWhiteBackground(dataUrl) {
   //   Pass D  (hard-snap)     — force every alpha to 0 or 255 so the
   //                             cutout has hard edges suitable for
   //                             clippings/collages (no halo).
+  //   Pass E  (island drop)   — BFS-label every remaining opaque region;
+  //                             keep only the largest blob (the mascot)
+  //                             and any runner-ups ≥ MIN_ISLAND_RATIO of
+  //                             it. This is what kills stray dark chunks
+  //                             that sit on top of the hair / float near
+  //                             the character — they're colour-far from
+  //                             the bg so Passes A-C can't see them, but
+  //                             they're topologically disconnected from
+  //                             the main mascot silhouette.
   //
   // User wants FULLY transparent cutouts — defaults lean aggressive.
   // Colour-distance tuning dials:
@@ -3647,6 +3736,11 @@ async function chromaKeyWhiteBackground(dataUrl) {
                                  //         from outside the mascot
   const GLOBAL_TOLERANCE = 48;   // Pass C: stricter to avoid eating holes
   const HARD_ALPHA_CUTOFF = 140; // Pass D: alpha ≥ this → 255 else 0
+  const MIN_ISLAND_RATIO = 0.05; // Pass E: keep islands ≥ 5% of biggest
+                                 //         (covers held objects like cups
+                                 //         or tablets that may render
+                                 //         almost-disconnected from the
+                                 //         main body via thin fingers)
 
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -3769,6 +3863,77 @@ async function chromaKeyWhiteBackground(dataUrl) {
         // removes the soft halo that the feather band in Pass A creates.
         for (let i = 0; i < d.length; i += 4) {
           d[i+3] = d[i+3] >= HARD_ALPHA_CUTOFF ? 255 : 0;
+        }
+
+        // ── Pass E: connected-component island drop ─────────────────────
+        // After the colour passes we're left with a clean mascot PLUS any
+        // opaque-but-colour-far debris (dark edge chunks on top of hair,
+        // tiny antialiasing halos, stray background rectangles that the
+        // colour passes can't touch because they're not close enough to
+        // the sampled bg colour). These debris pieces are topologically
+        // disconnected from the main mascot silhouette, so we BFS-label
+        // every opaque region, pick the biggest = mascot, and drop any
+        // island that's smaller than MIN_ISLAND_RATIO × biggest.
+        //
+        // Uses iterative DFS with an explicit stack (not recursion) because
+        // at 1024×1024 the mascot blob can be ~300k pixels deep which would
+        // blow the JS call stack.
+        {
+          const labels = new Int32Array(w * h);
+          const sizes = [0]; // index 0 reserved for unlabelled/transparent
+          const estack = [];
+          for (let seed = 0; seed < w * h; seed++) {
+            if (labels[seed] !== 0) continue;
+            if (d[seed * 4 + 3] === 0) continue;
+            const lab = sizes.length;
+            sizes.push(0);
+            labels[seed] = lab;
+            estack.push(seed);
+            while (estack.length) {
+              const q = estack.pop();
+              sizes[lab]++;
+              const x = q % w;
+              // 4-connected neighbours, inline bounds to stay tight
+              if (x + 1 < w) {
+                const np = q + 1;
+                if (labels[np] === 0 && d[np * 4 + 3] > 0) {
+                  labels[np] = lab; estack.push(np);
+                }
+              }
+              if (x > 0) {
+                const np = q - 1;
+                if (labels[np] === 0 && d[np * 4 + 3] > 0) {
+                  labels[np] = lab; estack.push(np);
+                }
+              }
+              if (q + w < w * h) {
+                const np = q + w;
+                if (labels[np] === 0 && d[np * 4 + 3] > 0) {
+                  labels[np] = lab; estack.push(np);
+                }
+              }
+              if (q >= w) {
+                const np = q - w;
+                if (labels[np] === 0 && d[np * 4 + 3] > 0) {
+                  labels[np] = lab; estack.push(np);
+                }
+              }
+            }
+          }
+          // Find biggest label — that's the mascot
+          let biggest = 0;
+          for (let k = 1; k < sizes.length; k++) {
+            if (sizes[k] > sizes[biggest]) biggest = k;
+          }
+          const minKeep = sizes[biggest] * MIN_ISLAND_RATIO;
+          // Zap every pixel belonging to a too-small island
+          for (let p = 0; p < w * h; p++) {
+            const lab = labels[p];
+            if (lab === 0) continue;
+            if (sizes[lab] < minKeep && lab !== biggest) {
+              d[p * 4 + 3] = 0;
+            }
+          }
         }
 
         ctx.putImageData(imgData, 0, 0);
@@ -4314,8 +4479,37 @@ async function generateAssetPack(opts = {}) {
   }
 }
 
+// Auto-populate savedMascotPaths.expression_0..5 from asset-pack "expressions"
+// category. Without this, S8's server-rendered slide (generate_html.js) has
+// no images to put in the grid — the preview looks empty even when the asset
+// pack finished. The assignment order matches the canonical 6 emotions so
+// the visual expression matches the label on the slide.
+//
+// Also populates savedMascotPaths.cover from the "Happy" expression (a safe,
+// smiley default for slides that need a mascot but weren't explicitly set).
+function autoAssignAssetPackToSlides() {
+  const results = (_assetPackSession && _assetPackSession.results) || [];
+  if (!results.length) return;
+  const EXPR_ORDER = ['expr-happy','expr-empathetic','expr-curious','expr-celebrating','expr-apologetic','expr-helpful'];
+  const byId = new Map(results.filter(r => r && r.ok && r.dataUrl).map(r => [r.id, r]));
+  EXPR_ORDER.forEach((id, idx) => {
+    const item = byId.get(id);
+    if (item && item.dataUrl) {
+      savedMascotPaths['expression_' + idx] = item.dataUrl;
+    }
+  });
+  // Fallback cover: use the happy expression if nothing else is set.
+  if (!savedMascotPaths.cover) {
+    const happy = byId.get('expr-happy');
+    if (happy && happy.dataUrl) savedMascotPaths.cover = happy.dataUrl;
+  }
+}
+
 // Render the per-item status grid with IMAGE THUMBNAILS + download + regenerate buttons
 function renderAssetPackResults() {
+  // Keep the savedMascotPaths map in sync with the current asset pack state
+  // so S8/S1/S18 get their images without the user manually using dropdowns.
+  try { autoAssignAssetPackToSlides(); } catch (_) {}
   const results = _assetPackSession.results || [];
   const sid = _assetPackSession.sessionId || '';
   const ok = results.filter(r => r.ok);
