@@ -455,7 +455,7 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
           </div>
 
           <!-- Tagline -->
-          <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; line-height: 1.5; margin-bottom: 50px; max-width: 90%;">
+          <div style="font-family: 'Poppins', sans-serif; font-size: 22px; color: #6b7280; line-height: 1.5; margin-bottom: 50px; max-width: 90%;">
             ${tagline}
           </div>
 
@@ -478,8 +478,8 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
         </div>
       </div>
 
-      <!-- Bottom color strip -->
-      <div style="height: 24px; background: linear-gradient(90deg, var(--brand-c1) 0%, #F5D547 33%, #1a1a1a 66%); margin-top: auto;"></div>
+      <!-- Bottom color strip (solid brand color) -->
+      <div style="height: 24px; background: var(--brand-c1); margin-top: auto;"></div>
     </div>
   `;
 }
