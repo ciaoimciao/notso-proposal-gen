@@ -1516,13 +1516,21 @@ function renderSlide(slideId, proposal, client, mascotImages) {
   if (!renderFunc) return '';
 
   try {
-    if (slideId === 's2') {
-      return renderFunc(proposal._selected_slides || []);
-    }
-    return renderFunc();
+    const html = (slideId === 's2')
+      ? renderFunc(proposal._selected_slides || [])
+      : renderFunc();
+    // Tag every slide with its id so the client-side unified editor can
+    // map the DOM slide back to its slot definitions (cover_s1, option_a,
+    // expression_0, etc.). We inject into the outermost `.slide` div.
+    // Purely additive — everything else (PDF export, legacy preview)
+    // is oblivious to the attribute.
+    return html.replace(
+      /<div([^>]*class="[^"]*\bslide\b[^"]*"[^>]*)>/,
+      (m, attrs) => `<div${attrs} data-slide-id="${slideId}">`
+    );
   } catch (err) {
     console.error(`Error rendering slide ${slideId}:`, err.message);
-    return `<div class="slide" style="display:flex;align-items:center;justify-content:center;background:#fff;">
+    return `<div class="slide" data-slide-id="${slideId}" style="display:flex;align-items:center;justify-content:center;background:#fff;">
       <p style="color:red;font-size:24px;">Error rendering slide ${slideId}: ${err.message}</p>
     </div>`;
   }

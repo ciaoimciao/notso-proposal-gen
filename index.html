@@ -724,7 +724,8 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         <div class="export-lead-title">Your proposal is ready</div>
         <div class="export-lead-sub" id="selectedCount">10 / 18 slides selected</div>
       </div>
-      <button class="btn btn-primary" onclick="previewAndEdit()">✏️ Preview & Edit</button>
+      <button class="btn btn-primary" onclick="openUnifiedEditor()">✏️ Edit &amp; Assign Assets</button>
+      <button class="btn btn-secondary" onclick="previewAndEdit()" style="font-size:12px;padding:6px 12px" title="Legacy full-scroll editor (no sidebar)">Legacy Edit</button>
       <button class="btn btn-secondary" onclick="exportPDF()">📄 Download PDF</button>
       <button class="btn btn-secondary" onclick="exportPPTX()">📊 Export PPTX</button>
       <button class="btn btn-secondary" onclick="openAssetPackModal()" id="assetPackBtn">🎁 Mascot Asset Pack</button>
@@ -749,6 +750,49 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
     </div>
     <div id="previewEditContent" style="flex:1;overflow-y:auto;background:#e5e7eb;padding:20px;display:flex;flex-direction:column;align-items:center;gap:20px">
       <!-- Slides rendered here as editable HTML -->
+    </div>
+  </div>
+</div>
+
+<!-- ── UNIFIED EDITOR MODAL (Plan B: 3-pane slide list | preview | asset pack) ── -->
+<div class="modal-overlay hidden" id="unifiedEditorModal" style="z-index:310">
+  <div style="background:#fff;width:98vw;height:95vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <!-- Top bar -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:1px solid #e5e7eb;background:#f9fafb;flex-shrink:0">
+      <div>
+        <span style="font-weight:800;font-size:15px">Edit &amp; Assign Assets</span>
+        <span style="font-size:11px;color:#6b7280;margin-left:8px" id="unifiedHint">Pick a slide on the left • Click text to edit • Click an asset on the right to place it on the current slide</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-primary" onclick="exportPDFFromUnifiedEditor()" id="unifiedExportBtn" style="font-size:12px;padding:6px 16px">📄 Export PDF</button>
+        <button class="btn btn-secondary" onclick="closeUnifiedEditor()" style="font-size:12px;padding:6px 16px">Close</button>
+      </div>
+    </div>
+    <!-- Body: 3-pane grid -->
+    <div id="unifiedEditorBody" style="flex:1;display:grid;grid-template-columns:220px 1fr 320px;min-height:0;background:#f3f4f6">
+      <!-- Pane 1: slide list -->
+      <aside id="unifiedSlideList" style="border-right:1px solid #e5e7eb;background:#fff;overflow-y:auto;padding:10px 8px">
+        <div style="text-align:center;padding:20px;color:#9ca3af;font-size:12px">Loading slides…</div>
+      </aside>
+      <!-- Pane 2: current-slide preview -->
+      <main id="unifiedSlideStage" style="overflow:auto;background:#e5e7eb;padding:24px;display:flex;align-items:flex-start;justify-content:center">
+        <div id="unifiedSlideStageContent" style="width:100%;display:flex;align-items:center;justify-content:center;min-height:100%">
+          <div style="text-align:center;color:#6b7280;font-size:14px">
+            <div style="font-size:48px;animation:spin 2s linear infinite;margin-bottom:16px">⏳</div>
+            Generating preview…
+          </div>
+        </div>
+      </main>
+      <!-- Pane 3: asset pack sidebar -->
+      <aside id="unifiedAssetSidebar" style="border-left:1px solid #e5e7eb;background:#fff;overflow-y:auto;padding:10px 10px 16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-400);margin-bottom:8px">Asset pack</div>
+        <div id="unifiedAssetSidebarContent">
+          <div style="padding:20px 6px;color:#9ca3af;font-size:12px;line-height:1.5">
+            No asset pack yet.<br>
+            <button class="btn btn-primary" style="margin-top:12px;font-size:11px;padding:6px 12px" onclick="openAssetPackModal()">🎁 Generate Asset Pack</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 </div>
@@ -3052,6 +3096,497 @@ async function exportPDFFromPreview() {
     );
     const btn = document.querySelector('#previewEditModal .btn-primary');
     btn.textContent = '📄 Export PDF';
+    btn.disabled = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PLAN B — UNIFIED EDITOR (slide list | preview | asset pack sidebar)
+   ═══════════════════════════════════════════════════════════════════
+   Combines the old Preview&Edit modal with the Asset Pack picker into
+   a single 3-pane window so the user can:
+     • pick a slide on the left
+     • edit the slide's text in the center (contenteditable, in place)
+     • drop an asset onto the slide via the right-hand sidebar
+   Each generated asset has a "place on this slide" button that figures
+   out the right storage key (cover_s1, expression_3, material_0, …)
+   based on which slide the user is currently looking at.
+   ─────────────────────────────────────────────────────────────────── */
+
+// Map slide id → ordered list of slot definitions. Slides not in this
+// map have no mascot/asset slots and the right pane will say so.
+const _UNIFIED_SLOTS = {
+  s1:  [{ key: 'cover_s1', label: 'Cover image' }],
+  s6:  [
+    { key: 'option_a', label: 'Option A' },
+    { key: 'option_b', label: 'Option B' },
+    { key: 'option_c', label: 'Option C' },
+  ],
+  s7:  [{ key: 'cover_s7', label: 'Mascot portrait' }],
+  s8:  [
+    { key: 'expression_0', label: 'Slot 1 — Happy' },
+    { key: 'expression_1', label: 'Slot 2 — Empathetic' },
+    { key: 'expression_2', label: 'Slot 3 — Curious' },
+    { key: 'expression_3', label: 'Slot 4 — Celebrating' },
+    { key: 'expression_4', label: 'Slot 5 — Apologetic' },
+    { key: 'expression_5', label: 'Slot 6 — Helpful' },
+  ],
+  s9:  [{ key: 'cover_s9', label: 'Mascot' }],
+  s11: [{ key: 'cover',    label: 'Mascot icon (shared cover)' }],
+  s12: [{ key: 'dashboard', label: 'Dashboard mockup' }],
+  s16: [
+    { key: 'material_0', label: 'Slot 1' },
+    { key: 'material_1', label: 'Slot 2' },
+    { key: 'material_2', label: 'Slot 3' },
+  ],
+  s18: [{ key: 'cover_s18', label: 'Cover image' }],
+};
+
+let _unifiedSlideIds = [];          // ['s1','s2',…] in display order
+let _unifiedActiveSlideId = null;   // currently selected slide
+let _unifiedRawHtml = '';           // raw preview HTML from /api/preview
+// Cache of per-slide DOM nodes parsed from preview html so we can swap
+// the center stage in O(1) when the user clicks a slide in the list.
+let _unifiedSlideNodes = new Map();
+
+async function openUnifiedEditor() {
+  const modal = document.getElementById('unifiedEditorModal');
+  const stage = document.getElementById('unifiedSlideStageContent');
+  const list  = document.getElementById('unifiedSlideList');
+  modal.classList.remove('hidden');
+
+  // Reset state on open
+  _unifiedSlideIds = [];
+  _unifiedActiveSlideId = null;
+  _unifiedSlideNodes = new Map();
+  _unifiedRawHtml = '';
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:12px">Loading slides…</div>';
+  stage.innerHTML = '<div style="text-align:center;color:#6b7280;font-size:14px"><div style="font-size:48px;animation:spin 2s linear infinite;margin-bottom:16px">⏳</div>Generating preview…</div>';
+
+  // Fetch preview HTML — same call as legacy previewAndEdit.
+  try {
+    const selected = getSelectedSlides();
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const resp = await fetch('/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+    });
+    const raw = await resp.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch (_) {
+      const snippet = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+      throw new Error(`Preview failed (HTTP ${resp.status}): ${snippet || 'server returned non-JSON response'}`);
+    }
+    if (!resp.ok || !data.success) throw new Error(data.error || 'Preview failed');
+
+    _unifiedRawHtml = data.html;
+    _unifiedRenderShell(data.html);
+    _unifiedRenderAssetSidebar();
+  } catch (err) {
+    stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>${err.message}</div>`;
+  }
+}
+
+function closeUnifiedEditor() {
+  document.getElementById('unifiedEditorModal').classList.add('hidden');
+  document.getElementById('unifiedSlideList').innerHTML = '';
+  document.getElementById('unifiedSlideStageContent').innerHTML = '';
+  document.getElementById('unifiedAssetSidebarContent').innerHTML = '';
+  _unifiedSlideIds = [];
+  _unifiedActiveSlideId = null;
+  _unifiedSlideNodes = new Map();
+  _unifiedRawHtml = '';
+}
+
+// Parse the preview html, install <style> blocks once, build the slide
+// list on the left, and show the first slide on the center stage.
+function _unifiedRenderShell(html) {
+  const stage = document.getElementById('unifiedSlideStageContent');
+  const list  = document.getElementById('unifiedSlideList');
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // 1. Inject <style> blocks into the modal once. Tag them with a class
+  //    so we can clean up if the modal reopens with new content.
+  document.querySelectorAll('style[data-unified-style]').forEach(n => n.remove());
+  doc.querySelectorAll('style').forEach(s => {
+    const styleEl = document.createElement('style');
+    styleEl.setAttribute('data-unified-style', '1');
+    styleEl.textContent = s.textContent;
+    document.head.appendChild(styleEl);
+  });
+
+  // 2. Defensive scoped chrome — the stage scales the 1440×810 slide
+  //    down to fit the variable-width center pane. We use CSS scale and
+  //    set the wrapper's apparent height by using padding/transform-origin.
+  document.querySelectorAll('style[data-unified-chrome]').forEach(n => n.remove());
+  const chrome = document.createElement('style');
+  chrome.setAttribute('data-unified-chrome', '1');
+  chrome.textContent = `
+    /* Outer wrapper takes the visible scaled size so it flows in layout
+       correctly — no extra whitespace below the slide. The inner frame
+       stays at its authored 1440×810 and is scaled with CSS transform. */
+    #unifiedSlideStageContent .preview-stage-wrap {
+      position: relative;
+      margin: 0 auto;
+      background: transparent;
+      overflow: hidden;
+    }
+    #unifiedSlideStageContent .preview-stage-frame {
+      width: 1440px;
+      height: 810px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.12);
+      overflow: hidden;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: top left;
+    }
+    #unifiedSlideStageContent .preview-stage-frame .slide {
+      width: 1440px !important;
+      height: 810px !important;
+      flex-shrink: 0 !important;
+      page-break-after: auto !important;
+      break-after: auto !important;
+    }
+    #unifiedSlideStage[data-design-style] {}
+    .unified-slide-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #374151;
+      transition: background .15s;
+    }
+    .unified-slide-tab:hover { background: #f3f4f6; }
+    .unified-slide-tab.active { background: #ECFDF5; color: #065F46; font-weight: 700; }
+    .unified-slide-tab .tab-num {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: #f3f4f6; color: #6b7280; font-weight: 700;
+      font-size: 10px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .unified-slide-tab.active .tab-num { background: #10B981; color: #fff; }
+    .unified-slide-tab .tab-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .unified-slide-tab .tab-icon { font-size: 14px; flex-shrink: 0; }
+    .unified-asset-card {
+      border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden;
+      margin-bottom: 10px; background: #fff; transition: box-shadow .15s, transform .15s;
+    }
+    .unified-asset-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); transform: translateY(-1px); }
+    .unified-asset-thumb {
+      width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;
+      background-image: linear-gradient(45deg,#e0e0e0 25%,transparent 25%,transparent 75%,#e0e0e0 75%),
+                        linear-gradient(45deg,#e0e0e0 25%,transparent 25%,transparent 75%,#e0e0e0 75%);
+      background-size: 12px 12px; background-position: 0 0, 6px 6px; background-color: #f0f0f0;
+      overflow: hidden;
+    }
+    .unified-asset-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .unified-asset-foot { padding: 6px 8px; border-top: 1px solid #f3f4f6; font-size: 11px; }
+    .unified-place-btn {
+      width: 100%; padding: 5px 8px; margin-top: 4px;
+      background: #10B981; color: #fff; border: none; border-radius: 6px;
+      font-size: 10px; font-weight: 700; cursor: pointer;
+    }
+    .unified-place-btn:hover { background: #059669; }
+    .unified-place-btn:disabled {
+      background: #E5E7EB; color: #9CA3AF; cursor: not-allowed;
+    }
+    .unified-slot-picker {
+      width: 100%; margin-top: 4px; font-size: 10px; padding: 4px 6px;
+      border: 1px solid #E5E7EB; border-radius: 6px; background: #fff;
+    }
+    .unified-asset-cat-head {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: #9CA3AF; margin: 12px 0 6px;
+    }
+  `;
+  document.head.appendChild(chrome);
+
+  // 3. Pick out each slide and stash it by id.
+  const slideEls = Array.from(doc.querySelectorAll('.slide'));
+  _unifiedSlideIds = [];
+  _unifiedSlideNodes = new Map();
+  slideEls.forEach((el, i) => {
+    const sid = el.getAttribute('data-slide-id') || `slide_${i+1}`;
+    _unifiedSlideIds.push(sid);
+    _unifiedSlideNodes.set(sid, el);
+  });
+
+  // 4. Render the slide list.
+  list.innerHTML = '';
+  const slideMeta = (typeof ALL_SLIDES !== 'undefined' ? ALL_SLIDES : []).reduce((acc, s) => { acc[s.id] = s; return acc; }, {});
+  _unifiedSlideIds.forEach((sid, i) => {
+    const meta = slideMeta[sid] || { icon: '📄', label: sid.toUpperCase() };
+    const tab = document.createElement('div');
+    tab.className = 'unified-slide-tab';
+    tab.dataset.slideId = sid;
+    tab.innerHTML = `
+      <div class="tab-num">${i + 1}</div>
+      <span class="tab-icon">${meta.icon}</span>
+      <span class="tab-label">${meta.label}</span>`;
+    tab.onclick = () => _unifiedShowSlide(sid);
+    list.appendChild(tab);
+  });
+
+  // 5. Apply design style to stage container (so style-variant CSS works).
+  try {
+    document.getElementById('unifiedSlideStage').setAttribute('data-design-style', (client && client.designStyle) || 'notso-signature');
+  } catch(_) {}
+
+  // 6. Show the first slide.
+  if (_unifiedSlideIds.length) _unifiedShowSlide(_unifiedSlideIds[0]);
+}
+
+// Swap the center pane to display the requested slide. Re-uses the cached
+// DOM node so any in-place edits the user made on a previous slide are
+// preserved.
+function _unifiedShowSlide(slideId) {
+  const stage = document.getElementById('unifiedSlideStageContent');
+  const node  = _unifiedSlideNodes.get(slideId);
+  if (!node) return;
+  _unifiedActiveSlideId = slideId;
+
+  // Highlight the active tab.
+  document.querySelectorAll('#unifiedSlideList .unified-slide-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.slideId === slideId);
+  });
+
+  // Build the stage wrapper + frame and inject the slide DOM node.
+  // The wrapper is the visible, scaled-size box; the frame stays at
+  // 1440×810 and is absolutely positioned inside the wrapper and then
+  // CSS-scaled. Layout stays clean (no phantom whitespace).
+  stage.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'preview-stage-wrap';
+  const frame = document.createElement('div');
+  frame.className = 'preview-stage-frame';
+
+  // Make text content editable (same rule the legacy modal uses).
+  node.querySelectorAll('div, span, li, td, th').forEach(el => {
+    if (el.children.length === 0 || (el.children.length === 1 && el.children[0].tagName === 'BR')) {
+      if (el.getAttribute('contenteditable')) return;
+      el.setAttribute('contenteditable', 'true');
+      el.style.cursor = 'text';
+      el.style.outline = 'none';
+      el.addEventListener('focus', function() { this.style.outline = '2px solid #3BB28E'; this.style.outlineOffset = '2px'; this.style.borderRadius = '4px'; });
+      el.addEventListener('blur',  function() { this.style.outline = 'none'; });
+    }
+  });
+
+  frame.appendChild(node);
+  wrap.appendChild(frame);
+  stage.appendChild(wrap);
+  _unifiedFitStage();   // scale to fit available width
+  _unifiedRenderAssetSidebar(); // refresh "place" button targets for new slide
+}
+
+// Scale the 1440×810 frame so it fits the center pane. The wrapper is
+// sized to match the scaled frame so layout flows correctly.
+function _unifiedFitStage() {
+  const stage = document.getElementById('unifiedSlideStage');
+  const wrap  = stage && stage.querySelector('.preview-stage-wrap');
+  const frame = stage && stage.querySelector('.preview-stage-frame');
+  if (!stage || !wrap || !frame) return;
+  const padding = 48;  // 24px each side
+  const usableW = Math.max(320, stage.clientWidth - padding);
+  const usableH = Math.max(240, stage.clientHeight - padding);
+  const scale   = Math.min(usableW / 1440, usableH / 810);
+  // Visible (scaled) dimensions — set on the wrapper so the page flows.
+  wrap.style.width  = `${1440 * scale}px`;
+  wrap.style.height = `${810 * scale}px`;
+  // Frame stays at authored size; scale transforms it inside the wrapper.
+  frame.style.transform = `scale(${scale})`;
+}
+
+// Recompute scale on window resize so the slide always fits.
+window.addEventListener('resize', () => {
+  if (!document.getElementById('unifiedEditorModal').classList.contains('hidden')) {
+    _unifiedFitStage();
+  }
+});
+
+// Render the right-hand asset pack sidebar. Each card has a "Place"
+// button that's enabled only if the current slide has slots; multi-slot
+// slides get a slot picker.
+function _unifiedRenderAssetSidebar() {
+  const host = document.getElementById('unifiedAssetSidebarContent');
+  const results = (_assetPackSession && _assetPackSession.results) || [];
+  if (!results.length) {
+    host.innerHTML = `
+      <div style="padding:20px 6px;color:#9ca3af;font-size:12px;line-height:1.5">
+        No asset pack yet.<br>
+        <button class="btn btn-primary" style="margin-top:12px;font-size:11px;padding:6px 12px" onclick="openAssetPackModal()">🎁 Generate Asset Pack</button>
+      </div>`;
+    return;
+  }
+
+  const ok = results.filter(r => r.ok && r.dataUrl);
+  const slots = _UNIFIED_SLOTS[_unifiedActiveSlideId] || [];
+  const disabled = slots.length === 0;
+  const slideMeta = (typeof ALL_SLIDES !== 'undefined' ? ALL_SLIDES : []).find(s => s.id === _unifiedActiveSlideId);
+  const slideLabel = slideMeta ? `${slideMeta.icon} ${slideMeta.label}` : (_unifiedActiveSlideId || '—');
+
+  // Header tells the user where assets will land.
+  let html = `
+    <div style="padding:8px 6px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;margin-bottom:10px;font-size:11px;color:#065F46">
+      <div style="font-weight:700;margin-bottom:2px">Current slide</div>
+      <div>${slideLabel}</div>
+      ${disabled
+        ? '<div style="margin-top:6px;color:#9CA3AF;font-style:italic">No image slots on this slide.</div>'
+        : `<div style="margin-top:4px;color:#047857">${slots.length} slot${slots.length === 1 ? '' : 's'} available</div>`}
+    </div>
+  `;
+
+  // Group by category.
+  const byCat = {};
+  ok.forEach(r => { (byCat[r.category] = byCat[r.category] || []).push(r); });
+  const catOrder = ['expressions', 'actions', 'festive', 'mockups'];
+  const catLabels = { expressions: 'Expressions', actions: 'Actions', festive: 'Festive', mockups: 'Mockups' };
+
+  for (const cat of catOrder) {
+    const items = byCat[cat] || [];
+    if (!items.length) continue;
+    html += `<div class="unified-asset-cat-head">${catLabels[cat] || cat}</div>`;
+    for (const r of items) {
+      // What's this asset currently assigned to (if anything)?
+      let currentSlot = '';
+      for (const [k, v] of Object.entries(_assetSlideAssignments)) {
+        if (v && v.assetId === r.id) { currentSlot = k; break; }
+      }
+      const slotPicker = (slots.length > 1)
+        ? `<select class="unified-slot-picker" id="usp_${r.id}">
+             ${slots.map(s => `<option value="${s.key}"${currentSlot === s.key ? ' selected' : ''}>${s.label}</option>`).join('')}
+           </select>`
+        : '';
+      const placeLabel = disabled
+        ? 'No slot on this slide'
+        : (slots.length === 1 ? `Place in ${slots[0].label}` : 'Place in selected slot');
+      html += `
+        <div class="unified-asset-card">
+          <div class="unified-asset-thumb"><img src="${r.dataUrl}" alt="${r.label || ''}" loading="lazy"></div>
+          <div class="unified-asset-foot">
+            <div style="font-weight:600;color:#374151;font-size:11px">${r.label || r.id}</div>
+            ${currentSlot ? `<div style="font-size:9px;color:#10B981;margin-top:2px">→ assigned to ${currentSlot}</div>` : ''}
+            ${slotPicker}
+            <button class="unified-place-btn"
+                    onclick="_unifiedPlaceAsset('${r.id}', ${slots.length > 1 ? `document.getElementById('usp_${r.id}').value` : `'${slots[0] && slots[0].key}'`})"
+                    ${disabled ? 'disabled' : ''}>
+              ${placeLabel}
+            </button>
+          </div>
+        </div>`;
+    }
+  }
+
+  host.innerHTML = html;
+}
+
+// Place an asset on the current slide's chosen slot. Updates global
+// state, refreshes the sidebar, and re-fetches the preview so the
+// new image actually shows on the stage. (The preview must come from
+// the server because the slide HTML embeds the image URL — we can't
+// just stick a <img> on top.)
+async function _unifiedPlaceAsset(assetId, slotKey) {
+  if (!slotKey) return;
+  const item = (_assetPackSession.results || []).find(r => r.id === assetId);
+  if (!item || !item.dataUrl) {
+    alert('Asset has no data — try regenerating it from the Asset Pack modal.');
+    return;
+  }
+  // Update both the assignment ledger and the savedMascotPaths map.
+  _assetSlideAssignments[slotKey] = { assetId, file: item.file };
+  savedMascotPaths[slotKey] = item.dataUrl;
+
+  // Re-fetch preview so the slide HTML re-renders with the new image.
+  // Cache the active slide id so we can return to it after refresh.
+  const stage = document.getElementById('unifiedSlideStageContent');
+  const restoreId = _unifiedActiveSlideId;
+  stage.innerHTML = '<div style="text-align:center;color:#6b7280;font-size:14px"><div style="font-size:48px;animation:spin 2s linear infinite;margin-bottom:16px">🔄</div>Refreshing slide…</div>';
+
+  try {
+    const selected = getSelectedSlides();
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const resp = await fetch('/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+    });
+    const raw = await resp.text();
+    const data = JSON.parse(raw);
+    if (!resp.ok || !data.success) throw new Error(data.error || 'Preview refresh failed');
+    _unifiedRawHtml = data.html;
+    _unifiedRenderShell(data.html);
+    if (restoreId && _unifiedSlideNodes.has(restoreId)) {
+      _unifiedShowSlide(restoreId);
+    }
+    _unifiedRenderAssetSidebar();
+  } catch (err) {
+    stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>Refresh failed: ${err.message}</div>`;
+  }
+}
+
+// Export PDF using the edited DOM in the unified editor. We collect
+// every slide DOM node from our cache (both visible and stashed) so
+// the user's edits to non-active slides aren't lost.
+async function exportPDFFromUnifiedEditor() {
+  if (!_unifiedSlideIds.length) { alert('No slides loaded yet.'); return; }
+  const btn = document.getElementById('unifiedExportBtn');
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Exporting...';
+  btn.disabled = true;
+
+  try {
+    // Gather slide HTML in display order.
+    const slideHtmls = _unifiedSlideIds.map(sid => {
+      const node = _unifiedSlideNodes.get(sid);
+      if (!node) return '';
+      const clone = node.cloneNode(true);
+      clone.querySelectorAll('[contenteditable]').forEach(el => {
+        el.removeAttribute('contenteditable');
+        el.style.cursor = '';
+        el.style.outline = '';
+      });
+      return clone.outerHTML;
+    }).filter(Boolean).join('\n');
+
+    // Pull the same <style> blocks the server originally injected.
+    let styleText = '';
+    document.querySelectorAll('style[data-unified-style]').forEach(s => {
+      styleText += (s.textContent || '') + '\n';
+    });
+
+    const _ds = (client && client.designStyle) || 'notso-signature';
+    const fullHtml = `<!DOCTYPE html><html lang="en" data-design-style="${_ds}"><head><meta charset="UTF-8"/><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>${styleText}</style></head><body data-design-style="${_ds}"><div class="slides-container" data-design-style="${_ds}">${slideHtmls}</div></body></html>`;
+
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ format: 'pdf', proposal, client, selectedSlides: Array.from(getSelectedSlides()), mascotImages: shrunkMascots, editedHtml: fullHtml })
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || 'Export failed');
+    }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `notso-proposal-${(client.name || 'draft').replace(/[^\w-]/g, '-')}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Export failed: ' + err.message);
+  } finally {
+    btn.textContent = orig;
     btn.disabled = false;
   }
 }
