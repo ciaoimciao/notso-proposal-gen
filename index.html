@@ -4249,16 +4249,81 @@ function _shiftHue(hex, deg, dSat=0, dLit=0) {
   return _hslToHex(h + deg, s + dSat, l + dLit);
 }
 
-// Build 4–5 suggested palettes from the brand's primary color c1.
+// Role-constrained color derivation. Rather than freely hue-shifting from c1
+// (which drags s/l wherever c1 happens to be — pale inputs stay pale, dim
+// inputs stay dim), we force each slot's lightness/saturation to sit in a
+// specific band. That's how every palette gets a confident primary, a punchy
+// accent, a bright highlight, and a proper dark anchor no matter what c1 is.
+function _roleAdjust(hex, { h=0, s=null, l=null, dS=0, dL=0 } = {}) {
+  const cur = _hexToHSL(hex);
+  return _hslToHex(
+    cur.h + h,
+    s != null ? s : Math.max(0, Math.min(1, cur.s + dS)),
+    l != null ? l : Math.max(0, Math.min(1, cur.l + dL))
+  );
+}
+
+// Two groups of palettes:
+//   (A) algorithmic — derived from the user's chosen main color c1, so they
+//       feel "on brand" regardless of what c1 is. Each slot has an intentional
+//       S/L band so every palette looks designed, not a hue-shifted smear.
+//   (B) curated — fixed 4-color swatches picked by hand for specific moods.
+//       c1 is ignored when one of these is selected (the swatch takes over).
+// Convention for all 4-color palettes: [primary, accent, highlight, dark].
 function _suggestedPalettes(c1) {
-  return [
-    { id:'brand',    name:'Brand (current)', colors:[c1, _shiftHue(c1,180,0,-0.05), _shiftHue(c1,30,0.05,-0.05), _shiftHue(c1,-45,0,-0.1)] },
-    { id:'analog',   name:'Analogous',       colors:[c1, _shiftHue(c1,30,0,-0.05), _shiftHue(c1,60,0,-0.1), _shiftHue(c1,-30,0,-0.05)] },
-    { id:'comp',     name:'Complementary',   colors:[c1, _shiftHue(c1,180,0,-0.05), _shiftHue(c1,150,-0.1,0.05), _shiftHue(c1,-150,-0.1,0.05)] },
-    { id:'triad',    name:'Triadic',         colors:[c1, _shiftHue(c1,120,0,-0.05), _shiftHue(c1,240,0,-0.05), _shiftHue(c1,60,-0.2,0.1)] },
-    { id:'split',    name:'Split Comp.',     colors:[c1, _shiftHue(c1,150,0,-0.05), _shiftHue(c1,210,0,-0.05), _shiftHue(c1,-90,-0.15,0.05)] },
-    { id:'mono',     name:'Monochrome',      colors:[c1, _shiftHue(c1,0,0,0.15), _shiftHue(c1,0,-0.2,0), _shiftHue(c1,0,0,-0.2)] },
+  const alg = [
+    { id:'brand', name:'Brand (current)', kind:'algo', colors:[
+      c1,
+      _roleAdjust(c1, { h:180, s:0.72, l:0.52 }),   // complementary accent
+      _roleAdjust(c1, { h: 45, s:0.78, l:0.62 }),   // warm highlight
+      _roleAdjust(c1, { h:210, s:0.45, l:0.22 }),   // cool dark anchor
+    ]},
+    { id:'mono', name:'Monochrome', kind:'algo', colors:[
+      c1,
+      _roleAdjust(c1, { dL: 0.18, dS:-0.10 }),
+      _roleAdjust(c1, { dL: 0.34, dS:-0.25 }),
+      _roleAdjust(c1, { dL:-0.32, dS:-0.05 }),
+    ]},
+    { id:'analog', name:'Analogous', kind:'algo', colors:[
+      c1,
+      _roleAdjust(c1, { h: 30, s:0.72, l:0.55 }),
+      _roleAdjust(c1, { h: 60, s:0.80, l:0.62 }),
+      _roleAdjust(c1, { h:-30, s:0.50, l:0.28 }),
+    ]},
+    { id:'triad', name:'Triadic', kind:'algo', colors:[
+      c1,
+      _roleAdjust(c1, { h:120, s:0.70, l:0.50 }),
+      _roleAdjust(c1, { h:240, s:0.65, l:0.55 }),
+      _roleAdjust(c1, { h:  0, s:0.40, l:0.22 }),
+    ]},
+    { id:'split', name:'Split Complement', kind:'algo', colors:[
+      c1,
+      _roleAdjust(c1, { h:150, s:0.70, l:0.55 }),
+      _roleAdjust(c1, { h:210, s:0.70, l:0.55 }),
+      _roleAdjust(c1, { h:180, s:0.50, l:0.22 }),
+    ]},
   ];
+
+  // Curated — hand-tuned for specific moods. Each checked for:
+  //   (a) primary-vs-accent chroma clash,
+  //   (b) text-legible dark anchor,
+  //   (c) highlight that actually pops next to the primary.
+  const curated = [
+    { id:'notso',     name:'notso.ai (default)',   kind:'curated', colors:['#3BB28E','#e63946','#F5D547','#0b3c8c'] },
+    { id:'sunset',    name:'Sunset',               kind:'curated', colors:['#FF6B6B','#F38181','#FCE38A','#3D2C3E'] },
+    { id:'ocean',     name:'Ocean',                kind:'curated', colors:['#0077B6','#00B4D8','#90E0EF','#03045E'] },
+    { id:'forest',    name:'Forest',               kind:'curated', colors:['#2D6A4F','#95D5B2','#D8F3DC','#1B4332'] },
+    { id:'corporate', name:'Corporate Blue',       kind:'curated', colors:['#1D4ED8','#60A5FA','#DBEAFE','#1E293B'] },
+    { id:'editorial', name:'Editorial',            kind:'curated', colors:['#111111','#D4A574','#F5F1EA','#4A3429'] },
+    { id:'playful',   name:'Playful Pop',          kind:'curated', colors:['#7209B7','#F72585','#FFD60A','#240046'] },
+    { id:'mint',      name:'Mint & Coral',         kind:'curated', colors:['#06D6A0','#EF476F','#FFD166','#073B4C'] },
+    { id:'dusk',      name:'Dusk',                 kind:'curated', colors:['#6A4C93','#E07A5F','#F2CC8F','#2B2D42'] },
+    { id:'monoinked', name:'Mono Inked',           kind:'curated', colors:['#111827','#6B7280','#E5E7EB','#030712'] },
+    { id:'warm',      name:'Warm Earth',           kind:'curated', colors:['#E07856','#F2B880','#F5E6D3','#5C3A21'] },
+    { id:'cyber',     name:'Cyber Neon',           kind:'curated', colors:['#00F5D4','#FF006E','#FBFF12','#0D1B2A'] },
+  ];
+
+  return [...alg, ...curated];
 }
 
 // Apply a palette to the live preview + persist to client.
@@ -4275,7 +4340,10 @@ function _unifiedApplyPalette(palette) {
   client._activePaletteId = palette.id;
 
   // Live override. Targets both :root and every ancestor of the stage
-  // so inline-styled nodes using the tint vars re-tint too.
+  // so inline-styled nodes using the tint vars re-tint too. Mirrors exactly
+  // what buildBrandCSS emits server-side so the preview stays 1:1 with the
+  // PDF output — including the derived dark/soft shades that S18's
+  // Thank-You gradient and other slides depend on.
   const css = `
     :root, body, .slides-container, #unifiedSlideStageContent, #unifiedSlideStageContent * {
       --brand-c1: ${c1} !important;
@@ -4288,6 +4356,11 @@ function _unifiedApplyPalette(palette) {
       --c2-tint: ${_hexToRGBA(c2,0.15)} !important;
       --c3-tint: ${_hexToRGBA(c3,0.15)} !important;
       --c4-tint: ${_hexToRGBA(c4,0.15)} !important;
+      --brand-c1-dark:   color-mix(in srgb, ${c1} 70%, black) !important;
+      --brand-c1-darker: color-mix(in srgb, ${c1} 45%, black) !important;
+      --brand-c1-soft:   color-mix(in srgb, ${c1} 18%, white) !important;
+      --brand-c2-dark:   color-mix(in srgb, ${c2} 70%, black) !important;
+      --brand-c3-dark:   color-mix(in srgb, ${c3} 70%, black) !important;
     }`;
   let tag = document.getElementById(_PALETTE_STYLE_TAG_ID);
   if (!tag) {
@@ -4297,11 +4370,16 @@ function _unifiedApplyPalette(palette) {
   }
   tag.textContent = css;
 
-  // Also sync the Step 1 color pickers (so reopening + editing is in sync).
+  // Also sync all four Step-1 color pickers (so reopening + editing is in sync,
+  // and the autosave captures the new palette). c3/c4 were previously orphaned
+  // which meant picking a non-brand palette didn't persist the highlight +
+  // dark-anchor slots.
   try {
     const set = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
     set('color1', c1); set('color1hex', c1);
     set('color2', c2); set('color2hex', c2);
+    set('color3', c3); set('color3hex', c3);
+    set('color4', c4); set('color4hex', c4);
   } catch (_) {}
 
   _unifiedRenderPalette();  // refresh "selected" state

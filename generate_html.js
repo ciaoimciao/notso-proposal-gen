@@ -56,6 +56,19 @@ function buildBrandCSS(client) {
   const c3 = client.color3 || '#f5a623';
   const c4 = client.color4 || '#e74c3c';
 
+  // Semantic vars in addition to the raw 4-slot palette. Each has a fallback
+  // so a client that doesn't set it still gets the notso default. The slide
+  // renderers read these (e.g. `var(--brand-highlight)`) instead of hard-
+  // coding a hex, which is what makes the Canva-style palette swap actually
+  // recolor every slide instead of just a few.
+  //
+  //   --brand-highlight → eyebrow / stat yellow / accent chip fill
+  //   --brand-danger    → "pain point" / before-state / warning callout
+  //   --brand-info      → phase 2 / secondary accent block (navy family)
+  //   --brand-c1-dark / --brand-c1-darker → S18 thank-you gradient
+  //
+  // CSS color-mix lets the darker shades track whatever c1 actually is
+  // rather than being pre-baked for the notso green.
   return `
     :root {
       --brand-c1: ${c1};
@@ -68,6 +81,11 @@ function buildBrandCSS(client) {
       --c2-tint: ${tintColorString(c2)};
       --c3-tint: ${tintColorString(c3)};
       --c4-tint: ${tintColorString(c4)};
+      --brand-c1-dark:   color-mix(in srgb, ${c1} 70%, black);
+      --brand-c1-darker: color-mix(in srgb, ${c1} 45%, black);
+      --brand-c1-soft:   color-mix(in srgb, ${c1} 18%, white);
+      --brand-c2-dark:   color-mix(in srgb, ${c2} 70%, black);
+      --brand-c3-dark:   color-mix(in srgb, ${c3} 70%, black);
     }
   `;
 }
@@ -559,7 +577,7 @@ function renderSlide_S2_TableOfContents(proposal, client, selectedSlides) {
             <div style="font-family: 'Poppins', sans-serif; font-size: 72px; font-weight: 800; line-height: 0.95; color: var(--brand-c1);">of</div>
           </div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 72px; font-weight: 800; line-height: 0.95; color: var(--brand-c1); margin-bottom: 20px;">contents.</div>
-          <div style="width: 60px; height: 4px; background: #F5D547; border-radius: 2px;"></div>
+          <div style="width: 60px; height: 4px; background: var(--brand-c3); border-radius: 2px;"></div>
         </div>
 
         <!-- Right: Content Grid (3x3) -->
@@ -584,7 +602,7 @@ function renderSlide_S3_PainPoints(proposal, client) {
 
   const cards = points
     .map((p, i) => {
-      const colors = ['#3BB28E', '#F5D547', '#e63946'];
+      const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)'];
       return `
         <div style="background: white; padding: 32px; border-radius: 12px; border-top: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <div style="font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 800; color: ${colors[i]}; margin-bottom: 12px;">${String(i + 1).padStart(2, '0')}</div>
@@ -636,7 +654,7 @@ function renderSlide_S4_MarketOpportunity(proposal, client) {
     { value: projected_size, label: 'Projected Size' },
   ]
     .map((stat, i) => {
-      const colors = ['#3BB28E', '#F5D547', '#e63946'];
+      const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)'];
       return `
         <div style="background: white; padding: 32px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <div style="font-family: 'Poppins', sans-serif; font-size: 36px; font-weight: 800; color: ${colors[i]}; margin-bottom: 12px; line-height: 1;">${stat.value}</div>
@@ -680,7 +698,7 @@ function renderSlide_S5_CoreFeatures(proposal, client) {
   const headline = stripEmoji(d.headline || 'Core Features');
   const lead = stripEmoji(d.lead || d.intro || '');
   const features = (d.features || []).slice(0, 4);
-  const colors = ['#3BB28E', '#e63946', '#F5D547', '#0b3c8c'];
+  const colors = ['var(--brand-c1)', 'var(--brand-c2)', 'var(--brand-c3)', 'var(--brand-c4)'];
 
   const featureCards = features
     .map((f, i) => `
@@ -943,11 +961,11 @@ function renderSlide_S10_ChatflowDesign(proposal, client) {
 
   const stageNodes = stages
     .map((stage, i) => `
-      <div style="flex: 1; background: rgba(255,255,255,0.1); padding: 24px; border-radius: 12px; border-left: 3px solid #F5D547; position: relative;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 700; color: #F5D547; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Step ${i + 1}</div>
+      <div style="flex: 1; background: rgba(255,255,255,0.1); padding: 24px; border-radius: 12px; border-left: 3px solid var(--brand-c3); position: relative;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 700; color: var(--brand-c3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Step ${i + 1}</div>
         <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: white; margin-bottom: 8px;">${stripEmoji(stage.title || stage.stage || '')}</div>
         <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #d1d5db; line-height: 1.5;">${stripEmoji(stage.description || '')}</div>
-        ${i < stages.length - 1 ? '<div style="position: absolute; right: -16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: #F5D547;">→</div>' : ''}
+        ${i < stages.length - 1 ? '<div style="position: absolute; right: -16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--brand-c3);">→</div>' : ''}
       </div>
     `)
     .join('');
@@ -1055,15 +1073,15 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
       <div style="padding: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
         <div style="background: #252547; border-radius: 8px; padding: 14px;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 10px; color: #888; margin-bottom: 4px;">Active Users</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #3BB28E;">2,847</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c1);">2,847</div>
         </div>
         <div style="background: #252547; border-radius: 8px; padding: 14px;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 10px; color: #888; margin-bottom: 4px;">Messages Today</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #F5D547;">12.4K</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c3);">12.4K</div>
         </div>
         <div style="background: #252547; border-radius: 8px; padding: 14px;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 10px; color: #888; margin-bottom: 4px;">Satisfaction</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #e63946;">94.2%</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c2);">94.2%</div>
         </div>
       </div>
       <!-- Chart area -->
@@ -1075,7 +1093,7 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
           <div style="flex: 1; background: linear-gradient(to top, var(--brand-c1), transparent); border-radius: 4px 4px 0 0; height: 80%;"></div>
           <div style="flex: 1; background: linear-gradient(to top, var(--brand-c1), transparent); border-radius: 4px 4px 0 0; height: 70%;"></div>
           <div style="flex: 1; background: linear-gradient(to top, var(--brand-c1), transparent); border-radius: 4px 4px 0 0; height: 90%;"></div>
-          <div style="flex: 1; background: linear-gradient(to top, #F5D547, transparent); border-radius: 4px 4px 0 0; height: 95%;"></div>
+          <div style="flex: 1; background: linear-gradient(to top, var(--brand-c3), transparent); border-radius: 4px 4px 0 0; height: 95%;"></div>
         </div>
       </div>
     </div>
@@ -1083,7 +1101,7 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
 
   // Small metric badges below the mockup
   const metricBadges = metrics.length > 0 ? metrics.map((m, i) => {
-    const colors = ['#3BB28E', '#F5D547', '#e63946', '#0b3c8c'];
+    const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)', 'var(--brand-c4)'];
     const val = typeof m === 'object' ? stripEmoji(String(m.value || m.v || '')) : stripEmoji(String(m));
     const lbl = typeof m === 'object' ? stripEmoji(String(m.label || m.name || '')) : '';
     return `<div style="text-align: center;">
@@ -1125,7 +1143,7 @@ function renderSlide_S13_ROIEvidence(proposal, client) {
 
   const statCards = stats
     .map((stat, i) => {
-      const colors = ['#3BB28E', '#F5D547', '#e63946', '#0b3c8c'];
+      const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)', 'var(--brand-c4)'];
       const val = typeof stat === 'object' ? stripEmoji(String(stat.n || stat.value || stat.v || stat.number || 'N/A')) : stripEmoji(String(stat));
       const lbl = typeof stat === 'object' ? stripEmoji(String(stat.l || stat.label || stat.name || '')) : '';
       return `
@@ -1165,7 +1183,7 @@ function renderSlide_S13_ROIEvidence(proposal, client) {
         if (rows.length > 0) {
           return `<div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
             <div style="display: grid; grid-template-columns: 1.2fr 2fr 0.3fr 2fr; padding: 12px 20px; background: #f8f8f8; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: #6b7280;">
-              <div></div><div style="color: #e63946; text-align: center;">Before</div><div></div><div style="color: var(--brand-c1); text-align: center;">After notso.ai</div>
+              <div></div><div style="color: var(--brand-c2); text-align: center;">Before</div><div></div><div style="color: var(--brand-c1); text-align: center;">After notso.ai</div>
             </div>
             ${rows.slice(0, 3).map(r => `<div style="display: grid; grid-template-columns: 1.2fr 2fr 0.3fr 2fr; padding: 10px 20px; border-top: 1px solid #f0f0f0; align-items: center;">
               <div style="font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 600; color: #1a1a1a;">${stripEmoji(String(r.label || ''))}</div>
@@ -1180,7 +1198,7 @@ function renderSlide_S13_ROIEvidence(proposal, client) {
         const afterText = stripEmoji(String(d.after || 'AI-powered automation and tailored experiences'));
         return `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
           <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: #e63946; margin-bottom: 12px;">Before</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-c2); margin-bottom: 12px;">Before</div>
             <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; line-height: 1.5;">${beforeText}</div>
           </div>
           <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
@@ -1205,7 +1223,7 @@ function renderSlide_S14_Roadmap(proposal, client) {
   const rawMilestones = Array.isArray(d.milestones) ? d.milestones : Array.isArray(d.phases) ? d.phases : [];
   const milestones = rawMilestones.slice(0, 5);
 
-  const phaseColors = ['var(--brand-c1)', '#F5D547', '#3BB28E', '#e63946', '#6366f1'];
+  const phaseColors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c1)', 'var(--brand-c2)', '#6366f1'];
   const timelineItems = milestones
     .map((ms, i) => {
       const title = stripEmoji(String(ms.title || ms.phase || ms.name || `Phase ${i + 1}`));
@@ -1287,7 +1305,7 @@ function renderSlide_S15_Pricing(proposal, client) {
   const lead = stripEmoji(d.lead || d.reasoning || 'Flexible plans that scale with your needs');
 
   const tierCards = FIXED_PRICING_TIERS.map((tier, i) => {
-    const colors = ['#3BB28E', '#F5D547', '#e63946'];
+    const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)'];
     const isHighlight = i === 1;
     return `
       <div style="background: white; padding: 18px; border-radius: 12px; border: ${isHighlight ? '2px' : '1px'} solid ${isHighlight ? 'var(--brand-c1)' : '#f0f0f0'}; box-shadow: ${isHighlight ? '0 4px 16px rgba(59,178,142,0.12)' : '0 2px 6px rgba(0,0,0,0.04)'}; position: relative;">
@@ -1396,7 +1414,7 @@ function renderSlide_S17_Licensing(proposal, client) {
 
   const licenseCards = cards
     .map((lic, i) => {
-      const colors = ['#3BB28E', '#e63946', '#F5D547', '#0b3c8c'];
+      const colors = ['var(--brand-c1)', 'var(--brand-c2)', 'var(--brand-c3)', 'var(--brand-c4)'];
       const name = stripEmoji(String(lic.name || lic.title || `License ${i + 1}`));
       const desc = stripEmoji(String(lic.description || lic.desc || lic.details || 'Details to be confirmed'));
       const terms = lic.terms || lic.term || '';
@@ -1425,7 +1443,7 @@ function renderSlide_S17_Licensing(proposal, client) {
 
       <!-- Note -->
       ${note ? `
-        <div style="background: rgba(230, 57, 70, 0.08); border-left: 4px solid #e63946; padding: 24px; border-radius: 8px;">
+        <div style="background: rgba(230, 57, 70, 0.08); border-left: 4px solid var(--brand-c2); padding: 24px; border-radius: 8px;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #1a1a1a; line-height: 1.6;">${note}</div>
         </div>
       ` : ''}
