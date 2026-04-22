@@ -1681,11 +1681,20 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
       if (fmt === 'pdf') {
         try {
           const { buildProposalHtml, generatePDFBuffer } = require('./generate_html');
-          const html = buildProposalHtml({
-            proposal: proposalData,
-            client: data.client,
-            selected_slides: data.selectedSlides || null,
-          });
+          // If the client sent `editedHtml` (from the unified editor), pipe it
+          // straight to puppeteer so text edits + mascot transforms + palette
+          // overrides all make it into the final PDF. Otherwise rebuild from
+          // proposal data (legacy path for CLI / non-editor flows).
+          let html;
+          if (typeof data.editedHtml === 'string' && data.editedHtml.length > 200) {
+            html = data.editedHtml;
+          } else {
+            html = buildProposalHtml({
+              proposal: proposalData,
+              client: data.client,
+              selected_slides: data.selectedSlides || null,
+            });
+          }
           const pdfBuf = await generatePDFBuffer(html);
           const safeName = (data.client?.name || 'draft').replace(/[^\w\-]/g, '-').replace(/-+/g, '-');
           const fileName = `notso-proposal-${safeName}.pdf`;

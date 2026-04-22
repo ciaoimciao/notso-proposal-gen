@@ -3219,17 +3219,30 @@ async function exportPDFFromPreview() {
     btn.textContent = '⏳ Exporting...';
     btn.disabled = true;
 
-    // Same payload-size guard as the other export paths.
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
+    // editedHtml already has images inline — no need to resend mascots.
     const resp = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format: 'pdf', proposal, client, selectedSlides: Array.from(getSelectedSlides()), mascotImages: shrunkMascots, editedHtml: fullHtml })
+      body: JSON.stringify({
+        format: 'pdf',
+        editedHtml: fullHtml,
+        client: { name: client && client.name, designStyle: (client && client.designStyle) || 'notso-signature' }
+      })
     });
 
     if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error || 'Export failed');
+      let serverMsg = '';
+      const ct = resp.headers.get('content-type') || '';
+      try {
+        if (ct.includes('application/json')) {
+          const err = await resp.json();
+          serverMsg = err.error || err.message || '';
+        } else {
+          const text = await resp.text();
+          serverMsg = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
+        }
+      } catch (_) {}
+      throw new Error(`HTTP ${resp.status} ${resp.statusText}${serverMsg ? ' — ' + serverMsg : ''}`);
     }
 
     const blob = await resp.blob();
@@ -4617,24 +4630,48 @@ async function exportPDFFromUnifiedEditor() {
       return clone.outerHTML;
     }).filter(Boolean).join('\n');
 
-    // Pull the same <style> blocks the server originally injected.
+    // Pull the same <style> blocks the server originally injected, AND the
+    // live palette override (if user applied a palette), so PDF respects them.
     let styleText = '';
     document.querySelectorAll('style[data-unified-style]').forEach(s => {
       styleText += (s.textContent || '') + '\n';
     });
+    const paletteTag = document.getElementById('unifiedPaletteLiveStyle');
+    if (paletteTag && paletteTag.textContent) {
+      styleText += '\n/* user palette override */\n' + paletteTag.textContent;
+    }
 
     const _ds = (client && client.designStyle) || 'notso-signature';
     const fullHtml = `<!DOCTYPE html><html lang="en" data-design-style="${_ds}"><head><meta charset="UTF-8"/><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>${styleText}</style></head><body data-design-style="${_ds}"><div class="slides-container" data-design-style="${_ds}">${slideHtmls}</div></body></html>`;
 
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
+    // editedHtml already embeds mascots as data-URIs from the preview — no
+    // need to resend mascotImages (that's what caused the 4.5MB Vercel
+    // payload limit to blow up). Keep proposal/client minimal for logging.
+    const payload = {
+      format: 'pdf',
+      editedHtml: fullHtml,
+      client: { name: client && client.name, designStyle: _ds },
+    };
     const resp = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format: 'pdf', proposal, client, selectedSlides: Array.from(getSelectedSlides()), mascotImages: shrunkMascots, editedHtml: fullHtml })
+      body: JSON.stringify(payload)
     });
     if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error || 'Export failed');
+      // Try JSON first; if the server timed out or returned HTML (Vercel
+      // 504 / 413 / platform errors often do), show the text we got.
+      let serverMsg = '';
+      const ct = resp.headers.get('content-type') || '';
+      try {
+        if (ct.includes('application/json')) {
+          const err = await resp.json();
+          serverMsg = err.error || err.message || '';
+        } else {
+          const text = await resp.text();
+          serverMsg = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
+        }
+      } catch (_) {}
+      throw new Error(`HTTP ${resp.status} ${resp.statusText}${serverMsg ? ' — ' + serverMsg : ''}`);
     }
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
