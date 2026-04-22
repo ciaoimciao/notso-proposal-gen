@@ -755,6 +755,109 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
 </div>
 
 <!-- ── UNIFIED EDITOR MODAL (Plan B: 3-pane slide list | preview | asset pack) ── -->
+<!-- Floating mascot-transform panel (anchored near a clicked image) -->
+<div id="mascotXformPanel" style="display:none;position:fixed;z-index:360;background:#fff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:14px 16px;width:280px;font-size:12px;color:#1F2937;user-select:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;border-bottom:1px solid #F3F4F6;padding-bottom:8px">
+    <div style="font-weight:800;font-size:12px">🎛️ <span id="mxpSlotLabel">Mascot</span></div>
+    <button onclick="_mxpClose()" style="border:none;background:transparent;cursor:pointer;font-size:16px;color:#9CA3AF;line-height:1">✕</button>
+  </div>
+  <!-- Scale -->
+  <div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span>🔍 Size</span>
+      <span style="display:flex;align-items:center;gap:4px">
+        <input type="number" id="mxpScaleNum" min="30" max="200" step="1" value="100"
+          oninput="_mxpSetFromNumber('scale',this.value)" onchange="_mxpSetFromNumber('scale',this.value)"
+          class="mxp-num" />
+        <span style="color:#6B7280">%</span>
+      </span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="_mxpNudge('scale',-0.05)" class="mxp-btn">−</button>
+      <input type="range" id="mxpScale" min="0.3" max="2.0" step="0.01" value="1" oninput="_mxpSet('scale',this.value)" style="flex:1">
+      <button onclick="_mxpNudge('scale',+0.05)" class="mxp-btn">+</button>
+    </div>
+  </div>
+  <!-- Move X -->
+  <div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span>↔ Left/Right</span>
+      <span style="display:flex;align-items:center;gap:4px">
+        <input type="number" id="mxpTxNum" min="-300" max="300" step="1" value="0"
+          oninput="_mxpSetFromNumber('tx',this.value)" onchange="_mxpSetFromNumber('tx',this.value)"
+          class="mxp-num" />
+        <span style="color:#6B7280">px</span>
+      </span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="_mxpNudge('tx',-10)" class="mxp-btn">−</button>
+      <input type="range" id="mxpTx" min="-300" max="300" step="1" value="0" oninput="_mxpSet('tx',this.value)" style="flex:1">
+      <button onclick="_mxpNudge('tx',+10)" class="mxp-btn">+</button>
+    </div>
+  </div>
+  <!-- Move Y -->
+  <div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span>↕ Up/Down</span>
+      <span style="display:flex;align-items:center;gap:4px">
+        <input type="number" id="mxpTyNum" min="-300" max="300" step="1" value="0"
+          oninput="_mxpSetFromNumber('ty',this.value)" onchange="_mxpSetFromNumber('ty',this.value)"
+          class="mxp-num" />
+        <span style="color:#6B7280">px</span>
+      </span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="_mxpNudge('ty',-10)" class="mxp-btn">−</button>
+      <input type="range" id="mxpTy" min="-300" max="300" step="1" value="0" oninput="_mxpSet('ty',this.value)" style="flex:1">
+      <button onclick="_mxpNudge('ty',+10)" class="mxp-btn">+</button>
+    </div>
+  </div>
+  <!-- Rotate -->
+  <div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span>🔄 Rotate</span>
+      <span style="display:flex;align-items:center;gap:4px">
+        <input type="number" id="mxpRotNum" min="-180" max="180" step="1" value="0"
+          oninput="_mxpSetFromNumber('rot',this.value)" onchange="_mxpSetFromNumber('rot',this.value)"
+          class="mxp-num" />
+        <span style="color:#6B7280">°</span>
+      </span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="_mxpNudge('rot',-5)" class="mxp-btn">−</button>
+      <input type="range" id="mxpRot" min="-180" max="180" step="1" value="0" oninput="_mxpSet('rot',this.value)" style="flex:1">
+      <button onclick="_mxpNudge('rot',+5)" class="mxp-btn">+</button>
+    </div>
+  </div>
+  <!-- Flip + reset row -->
+  <div style="display:flex;gap:6px;margin-top:12px">
+    <button onclick="_mxpToggle('flipH')" id="mxpFlipH" class="mxp-btn mxp-flex">↔ Flip H</button>
+    <button onclick="_mxpToggle('flipV')" id="mxpFlipV" class="mxp-btn mxp-flex">↕ Flip V</button>
+    <button onclick="_mxpReset()" class="mxp-btn mxp-flex" style="color:#DC2626">↺ Reset</button>
+  </div>
+  <div style="margin-top:8px;color:#9CA3AF;font-size:10px;text-align:center">Changes apply live. PDF export includes them.</div>
+</div>
+<style>
+  #mascotXformPanel .mxp-btn {
+    border:1px solid #E5E7EB; background:#fff; cursor:pointer; border-radius:6px;
+    padding:4px 8px; font-size:12px; font-weight:600; color:#374151; min-width:28px;
+  }
+  #mascotXformPanel .mxp-btn:hover { background:#F3F4F6; }
+  #mascotXformPanel .mxp-btn.on { background:#10B981; color:#fff; border-color:#10B981; }
+  #mascotXformPanel .mxp-flex { flex:1; }
+  #mascotXformPanel input[type=range] { accent-color:#10B981; }
+  #mascotXformPanel .mxp-num {
+    width:52px; padding:2px 6px; border:1px solid #E5E7EB; border-radius:4px;
+    font-size:11px; font-weight:700; color:#111; text-align:right; background:#fff;
+  }
+  #mascotXformPanel .mxp-num:focus { outline:2px solid #10B981; outline-offset:0; border-color:#10B981; }
+  /* Visual cue on images that are clickable for transform.
+     Only IMG elements — placeholder divs should not look clickable. */
+  img[data-slot-key] { cursor: pointer; transition: outline 0.1s; }
+  img[data-slot-key]:hover { outline: 2px dashed #10B981; outline-offset: 2px; }
+  img[data-slot-key].mxp-active { outline: 2px solid #10B981; outline-offset: 2px; }
+</style>
+
 <div class="modal-overlay hidden" id="unifiedEditorModal" style="z-index:310">
   <div style="background:#fff;width:98vw;height:95vh;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2)">
     <!-- Top bar -->
@@ -827,6 +930,12 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         <details class="unified-side-section" open>
           <summary>🎨 Design style</summary>
           <div id="unifiedDesignStyleContent">
+            <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
+          </div>
+        </details>
+        <details class="unified-side-section" open>
+          <summary>🌈 Color palette <span class="side-sub">auto-generated</span></summary>
+          <div id="unifiedPaletteContent">
             <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
           </div>
         </details>
@@ -3200,6 +3309,7 @@ async function openUnifiedEditor() {
   const list  = document.getElementById('unifiedSlideList');
   modal.classList.remove('hidden');
   _utbInstallSelectionTracking();
+  _utbInstallMultiSelect();
 
   // Reset state on open
   _unifiedSlideIds = [];
@@ -3232,6 +3342,13 @@ async function openUnifiedEditor() {
     _unifiedRenderAssetSidebar();
     _unifiedRenderBackupMascots();
     _unifiedRenderDesignStyle();
+    _unifiedRenderPalette();
+    // Re-apply the active palette so live overrides stick after a re-fetch.
+    if (client && client._activePaletteId) {
+      const p = _suggestedPalettes(client.color1 || '#3BB28E')
+        .find(x => x.id === client._activePaletteId);
+      if (p) _unifiedApplyPalette(p);
+    }
   } catch (err) {
     stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>${err.message}</div>`;
   }
@@ -3248,6 +3365,7 @@ function closeUnifiedEditor() {
   clearIfExists('unifiedAssetSidebarContent');
   clearIfExists('unifiedBackupMascotsContent');
   clearIfExists('unifiedDesignStyleContent');
+  clearIfExists('unifiedPaletteContent');
   _unifiedSlideIds = [];
   _unifiedActiveSlideId = null;
   _unifiedSlideNodes = new Map();
@@ -3378,6 +3496,13 @@ function _unifiedRenderShell(html) {
       display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
       padding: 2px 6px; border: 1px solid #E5E7EB; border-radius: 6px; background: #fff;
     }
+    /* Multi-select outline on contenteditable blocks picked via ⌘/Ctrl+click */
+    #unifiedSlideStageContent .utb-multi-selected {
+      outline: 2px dashed #3B82F6 !important;
+      outline-offset: 2px !important;
+      background: rgba(59,130,246,.04);
+      border-radius: 4px;
+    }
     /* Collapsible side-sections (Asset / Backup / Design Style) */
     .unified-side-section { border-bottom: 1px solid #F3F4F6; padding: 6px 0; }
     .unified-side-section > summary {
@@ -3479,6 +3604,10 @@ function _unifiedRenderShell(html) {
 
   // 6. Show the first slide.
   if (_unifiedSlideIds.length) _unifiedShowSlide(_unifiedSlideIds[0]);
+
+  // 7. Re-apply any stored mascot transforms to cached slide DOM nodes.
+  //    (Live stage is re-applied inside _unifiedShowSlide as well.)
+  try { _mxpApplyAll(); } catch (_) {}
 }
 
 // Swap the center pane to display the requested slide. Re-uses the cached
@@ -3523,6 +3652,16 @@ function _unifiedShowSlide(slideId) {
   _unifiedFitStage();   // scale to fit available width
   _unifiedRenderAssetSidebar(); // refresh "place" button targets for new slide
   _unifiedRenderBackupMascots();
+
+  // Install transform-panel click handlers on any mascot/image slots in
+  // this slide + re-apply stored transforms to the live DOM.
+  try { _mxpInstallClickHandlers(); } catch (_) {}
+  try { _mxpApplyAll(); } catch (_) {}
+  // If the panel was open for a slot that isn't on this slide, close it.
+  if (_mxpActiveSlot) {
+    const live = document.querySelector(`#unifiedSlideStageContent [data-slot-key="${_mxpActiveSlot}"]`);
+    if (!live) _mxpClose();
+  }
 }
 
 // Scale the 1440×810 frame so it fits the center pane. The wrapper is
@@ -3547,6 +3686,220 @@ function _unifiedFitStage() {
 window.addEventListener('resize', () => {
   if (!document.getElementById('unifiedEditorModal').classList.contains('hidden')) {
     _unifiedFitStage();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// MASCOT TRANSFORM PANEL (size / move / rotate / flip)
+// ═══════════════════════════════════════════════════════════════════
+// Global state: { [slotKey]: { scale, tx, ty, rot, flipH, flipV } }
+// Persists across preview re-renders by re-applying to any <img>
+// tagged with data-slot-key inside the cached slide DOM and the stage.
+let _mascotTransforms = {};
+let _mxpActiveSlot = null;       // slot key the panel is editing
+let _mxpClickoutHandler = null;  // bound so we can remove it later
+
+function _mxpDefault() {
+  return { scale: 1, tx: 0, ty: 0, rot: 0, flipH: false, flipV: false };
+}
+function _mxpGet(slotKey) {
+  if (!_mascotTransforms[slotKey]) _mascotTransforms[slotKey] = _mxpDefault();
+  return _mascotTransforms[slotKey];
+}
+function _mxpToCSS(t) {
+  const sx = (t.flipH ? -1 : 1) * (t.scale || 1);
+  const sy = (t.flipV ? -1 : 1) * (t.scale || 1);
+  return `translate(${t.tx||0}px, ${t.ty||0}px) rotate(${t.rot||0}deg) scale(${sx}, ${sy})`;
+}
+
+// Re-apply stored transforms to every matching image in both the cached
+// slide DOM (used for PDF export) and the currently rendered stage.
+function _mxpApply(slotKey) {
+  const t = _mxpGet(slotKey);
+  const css = _mxpToCSS(t);
+  // Cached nodes (persisted across stage swaps → PDF export picks up)
+  try {
+    (_unifiedSlideNodes || new Map()).forEach(node => {
+      if (!node) return;
+      node.querySelectorAll(`[data-slot-key="${slotKey}"]`).forEach(el => {
+        el.style.transform = css;
+        el.style.transformOrigin = 'center center';
+      });
+    });
+  } catch (_) {}
+  // Live stage
+  try {
+    document.querySelectorAll(`#unifiedSlideStageContent [data-slot-key="${slotKey}"]`).forEach(el => {
+      el.style.transform = css;
+      el.style.transformOrigin = 'center center';
+    });
+  } catch (_) {}
+}
+function _mxpApplyAll() {
+  Object.keys(_mascotTransforms).forEach(_mxpApply);
+}
+
+// Anchor the panel next to the clicked image. Keep it inside the viewport.
+function _mxpAnchorTo(imgEl) {
+  const panel = document.getElementById('mascotXformPanel');
+  if (!panel || !imgEl) return;
+  const r = imgEl.getBoundingClientRect();
+  const pw = 280, ph = panel.offsetHeight || 320;
+  let left = r.right + 12;
+  let top  = r.top;
+  if (left + pw > window.innerWidth - 12) left = Math.max(12, r.left - pw - 12);
+  if (top  + ph > window.innerHeight - 12) top  = Math.max(12, window.innerHeight - ph - 12);
+  if (top < 12) top = 12;
+  panel.style.left = left + 'px';
+  panel.style.top  = top + 'px';
+}
+
+function _mxpOpen(slotKey, imgEl) {
+  _mxpActiveSlot = slotKey;
+  const panel = document.getElementById('mascotXformPanel');
+  const label = document.getElementById('mxpSlotLabel');
+  if (!panel) return;
+  // Pretty label from the slot key (e.g. "cover_s1" → "Cover (S1)")
+  const pretty = (slotKey || '').replace(/_/g, ' ')
+    .replace(/\b([a-z])/g, (_m, c) => c.toUpperCase());
+  if (label) label.textContent = pretty || 'Mascot';
+  // Populate controls from stored state
+  const t = _mxpGet(slotKey);
+  _mxpSyncUI(t);
+  document.getElementById('mxpFlipH').classList.toggle('on', !!t.flipH);
+  document.getElementById('mxpFlipV').classList.toggle('on', !!t.flipV);
+  // Mark the active image
+  document.querySelectorAll('[data-slot-key].mxp-active').forEach(el => el.classList.remove('mxp-active'));
+  if (imgEl) imgEl.classList.add('mxp-active');
+  panel.style.display = 'block';
+  _mxpAnchorTo(imgEl);
+
+  // Install click-outside to close (once).
+  if (_mxpClickoutHandler) document.removeEventListener('mousedown', _mxpClickoutHandler, true);
+  _mxpClickoutHandler = (e) => {
+    if (panel.contains(e.target)) return;
+    // clicks on another data-slot-key re-anchor — don't close
+    if (e.target && e.target.closest && e.target.closest('[data-slot-key]')) return;
+    _mxpClose();
+  };
+  // Next tick so the current click doesn't close it.
+  setTimeout(() => document.addEventListener('mousedown', _mxpClickoutHandler, true), 0);
+}
+
+function _mxpClose() {
+  const panel = document.getElementById('mascotXformPanel');
+  if (panel) panel.style.display = 'none';
+  document.querySelectorAll('[data-slot-key].mxp-active').forEach(el => el.classList.remove('mxp-active'));
+  _mxpActiveSlot = null;
+  if (_mxpClickoutHandler) {
+    document.removeEventListener('mousedown', _mxpClickoutHandler, true);
+    _mxpClickoutHandler = null;
+  }
+}
+
+// Sync BOTH the slider and the number-input for every prop based on
+// the current transform state `t`.
+function _mxpSyncUI(t) {
+  if (!t) return;
+  const byId = id => document.getElementById(id);
+  if (byId('mxpScale'))    byId('mxpScale').value    = t.scale;
+  if (byId('mxpTx'))       byId('mxpTx').value       = t.tx;
+  if (byId('mxpTy'))       byId('mxpTy').value       = t.ty;
+  if (byId('mxpRot'))      byId('mxpRot').value      = t.rot;
+  if (byId('mxpScaleNum')) byId('mxpScaleNum').value = Math.round((t.scale||1)*100);
+  if (byId('mxpTxNum'))    byId('mxpTxNum').value    = (t.tx||0);
+  if (byId('mxpTyNum'))    byId('mxpTyNum').value    = (t.ty||0);
+  if (byId('mxpRotNum'))   byId('mxpRotNum').value   = (t.rot||0);
+}
+
+// Clamp helper matching each prop's allowed range.
+function _mxpClamp(prop, raw) {
+  const n = parseFloat(raw);
+  if (isNaN(n)) return (prop === 'scale') ? 1 : 0;
+  if (prop === 'scale') return Math.max(0.3, Math.min(2.0, n));
+  if (prop === 'rot')   return Math.max(-180, Math.min(180, n));
+  return Math.max(-300, Math.min(300, n));
+}
+
+// Slider emits raw value (scale: 0.3–2.0; others: number).
+function _mxpSet(prop, val) {
+  if (!_mxpActiveSlot) return;
+  const t = _mxpGet(_mxpActiveSlot);
+  t[prop] = _mxpClamp(prop, val);
+  _mxpSyncUI(t);
+  _mxpApply(_mxpActiveSlot);
+}
+
+// Number input emits percent for scale (30–200); raw number for others.
+// Accepts free-form user input — clamps silently.
+function _mxpSetFromNumber(prop, val) {
+  if (!_mxpActiveSlot) return;
+  const t = _mxpGet(_mxpActiveSlot);
+  const n = parseFloat(val);
+  if (isNaN(n)) return;  // user mid-typing — ignore, will re-clamp on blur
+  if (prop === 'scale') {
+    t.scale = Math.max(0.3, Math.min(2.0, n / 100));
+  } else if (prop === 'rot') {
+    t.rot = Math.max(-180, Math.min(180, n));
+  } else {
+    t[prop] = Math.max(-300, Math.min(300, n));
+  }
+  _mxpSyncUI(t);
+  _mxpApply(_mxpActiveSlot);
+}
+
+function _mxpNudge(prop, delta) {
+  if (!_mxpActiveSlot) return;
+  const t = _mxpGet(_mxpActiveSlot);
+  let next = (t[prop] || 0) + delta;
+  t[prop] = _mxpClamp(prop, next);
+  _mxpSyncUI(t);
+  _mxpApply(_mxpActiveSlot);
+}
+
+function _mxpToggle(prop) {
+  if (!_mxpActiveSlot) return;
+  const t = _mxpGet(_mxpActiveSlot);
+  t[prop] = !t[prop];
+  const btn = document.getElementById('mxp' + prop.charAt(0).toUpperCase() + prop.slice(1));
+  if (btn) btn.classList.toggle('on', !!t[prop]);
+  _mxpApply(_mxpActiveSlot);
+}
+
+function _mxpReset() {
+  if (!_mxpActiveSlot) return;
+  _mascotTransforms[_mxpActiveSlot] = _mxpDefault();
+  const t = _mascotTransforms[_mxpActiveSlot];
+  _mxpSyncUI(t);
+  document.getElementById('mxpFlipH').classList.remove('on');
+  document.getElementById('mxpFlipV').classList.remove('on');
+  _mxpApply(_mxpActiveSlot);
+}
+
+// Attach click handlers to images in the currently visible stage.
+// Called after every render/swap. Only real <img> elements open the
+// panel — empty placeholders don't (nothing to transform yet).
+function _mxpInstallClickHandlers() {
+  document.querySelectorAll('#unifiedSlideStageContent img[data-slot-key]').forEach(el => {
+    if (el._mxpBound) return;
+    el._mxpBound = true;
+    el.addEventListener('click', (e) => {
+      // Don't interfere with text editing inside a wrapping contenteditable.
+      e.stopPropagation();
+      e.preventDefault();
+      const slot = el.getAttribute('data-slot-key');
+      if (!slot) return;
+      _mxpOpen(slot, el);
+    });
+  });
+}
+
+// Hide the panel if the modal is closed or slide swaps mid-edit.
+window.addEventListener('resize', () => {
+  const panel = document.getElementById('mascotXformPanel');
+  if (panel && panel.style.display === 'block' && _mxpActiveSlot) {
+    const live = document.querySelector(`#unifiedSlideStageContent [data-slot-key="${_mxpActiveSlot}"]`);
+    if (live) _mxpAnchorTo(live); else _mxpClose();
   }
 });
 
@@ -3825,6 +4178,173 @@ async function _unifiedSetDesignStyle(styleId) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// PALETTE PICKER — generate 3–4 palette suggestions from brand-c1 and
+// let the user apply one with a single click. Each palette sets
+// --brand-c1..c4 on :root (and also re-tints the derived tint vars
+// via a live style tag) so the entire deck recolors instantly —
+// no server round-trip needed.
+// ═══════════════════════════════════════════════════════════════════
+const _PALETTE_STYLE_TAG_ID = 'unifiedPaletteLiveStyle';
+
+function _hexToHSL(hex) {
+  let h = (hex || '').replace('#','').trim();
+  if (h.length === 3) h = h.split('').map(c => c+c).join('');
+  const r = parseInt(h.slice(0,2),16)/255;
+  const g = parseInt(h.slice(2,4),16)/255;
+  const b = parseInt(h.slice(4,6),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let H, S, L = (max + min) / 2;
+  if (max === min) { H = 0; S = 0; }
+  else {
+    const d = max - min;
+    S = L > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: H = ((g - b) / d + (g < b ? 6 : 0)); break;
+      case g: H = ((b - r) / d + 2); break;
+      case b: H = ((r - g) / d + 4); break;
+    }
+    H *= 60;
+  }
+  return { h: H, s: S, l: L };
+}
+function _hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(1, s));
+  l = Math.max(0, Math.min(1, l));
+  const c = (1 - Math.abs(2*l - 1)) * s;
+  const x = c * (1 - Math.abs((h/60) % 2 - 1));
+  const m = l - c/2;
+  let [r,g,b] = [0,0,0];
+  if      (h < 60)  [r,g,b] = [c,x,0];
+  else if (h < 120) [r,g,b] = [x,c,0];
+  else if (h < 180) [r,g,b] = [0,c,x];
+  else if (h < 240) [r,g,b] = [0,x,c];
+  else if (h < 300) [r,g,b] = [x,0,c];
+  else              [r,g,b] = [c,0,x];
+  const to = v => Math.round((v+m)*255).toString(16).padStart(2,'0');
+  return '#' + to(r) + to(g) + to(b);
+}
+function _hexToRGBA(hex, a) {
+  let h = (hex || '').replace('#','').trim();
+  if (h.length === 3) h = h.split('').map(c => c+c).join('');
+  return `rgba(${parseInt(h.slice(0,2),16)}, ${parseInt(h.slice(2,4),16)}, ${parseInt(h.slice(4,6),16)}, ${a})`;
+}
+// Shift hue by `deg`, optional adjustments to s/l.
+function _shiftHue(hex, deg, dSat=0, dLit=0) {
+  const {h,s,l} = _hexToHSL(hex);
+  return _hslToHex(h + deg, s + dSat, l + dLit);
+}
+
+// Build 4–5 suggested palettes from the brand's primary color c1.
+function _suggestedPalettes(c1) {
+  return [
+    { id:'brand',    name:'Brand (current)', colors:[c1, _shiftHue(c1,180,0,-0.05), _shiftHue(c1,30,0.05,-0.05), _shiftHue(c1,-45,0,-0.1)] },
+    { id:'analog',   name:'Analogous',       colors:[c1, _shiftHue(c1,30,0,-0.05), _shiftHue(c1,60,0,-0.1), _shiftHue(c1,-30,0,-0.05)] },
+    { id:'comp',     name:'Complementary',   colors:[c1, _shiftHue(c1,180,0,-0.05), _shiftHue(c1,150,-0.1,0.05), _shiftHue(c1,-150,-0.1,0.05)] },
+    { id:'triad',    name:'Triadic',         colors:[c1, _shiftHue(c1,120,0,-0.05), _shiftHue(c1,240,0,-0.05), _shiftHue(c1,60,-0.2,0.1)] },
+    { id:'split',    name:'Split Comp.',     colors:[c1, _shiftHue(c1,150,0,-0.05), _shiftHue(c1,210,0,-0.05), _shiftHue(c1,-90,-0.15,0.05)] },
+    { id:'mono',     name:'Monochrome',      colors:[c1, _shiftHue(c1,0,0,0.15), _shiftHue(c1,0,-0.2,0), _shiftHue(c1,0,0,-0.2)] },
+  ];
+}
+
+// Apply a palette to the live preview + persist to client.
+// Uses a scoped <style> tag with high specificity so it beats the
+// server-emitted buildBrandCSS :root vars.
+function _unifiedApplyPalette(palette) {
+  if (!palette || !palette.colors || !palette.colors.length) return;
+  const [c1, c2, c3, c4] = palette.colors;
+  if (!client) return;
+  client.color1 = c1 || client.color1;
+  client.color2 = c2 || client.color2;
+  client.color3 = c3 || client.color3;
+  client.color4 = c4 || client.color4;
+  client._activePaletteId = palette.id;
+
+  // Live override. Targets both :root and every ancestor of the stage
+  // so inline-styled nodes using the tint vars re-tint too.
+  const css = `
+    :root, body, .slides-container, #unifiedSlideStageContent, #unifiedSlideStageContent * {
+      --brand-c1: ${c1} !important;
+      --brand-c2: ${c2} !important;
+      --brand-c3: ${c3} !important;
+      --brand-c4: ${c4} !important;
+      --brand-main: ${c1} !important;
+      --accent: ${c2} !important;
+      --c1-tint: ${_hexToRGBA(c1,0.15)} !important;
+      --c2-tint: ${_hexToRGBA(c2,0.15)} !important;
+      --c3-tint: ${_hexToRGBA(c3,0.15)} !important;
+      --c4-tint: ${_hexToRGBA(c4,0.15)} !important;
+    }`;
+  let tag = document.getElementById(_PALETTE_STYLE_TAG_ID);
+  if (!tag) {
+    tag = document.createElement('style');
+    tag.id = _PALETTE_STYLE_TAG_ID;
+    document.head.appendChild(tag);
+  }
+  tag.textContent = css;
+
+  // Also sync the Step 1 color pickers (so reopening + editing is in sync).
+  try {
+    const set = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+    set('color1', c1); set('color1hex', c1);
+    set('color2', c2); set('color2hex', c2);
+  } catch (_) {}
+
+  _unifiedRenderPalette();  // refresh "selected" state
+}
+
+// Render the palette section — swatches per palette + custom-c1 picker.
+function _unifiedRenderPalette() {
+  const host = document.getElementById('unifiedPaletteContent');
+  if (!host) return;
+  const c1 = (client && client.color1) || '#3BB28E';
+  const palettes = _suggestedPalettes(c1);
+  const active = (client && client._activePaletteId) || 'brand';
+
+  host.innerHTML = `
+    <div style="padding:4px 4px 8px;color:#6b7280;font-size:11px;line-height:1.4">
+      One click — whole deck recolors. Change the main color to regenerate suggestions.
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 4px 10px;border-bottom:1px solid #F3F4F6;margin-bottom:8px">
+      <label style="font-size:11px;color:#374151;font-weight:600">Main color:</label>
+      <input type="color" id="palMainColor" value="${c1}" style="width:30px;height:26px;border:1px solid #E5E7EB;border-radius:4px;cursor:pointer;padding:0"
+        oninput="_palMainChanged(this.value)">
+      <input type="text" id="palMainHex" value="${c1}" style="flex:1;min-width:0;padding:4px 6px;border:1px solid #E5E7EB;border-radius:4px;font-size:11px;font-family:monospace"
+        onchange="_palMainChanged(this.value)">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${palettes.map(p => `
+        <button type="button" class="pal-card${active === p.id ? ' selected' : ''}"
+                onclick='_unifiedApplyPalette(${JSON.stringify(p).replace(/"/g,"&quot;")})'
+                style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:${active===p.id?'2px solid #10B981':'1px solid #E5E7EB'};border-radius:8px;background:#fff;cursor:pointer;text-align:left">
+          <div style="display:flex;gap:2px;flex:0 0 auto">
+            ${p.colors.map(c => `<div style="width:14px;height:28px;background:${c};border-radius:2px;border:1px solid rgba(0,0,0,.06)"></div>`).join('')}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:700;color:#111">${p.name}</div>
+            <div style="font-size:9px;color:#9CA3AF;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.colors.join(' ')}</div>
+          </div>
+        </button>`).join('')}
+    </div>
+    <div style="padding:8px 4px 0;color:#9CA3AF;font-size:10px;line-height:1.4">
+      ✨ Live preview — PDF export uses whatever you picked last.
+    </div>
+  `;
+}
+
+// Called when the user tweaks the main color — regenerate suggestions
+// AND apply the "Brand" palette immediately so they see the c1 change.
+function _palMainChanged(val) {
+  if (!val || !val.match(/^#[0-9a-f]{3,6}$/i)) return;
+  if (!client) return;
+  client.color1 = val;
+  // Default to 'brand' palette flavor using the new c1.
+  const p = _suggestedPalettes(val).find(x => x.id === (client._activePaletteId || 'brand'))
+         || _suggestedPalettes(val)[0];
+  _unifiedApplyPalette(p);
+}
+
 // Place an asset on the current slide's chosen slot. Updates global
 // state, refreshes the sidebar, and re-fetches the preview so the
 // new image actually shows on the stage. (The preview must come from
@@ -3933,6 +4453,12 @@ function _utbExec(cmd, value) {
 // explicit pixel size. execCommand('fontSize') is too crude (7
 // fixed buckets) and doesn't give us +/- 2px control.
 function _utbFontSize(delta) {
+  // If the user ⌘-clicked one or more whole blocks, resize those
+  // in batch instead of the current text range.
+  if (_utbMultiBlocks && _utbMultiBlocks.size) {
+    _utbFontSizeMulti(delta);
+    return;
+  }
   if (!_utbRestoreSelection()) return;
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return;
@@ -3971,7 +4497,100 @@ function _utbFontSize(delta) {
 // Apply foreground color via execCommand — works reliably across
 // browsers and inlines as <font color> or <span style="color:">.
 function _utbColor(value) {
+  if (_utbMultiBlocks && _utbMultiBlocks.size) {
+    _utbMultiBlocks.forEach(el => { el.style.color = value; });
+    return;
+  }
   _utbExec('foreColor', value);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MULTI-SELECT TEXT BLOCKS (Ctrl / ⌘ + Click) → batch font-size change
+// ═══════════════════════════════════════════════════════════════════
+// When the user ⌘-clicks multiple contenteditable blocks, we track
+// them in a Set. The A+/A− buttons then bump each block's font-size
+// at once instead of operating on a single text range.
+let _utbMultiBlocks = new Set();
+
+function _utbClearMultiSelect() {
+  _utbMultiBlocks.forEach(el => el.classList.remove('utb-multi-selected'));
+  _utbMultiBlocks.clear();
+  _utbUpdateMultiHint();
+}
+
+function _utbUpdateMultiHint() {
+  const hint = document.getElementById('utbHint');
+  if (!hint) return;
+  const n = _utbMultiBlocks.size;
+  if (n >= 1) {
+    hint.textContent = `✓ ${n} block${n>1?'s':''} selected — A+/A− resizes all`;
+    hint.style.color = '#10B981';
+  }
+  // If n === 0, the selectionchange handler will reset the hint when
+  // the user next clicks/selects inside the stage. Safe to leave alone.
+}
+
+function _utbToggleBlockSelection(el) {
+  if (!el) return;
+  if (_utbMultiBlocks.has(el)) {
+    _utbMultiBlocks.delete(el);
+    el.classList.remove('utb-multi-selected');
+  } else {
+    _utbMultiBlocks.add(el);
+    el.classList.add('utb-multi-selected');
+  }
+  _utbUpdateMultiHint();
+}
+
+// Install the ⌘/Ctrl+click listener once per session. Relies on the
+// unified editor having [contenteditable] blocks — if the block changes
+// later (via re-render), this still works because we listen on document.
+function _utbInstallMultiSelect() {
+  if (_utbInstallMultiSelect._installed) return;
+  _utbInstallMultiSelect._installed = true;
+  document.addEventListener('click', (e) => {
+    const stage = document.getElementById('unifiedSlideStageContent');
+    if (!stage || !stage.contains(e.target)) return;
+    // ignore clicks on images (they open the mascot panel)
+    if (e.target && e.target.matches && e.target.matches('img[data-slot-key]')) return;
+    const isMultiKey = e.metaKey || e.ctrlKey;
+    if (isMultiKey) {
+      // Find the nearest contenteditable ancestor inside the stage.
+      let el = e.target;
+      while (el && el !== stage && el.getAttribute && !el.hasAttribute('contenteditable')) {
+        el = el.parentElement;
+      }
+      if (el && el !== stage && el.hasAttribute && el.hasAttribute('contenteditable')) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Suppress any native selection so we don't fight the browser.
+        try { window.getSelection().removeAllRanges(); } catch(_) {}
+        _utbToggleBlockSelection(el);
+      }
+    } else {
+      // Plain click with an active multi-select clears it (consistent
+      // with design tools — Figma / Canva / PowerPoint all do this).
+      if (_utbMultiBlocks.size) _utbClearMultiSelect();
+    }
+  }, true);
+  // Esc also clears.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && _utbMultiBlocks.size) _utbClearMultiSelect();
+  });
+}
+
+// Called from _utbFontSize when a multi-selection is active.
+// Bumps the inline font-size of every selected block by `delta` px.
+// Nested spans inside the block (from previous A+/A− on a sub-range)
+// retain their sizes — we only change the block's own inline size.
+function _utbFontSizeMulti(delta) {
+  if (!_utbMultiBlocks.size) return false;
+  _utbMultiBlocks.forEach(el => {
+    const cur = parseFloat(window.getComputedStyle(el).fontSize) || 16;
+    const next = Math.max(8, Math.min(120, cur + delta));
+    el.style.fontSize = next + 'px';
+  });
+  return true;
 }
 
 // Export PDF using the edited DOM in the unified editor. We collect
@@ -4391,6 +5010,7 @@ async function saveToHistory(clientData, proposalData) {
     assetPackSession: assetPackLite,     // NEW: skips re-generate on View
     slideAssignments: _assetSlideAssignments || {},
     uploadThumbnails: uploadThumbs,      // tiny JPEG thumbnails for history
+    mascotTransforms: _mascotTransforms || {},  // size/move/rotate/flip per slot
   };
   history.unshift(entry);
   if (history.length > 30) history.length = 30;
@@ -4497,6 +5117,9 @@ function loadFromHistory(id) {
   }
   if (entry.slideAssignments && Object.keys(entry.slideAssignments).length) {
     _assetSlideAssignments = entry.slideAssignments;
+  }
+  if (entry.mascotTransforms && typeof entry.mascotTransforms === 'object') {
+    _mascotTransforms = entry.mascotTransforms;
   }
 
   setStep(3);

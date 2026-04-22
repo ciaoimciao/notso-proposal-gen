@@ -393,9 +393,13 @@ function readImageAsDataURI(imagePath) {
   }
 }
 
-function getImageHTML(imagePath, alt = 'Image', classes = '') {
+function getImageHTML(imagePath, alt = 'Image', classes = '', slotKey = '') {
+  // slotKey (e.g. "cover_s1", "option_a", "expression_3") lets the client
+  // identify which placed mascot an <img> belongs to so it can attach
+  // transform controls and re-apply stored scale/rotate/flip/offset.
+  const slotAttr = slotKey ? ` data-slot-key="${slotKey}"` : '';
   if (!imagePath) {
-    return `<div class="image-placeholder ${classes}">
+    return `<div class="image-placeholder ${classes}"${slotAttr}>
       <div style="text-align: center; color: #d1d5db; font-size: 13px; padding: 20px;">
         [Image placeholder]
       </div>
@@ -404,9 +408,9 @@ function getImageHTML(imagePath, alt = 'Image', classes = '') {
 
   const dataURI = readImageAsDataURI(imagePath);
   if (dataURI) {
-    return `<img src="${dataURI}" alt="${alt}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />`;
+    return `<img src="${dataURI}" alt="${alt}" style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;"${slotAttr} />`;
   } else {
-    return `<div class="image-placeholder ${classes}">
+    return `<div class="image-placeholder ${classes}"${slotAttr}>
       <div style="text-align: center; color: #d1d5db; font-size: 13px; padding: 20px;">
         [Image not found]
       </div>
@@ -473,7 +477,7 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
           <!-- Subtle radial glow background -->
           <div style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(59, 178, 142, 0.08) 0%, rgba(59, 178, 142, 0) 70%); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0;"></div>
           <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-            ${getImageHTML(coverImagePath, 'Mascot Cover')}
+            ${getImageHTML(coverImagePath, 'Mascot Cover', '', 'cover_s1')}
           </div>
         </div>
       </div>
@@ -746,7 +750,7 @@ function renderSlide_S6_MascotSelection(proposal, client, mascotImages) {
           <div style="font-family:'Poppins',sans-serif;font-size:16px;font-weight:700;color:#1a1a1a;margin-bottom:4px;">${nameText}</div>
           ${archetype ? `<div style="font-family:'Poppins',sans-serif;font-size:11px;color:var(--brand-c1);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">${archetype}</div>` : '<div style="margin-bottom:14px;"></div>'}
           <div style="width: 100%; height: 200px; background: transparent; border-radius: 12px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-            ${getImageHTML(imagePath, `Mascot Option ${i + 1}`)}
+            ${getImageHTML(imagePath, `Mascot Option ${i + 1}`, '', optionKey)}
           </div>
           ${traitPills}
           ${descText ? `<div style="font-family:'Poppins',sans-serif;font-size:12px;color:#6b7280;line-height:1.55;margin-bottom:${whyText ? '8px' : '0'};">${descText}</div>` : ''}
@@ -817,7 +821,7 @@ function renderSlide_S7_MascotDesign(proposal, client, mascotImages) {
       <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
         <div style="position: absolute; width: 400px; height: 400px; background: radial-gradient(circle, rgba(59, 178, 142, 0.08) 0%, rgba(59, 178, 142, 0) 70%); border-radius: 50%; z-index: 0;"></div>
         <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-          ${getImageHTML(coverImagePath, 'Mascot Design')}
+          ${getImageHTML(coverImagePath, 'Mascot Design', '', 'cover_s7')}
         </div>
       </div>
 
@@ -844,7 +848,7 @@ function renderSlide_S8_PersonalityEmpathy(proposal, client, mascotImages) {
       return `
         <div style="text-align: center;">
           <div style="width: 100%; height: 200px; background: #F4F4F3; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; overflow: hidden;">
-            ${getImageHTML(imagePath, exprName)}
+            ${getImageHTML(imagePath, exprName, '', exprKey)}
           </div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; color: #1a1a1a;">${exprName}</div>
         </div>
@@ -914,7 +918,7 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
       <div style="display: flex; gap: 40px;">
         <!-- Left: Mascot -->
         <div style="flex: 0.6; display: flex; align-items: center; justify-content: center;">
-          ${getImageHTML(coverImagePath, 'Mascot Chat')}
+          ${getImageHTML(coverImagePath, 'Mascot Chat', '', 'cover_s9')}
         </div>
 
         <!-- Right: Chat Window -->
@@ -984,7 +988,7 @@ function renderSlide_S11_KnowledgeBase(proposal, client, mascotImages) {
         </div>
         <div style="width: 40px; text-align: center; font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c1);">→</div>
         <div style="width: 80px; height: 80px; flex-shrink: 0; background: #F4F4F3; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-          ${getImageHTML(mascotImages?.cover, 'Mascot Icon')}
+          ${getImageHTML(mascotImages?.cover, 'Mascot Icon', '', 'cover')}
         </div>
         <div style="width: 40px; text-align: center; font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c1);">→</div>
         <div style="flex: 1;">
@@ -1034,7 +1038,7 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
         <div style="flex: 1; text-align: center; font-family: 'Poppins', sans-serif; font-size: 11px; color: #888;">notso.ai — Dashboard</div>
       </div>
       <div style="padding: 4px;">
-        ${getImageHTML(dashboardImagePath, 'Dashboard')}
+        ${getImageHTML(dashboardImagePath, 'Dashboard', '', 'dashboard')}
       </div>
     </div>
   ` : `
@@ -1353,7 +1357,7 @@ function renderSlide_S16_PromoMaterials(proposal, client, mascotImages) {
         <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px;">${stripEmoji(mat.name || `Material ${i + 1}`)}</div>
           <div style="width: 100%; height: 200px; background: #F4F4F3; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; border: 2px dashed #d1d5db; overflow: hidden;">
-            ${getImageHTML(imagePath, `Promo Material ${i + 1}`)}
+            ${getImageHTML(imagePath, `Promo Material ${i + 1}`, '', matKey)}
           </div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; line-height: 1.6;">${stripEmoji(mat.description || '')}</div>
         </div>
@@ -1465,7 +1469,7 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
       <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
         <div style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); border-radius: 50%; z-index: 0;"></div>
         <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 40px;">
-          ${getImageHTML(coverImagePath, 'Thank You Mascot')}
+          ${getImageHTML(coverImagePath, 'Thank You Mascot', '', 'cover_s18')}
         </div>
       </div>
 
