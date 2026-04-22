@@ -1577,12 +1577,18 @@ function renderSlide(slideId, proposal, client, mascotImages) {
 async function launchBrowser() {
   const isVercel = !!process.env.VERCEL;
   if (isVercel) {
-    const chromium = require('@sparticuz/chromium');
+    // Use @sparticuz/chromium-min: binary is streamed from GitHub Release at
+    // runtime, so the Lambda function stays well under Vercel's 50MB limit.
+    // Version MUST match the installed @sparticuz/chromium-min version.
+    const chromium = require('@sparticuz/chromium-min');
     const puppeteerCore = require('puppeteer-core');
+    const CHROMIUM_URL =
+      process.env.CHROMIUM_URL ||
+      'https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar';
     return puppeteerCore.launch({
       args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
       defaultViewport: chromium.defaultViewport || { width: 1440, height: 810 },
-      executablePath: await chromium.executablePath(),
+      executablePath: await chromium.executablePath(CHROMIUM_URL),
       headless: chromium.headless,
     });
   }

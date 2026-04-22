@@ -4,15 +4,15 @@
   "private": true,
   "description": "notso.ai proposal generator — 18-slide proposals (PDF + PPTX)",
   "scripts": {
-    "start":  "node server.js",
-    "dev":    "node server.js",
-    "build":  "echo 'no build step — static HTML + python-pptx backend'"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "echo 'no build step — static HTML + python-pptx backend'"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "@sparticuz/chromium": "^131.0.0",
+    "@sparticuz/chromium-min": "^131.0.1",
     "puppeteer-core": "^23.5.0"
   },
   "devDependencies": {
