@@ -1577,6 +1577,15 @@ function renderSlide(slideId, proposal, client, mascotImages) {
 async function launchBrowser() {
   const isVercel = !!process.env.VERCEL;
   if (isVercel) {
+    // @sparticuz/chromium-min gates the al2/al2023 shared-library extraction
+    // behind `AWS_EXECUTION_ENV` (see helper.js — it only treats us as a
+    // Lambda when that var contains "AWS_Lambda_nodejs…"). Vercel sets its
+    // own `VERCEL=1` but NOT that AWS var, so without this nudge chromium-min
+    // skips unpacking libnss3.so and the browser crashes at launch.
+    // Safe to set unconditionally on Vercel — we ARE on Lambda underneath.
+    if (!process.env.AWS_EXECUTION_ENV) {
+      process.env.AWS_EXECUTION_ENV = 'AWS_Lambda_nodejs20.x';
+    }
     // Use @sparticuz/chromium-min: binary is streamed from GitHub Release at
     // runtime, so the Lambda function stays well under Vercel's 50MB limit.
     // Version MUST match the installed @sparticuz/chromium-min version.
