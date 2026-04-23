@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "echo 'no build step — static HTML + python-pptx backend'"
+    "build": "echo 'no build step — static HTML + python-pptx backend'",
+    "test": "node test/smoke.js",
+    "smoke": "node test/smoke.js"
   },
   "engines": {
     "node": ">=18"
