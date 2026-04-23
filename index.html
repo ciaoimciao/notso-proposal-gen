@@ -1376,6 +1376,9 @@ async function autoFetchBrandColors() {
       // the fetched brand color the next time Step 3 renders.
       if (typeof client !== 'undefined' && client) {
         client['color' + (idx + 1)] = hex;
+        // Seed _mainColor from the first (primary) brand color so the
+        // Main-color picker in Step 3 starts at the right anchor.
+        if (idx === 0) client._mainColor = hex;
       }
     });
     // If the unified palette sidebar is already mounted (user navigated
@@ -4418,14 +4421,41 @@ function _suggestedPalettes(c1) {
   return [...fixed, ...mood, ...algo];
 }
 
+// Main Color is the user's seed / anchor. It lives independently from
+// client.color1 (which holds the *currently applied palette's* c1). This
+// matters because MOOD/ALGO palettes derive their c1 from the seed — if we
+// overwrote the seed each time a palette was picked, the seed would drift
+// and every subsequent mood palette would shift away from the user's intent.
+//
+// First read falls back to client.color1 (e.g. just after Brandfetch) so
+// existing flows keep working.
+function _getMainColor() {
+  if (client && typeof client._mainColor === 'string' && /^#[0-9a-f]{3,6}$/i.test(client._mainColor)) {
+    return client._mainColor;
+  }
+  if (client && typeof client.color1 === 'string') return client.color1;
+  return '#3BB28E';
+}
+function _setMainColor(val) {
+  if (!client) return;
+  if (!val || !/^#[0-9a-f]{3,6}$/i.test(val)) return;
+  client._mainColor = val;
+}
+
 // Apply a palette to the live preview + persist to client.
 // Uses a scoped <style> tag with high specificity so it beats the
 // server-emitted buildBrandCSS :root vars.
+//
+// NOTE: Does NOT touch client._mainColor. The Main Color seed stays fixed
+// across palette swaps — only client.color1..5 (the rendered palette) move.
 function _unifiedApplyPalette(palette) {
   if (!palette || !palette.colors || !palette.colors.length) return;
   const [c1, c2, c3, c4, c5raw] = palette.colors;
   const c5 = c5raw || c4; // 5th slot is optional; fall back to c4 if absent
   if (!client) return;
+  // Seed the Main Color on very first palette application if it's still
+  // unset — so opening Step 3 cold picks up the Brandfetch-fed color1.
+  if (!client._mainColor && client.color1) client._mainColor = client.color1;
   client.color1 = c1 || client.color1;
   client.color2 = c2 || client.color2;
   client.color3 = c3 || client.color3;
@@ -4484,11 +4514,13 @@ function _unifiedApplyPalette(palette) {
 }
 
 // Render the palette section — swatches per palette + custom-c1 picker.
+// The "Main color" input is bound to _mainColor (the seed), NOT the active
+// palette's c1 — so picking different palettes doesn't shift the seed.
 function _unifiedRenderPalette() {
   const host = document.getElementById('unifiedPaletteContent');
   if (!host) return;
-  const c1 = (client && client.color1) || '#3BB28E';
-  const palettes = _suggestedPalettes(c1);
+  const seed = _getMainColor();
+  const palettes = _suggestedPalettes(seed);
   const active = (client && client._activePaletteId) || 'notso';
 
   // Visual distinction by kind so user can read at a glance which palettes
@@ -4505,10 +4537,10 @@ function _unifiedRenderPalette() {
       <b>FIXED</b> (notso.ai) keeps the brand colors regardless.
     </div>
     <div style="display:flex;align-items:center;gap:8px;padding:6px 4px 10px;border-bottom:1px solid #F3F4F6;margin-bottom:8px">
-      <label style="font-size:11px;color:#374151;font-weight:600">Main color:</label>
-      <input type="color" id="palMainColor" value="${c1}" style="width:30px;height:26px;border:1px solid #E5E7EB;border-radius:4px;cursor:pointer;padding:0"
+      <label style="font-size:11px;color:#374151;font-weight:600" title="Seed for MOOD/ALGO palettes. Stays fixed when you pick a palette — only changes when you edit it here.">Main color:</label>
+      <input type="color" id="palMainColor" value="${seed}" style="width:30px;height:26px;border:1px solid #E5E7EB;border-radius:4px;cursor:pointer;padding:0"
         oninput="_palMainChanged(this.value)">
-      <input type="text" id="palMainHex" value="${c1}" style="flex:1;min-width:0;padding:4px 6px;border:1px solid #E5E7EB;border-radius:4px;font-size:11px;font-family:monospace"
+      <input type="text" id="palMainHex" value="${seed}" style="flex:1;min-width:0;padding:4px 6px;border:1px solid #E5E7EB;border-radius:4px;font-size:11px;font-family:monospace"
         onchange="_palMainChanged(this.value)">
     </div>
     <div style="display:flex;flex-direction:column;gap:6px">
@@ -4539,21 +4571,24 @@ function _unifiedRenderPalette() {
   `;
 }
 
-// Called when the user tweaks the main color — regenerate suggestions
-// AND re-apply the currently-active palette using the new c1 so the stage
-// refreshes. For FIXED palettes (notso) we skip the re-apply since they
-// ignore c1 — just the list of suggestions is refreshed.
+// Called when the user tweaks the Main color — writes the seed, regenerates
+// MOOD/ALGO suggestions, and re-applies the active palette using the new seed
+// so slides refresh. FIXED palettes (notso) ignore the seed — we just refresh
+// the swatch list so the new Main color shows without disturbing the stage.
+//
+// Intentionally does NOT write client.color1 directly — that's owned by the
+// active palette. Only _mainColor moves here.
 function _palMainChanged(val) {
   if (!val || !val.match(/^#[0-9a-f]{3,6}$/i)) return;
   if (!client) return;
-  client.color1 = val;
+  _setMainColor(val);
   const activeId = client._activePaletteId || 'notso';
   const p = _suggestedPalettes(val).find(x => x.id === activeId) || _suggestedPalettes(val)[0];
   if (p && p.kind === 'fixed') {
     _unifiedRenderPalette(); // just re-render suggestions, don't overwrite brand
     return;
   }
-  _unifiedApplyPalette(p);
+  _unifiedApplyPalette(p); // re-apply active mood/algo with new seed
 }
 
 // Place an asset on the current slide's chosen slot. Updates global
