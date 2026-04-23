@@ -462,7 +462,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <input type="text" id="industry" data-i18n-placeholder="form.industry.ph" placeholder="e.g. Retail, Finance, Healthcare" />
         </div>
         <div class="form-group full">
-          <label data-i18n="form.website">Client Website <span class="hint" data-i18n="form.website.hint">(optional — we'll auto-fetch their brand colors)</span></label>
+          <label data-i18n="form.website">Client Website <span class="hint" data-i18n="form.website.hint">— we'll auto-fetch their brand colors. Fine-tune later with the palette picker.</span></label>
           <div style="display:flex;gap:8px;align-items:center">
             <input type="text" id="clientWebsite" placeholder="e.g. jumbo.com or https://jumbo.com" style="flex:1" />
             <button type="button" class="btn btn-secondary" id="fetchBrandBtn" onclick="autoFetchBrandColors()" style="white-space:nowrap;font-size:13px" data-i18n="form.website.fetch">🎨 Auto-fill colors</button>
@@ -485,33 +485,19 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <label data-i18n="form.desc">Client Description <span class="hint" data-i18n="form.desc.hint">— what do they do, who are their customers?</span></label>
           <textarea id="clientDesc" data-i18n-placeholder="form.desc.ph" placeholder="e.g. Jumbo is one of the largest supermarket chains in the Netherlands with 700+ stores. Their HR team handles thousands of new employee onboarding cases per year and is overwhelmed with repetitive policy questions..."></textarea>
         </div>
-        <div class="form-group">
-          <label data-i18n="form.color1">Main Color <span class="hint" data-i18n="form.color1.hint">(primary)</span></label>
-          <div class="color-row">
-            <input type="color" id="color1" value="#FFD700" oninput="document.getElementById('color1hex').value=this.value.toUpperCase()" />
-            <input type="text" id="color1hex" class="color-hex" value="#FFD700" placeholder="#FFD700" maxlength="7" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value))document.getElementById('color1').value=this.value" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label data-i18n="form.color2">Accent 1 <span class="hint" data-i18n="form.optional">(optional)</span></label>
-          <div class="color-row">
-            <input type="color" id="color2" value="#000000" oninput="document.getElementById('color2hex').value=this.value.toUpperCase()" />
-            <input type="text" id="color2hex" class="color-hex" value="#000000" placeholder="#000000" maxlength="7" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value))document.getElementById('color2').value=this.value" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label data-i18n="form.color3">Accent 2 <span class="hint" data-i18n="form.optional">(optional)</span></label>
-          <div class="color-row">
-            <input type="color" id="color3" value="#F5A623" oninput="document.getElementById('color3hex').value=this.value.toUpperCase()" />
-            <input type="text" id="color3hex" class="color-hex" value="#F5A623" placeholder="#F5A623" maxlength="7" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value))document.getElementById('color3').value=this.value" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label data-i18n="form.color4">Accent 3 <span class="hint" data-i18n="form.optional">(optional)</span></label>
-          <div class="color-row">
-            <input type="color" id="color4" value="#E74C3C" oninput="document.getElementById('color4hex').value=this.value.toUpperCase()" />
-            <input type="text" id="color4hex" class="color-hex" value="#E74C3C" placeholder="#E74C3C" maxlength="7" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value))document.getElementById('color4').value=this.value" />
-          </div>
+        <!-- Color pickers are hidden from Step 1. Colors come from Brandfetch
+             auto-fetch (URL field above) or from the palette picker in Step 3.
+             Inputs kept as display:none so the form-collector / history-loader /
+             Brandfetch writer don't break. -->
+        <div style="display:none" aria-hidden="true">
+          <input type="color" id="color1" value="#FFD700" />
+          <input type="text"  id="color1hex" value="#FFD700" />
+          <input type="color" id="color2" value="#000000" />
+          <input type="text"  id="color2hex" value="#000000" />
+          <input type="color" id="color3" value="#F5A623" />
+          <input type="text"  id="color3hex" value="#F5A623" />
+          <input type="color" id="color4" value="#E74C3C" />
+          <input type="text"  id="color4hex" value="#E74C3C" />
         </div>
         <div class="form-group">
           <label data-i18n="form.mascotName">Suggested Mascot Name <span class="hint" data-i18n="form.optional">(optional)</span></label>
@@ -934,7 +920,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           </div>
         </details>
         <details class="unified-side-section" open>
-          <summary>🌈 Color palette <span class="side-sub">auto-generated</span></summary>
+          <summary>🌈 Colors &amp; palette <span class="side-sub">adjust live</span></summary>
           <div id="unifiedPaletteContent">
             <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
           </div>
@@ -1048,8 +1034,8 @@ const I18N = {
     'form.clientName.ph': 'e.g. Jumbo, FinSport, Ahrend',
     'form.industry': 'Industry / Sector',
     'form.industry.ph': 'e.g. Retail, Finance, Healthcare',
-    'form.website': 'Client Website <span class="hint">(optional — we\'ll auto-fetch their brand colors)</span>',
-    'form.website.hint': '(optional — we\'ll auto-fetch their brand colors)',
+    'form.website': 'Client Website <span class="hint">— we\'ll auto-fetch their brand colors. Fine-tune later with the palette picker.</span>',
+    'form.website.hint': '— we\'ll auto-fetch their brand colors. Fine-tune later with the palette picker.',
     'form.website.fetch': '🎨 Auto-fill colors',
     'form.useCase': 'Primary Use Case',
     'form.useCase.ph': 'Select use case...',
@@ -1130,8 +1116,8 @@ const I18N = {
     'form.clientName.ph': '例如:Jumbo、FinSport、Ahrend',
     'form.industry': '產業 / 領域',
     'form.industry.ph': '例如:零售、金融、醫療保健',
-    'form.website': '客戶官網 <span class="hint">(選填 — 會自動抓取品牌色)</span>',
-    'form.website.hint': '(選填 — 會自動抓取品牌色)',
+    'form.website': '客戶官網 <span class="hint">— 會自動抓取品牌色，之後可用第三步的色盤微調</span>',
+    'form.website.hint': '— 會自動抓取品牌色，之後可用第三步的色盤微調',
     'form.website.fetch': '🎨 自動填入品牌色',
     'form.useCase': '主要使用情境',
     'form.useCase.ph': '選擇使用情境⋯',
@@ -1212,8 +1198,8 @@ const I18N = {
     'form.clientName.ph': '例:Jumbo、FinSport、Ahrend',
     'form.industry': '業界 / セクター',
     'form.industry.ph': '例:小売、金融、ヘルスケア',
-    'form.website': 'クライアントのウェブサイト <span class="hint">(任意 — ブランドカラーを自動取得)</span>',
-    'form.website.hint': '(任意 — ブランドカラーを自動取得)',
+    'form.website': 'クライアントのウェブサイト <span class="hint">— ブランドカラーを自動取得。ステップ3のパレットで微調整できます</span>',
+    'form.website.hint': '— ブランドカラーを自動取得。ステップ3のパレットで微調整できます',
     'form.website.fetch': '🎨 カラーを自動入力',
     'form.useCase': '主なユースケース',
     'form.useCase.ph': 'ユースケースを選択⋯',
@@ -1386,15 +1372,26 @@ async function autoFetchBrandColors() {
         pick.value = hex;
         hexInput.value = hex.toUpperCase();
       }
+      // Also push into client state so the palette picker seeds from
+      // the fetched brand color the next time Step 3 renders.
+      if (typeof client !== 'undefined' && client) {
+        client['color' + (idx + 1)] = hex;
+      }
     });
+    // If the unified palette sidebar is already mounted (user navigated
+    // back to Step 1 to re-fetch), refresh it so the new Main color shows.
+    if (typeof _unifiedRenderPalette === 'function'
+        && document.getElementById('unifiedPaletteContent')) {
+      try { _unifiedRenderPalette(); } catch (_) { /* ignore */ }
+    }
     status.style.color = '#059669';
-    status.textContent = `✓ Filled ${topFour.length} color${topFour.length > 1 ? 's' : ''} from ${domain}`;
+    status.textContent = `✓ Filled ${topFour.length} color${topFour.length > 1 ? 's' : ''} from ${domain} — fine-tune in Step 3's palette picker.`;
   } catch (err) {
     status.style.color = '#DC2626';
     const msg = err.message || String(err);
     // Friendly fallback when the server doesn't have a Brandfetch key.
-    if (/BRANDFETCH_API_KEY|not configured/i.test(msg)) {
-      status.innerHTML = '⚠ Brand auto-fetch needs a Brandfetch key on the server. <a href="https://developers.brandfetch.com" target="_blank" style="color:inherit;text-decoration:underline">Get one free (500 req/mo)</a> and set <code>BRANDFETCH_API_KEY</code>.';
+    if (/BRANDFETCH_(API_)?KEY|not configured/i.test(msg)) {
+      status.innerHTML = '⚠ Brand auto-fetch needs a Brandfetch key on the server. <a href="https://developers.brandfetch.com" target="_blank" style="color:inherit;text-decoration:underline">Get one free (500 req/mo)</a> and set <code>BRANDFETCH_KEY</code> (or <code>BRANDFETCH_API_KEY</code>).';
     } else {
       status.textContent = '⚠ ' + msg;
     }

@@ -259,13 +259,14 @@ const handler = async (req, res) => {
         return json(res, 400, { error: 'Invalid domain — expected something like jumbo.com' });
       }
 
-      let bfKey = process.env.BRANDFETCH_API_KEY || '';
+      // Accept either BRANDFETCH_API_KEY (original) or BRANDFETCH_KEY (shorter)
+      let bfKey = process.env.BRANDFETCH_API_KEY || process.env.BRANDFETCH_KEY || '';
       if (!bfKey) {
         try {
           const secretsPath = path.join(__dirname, '.secrets.json');
           if (fs.existsSync(secretsPath)) {
             const secrets = JSON.parse(fs.readFileSync(secretsPath, 'utf8'));
-            bfKey = secrets.BRANDFETCH_API_KEY || '';
+            bfKey = secrets.BRANDFETCH_API_KEY || secrets.BRANDFETCH_KEY || '';
           }
         } catch (_) { /* ignore */ }
       }
