@@ -55,19 +55,22 @@ function buildBrandCSS(client) {
   const c2 = client.color2 || '#e63946';
   const c3 = client.color3 || '#f5a623';
   const c4 = client.color4 || '#e74c3c';
+  // c5 is the 5th palette slot — optional. Used by S14 roadmap phase 5 and
+  // as a "soft accent / ink" slot. Defaults to c4 so existing 4-slot clients
+  // don't break anything.
+  const c5 = client.color5 || c4;
 
-  // Semantic vars in addition to the raw 4-slot palette. Each has a fallback
+  // Semantic vars in addition to the raw 5-slot palette. Each has a fallback
   // so a client that doesn't set it still gets the notso default. The slide
   // renderers read these (e.g. `var(--brand-highlight)`) instead of hard-
   // coding a hex, which is what makes the Canva-style palette swap actually
   // recolor every slide instead of just a few.
   //
-  //   --brand-highlight → eyebrow / stat yellow / accent chip fill
-  //   --brand-danger    → "pain point" / before-state / warning callout
-  //   --brand-info      → phase 2 / secondary accent block (navy family)
-  //   --brand-c1-dark / --brand-c1-darker → S18 thank-you gradient
+  //   --brand-c*-dark → derived darker shade for hover/gradient/dark text
+  //   --brand-c*-tint → transparent wash for callout backgrounds + glows
+  //                     (replaces baked-in rgba(59,178,142,.08) etc.)
   //
-  // CSS color-mix lets the darker shades track whatever c1 actually is
+  // CSS color-mix lets the derived shades track whatever client.color* is
   // rather than being pre-baked for the notso green.
   return `
     :root {
@@ -75,17 +78,22 @@ function buildBrandCSS(client) {
       --brand-c2: ${c2};
       --brand-c3: ${c3};
       --brand-c4: ${c4};
+      --brand-c5: ${c5};
       --brand-main: ${c1};
       --accent: ${c2};
       --c1-tint: ${tintColorString(c1)};
       --c2-tint: ${tintColorString(c2)};
       --c3-tint: ${tintColorString(c3)};
       --c4-tint: ${tintColorString(c4)};
+      --c5-tint: ${tintColorString(c5)};
       --brand-c1-dark:   color-mix(in srgb, ${c1} 70%, black);
       --brand-c1-darker: color-mix(in srgb, ${c1} 45%, black);
       --brand-c1-soft:   color-mix(in srgb, ${c1} 18%, white);
       --brand-c2-dark:   color-mix(in srgb, ${c2} 70%, black);
       --brand-c3-dark:   color-mix(in srgb, ${c3} 70%, black);
+      --brand-c1-wash:   color-mix(in srgb, ${c1} 8%, transparent);
+      --brand-c2-wash:   color-mix(in srgb, ${c2} 8%, transparent);
+      --brand-c1-glow:   color-mix(in srgb, ${c1} 12%, transparent);
     }
   `;
 }
@@ -493,7 +501,7 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
         <!-- Right: Mascot Image -->
         <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
           <!-- Subtle radial glow background -->
-          <div style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(59, 178, 142, 0.08) 0%, rgba(59, 178, 142, 0) 70%); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0;"></div>
+          <div style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, var(--brand-c1-wash) 0%, transparent 70%); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0;"></div>
           <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
             ${getImageHTML(coverImagePath, 'Mascot Cover', '', 'cover_s1')}
           </div>
@@ -678,7 +686,7 @@ function renderSlide_S4_MarketOpportunity(proposal, client) {
       </div>
 
       <!-- Insight Box -->
-      <div style="background: rgba(59, 178, 142, 0.08); border-left: 4px solid var(--brand-c1); padding: 24px; border-radius: 8px;">
+      <div style="background: var(--brand-c1-wash); border-left: 4px solid var(--brand-c1); padding: 24px; border-radius: 8px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 600; color: var(--brand-c1); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Market Gap</div>
         <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #1a1a1a; line-height: 1.6;">
           Notso fills a unique gap by providing AI companions that combine personality, empathy, and intelligence to create genuine user connections.
@@ -829,7 +837,7 @@ function renderSlide_S7_MascotDesign(proposal, client, mascotImages) {
           </div>
         ` : ''}
 
-        <div style="background: rgba(59, 178, 142, 0.08); border-left: 4px solid var(--brand-c1); padding: 24px; border-radius: 8px;">
+        <div style="background: var(--brand-c1-wash); border-left: 4px solid var(--brand-c1); padding: 24px; border-radius: 8px;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Character Overview</div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #1a1a1a; line-height: 1.6;">${stripEmoji(d.lead || d.description || 'A thoughtful character designed to guide users with empathy and intelligence.')}</div>
         </div>
@@ -837,7 +845,7 @@ function renderSlide_S7_MascotDesign(proposal, client, mascotImages) {
 
       <!-- Right: Mascot Image -->
       <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
-        <div style="position: absolute; width: 400px; height: 400px; background: radial-gradient(circle, rgba(59, 178, 142, 0.08) 0%, rgba(59, 178, 142, 0) 70%); border-radius: 50%; z-index: 0;"></div>
+        <div style="position: absolute; width: 400px; height: 400px; background: radial-gradient(circle, var(--brand-c1-wash) 0%, transparent 70%); border-radius: 50%; z-index: 0;"></div>
         <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
           ${getImageHTML(coverImagePath, 'Mascot Design', '', 'cover_s7')}
         </div>
@@ -1223,7 +1231,7 @@ function renderSlide_S14_Roadmap(proposal, client) {
   const rawMilestones = Array.isArray(d.milestones) ? d.milestones : Array.isArray(d.phases) ? d.phases : [];
   const milestones = rawMilestones.slice(0, 5);
 
-  const phaseColors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c1)', 'var(--brand-c2)', '#6366f1'];
+  const phaseColors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c1)', 'var(--brand-c2)', 'var(--brand-c5)'];
   const timelineItems = milestones
     .map((ms, i) => {
       const title = stripEmoji(String(ms.title || ms.phase || ms.name || `Phase ${i + 1}`));
@@ -1308,7 +1316,7 @@ function renderSlide_S15_Pricing(proposal, client) {
     const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)'];
     const isHighlight = i === 1;
     return `
-      <div style="background: white; padding: 18px; border-radius: 12px; border: ${isHighlight ? '2px' : '1px'} solid ${isHighlight ? 'var(--brand-c1)' : '#f0f0f0'}; box-shadow: ${isHighlight ? '0 4px 16px rgba(59,178,142,0.12)' : '0 2px 6px rgba(0,0,0,0.04)'}; position: relative;">
+      <div style="background: white; padding: 18px; border-radius: 12px; border: ${isHighlight ? '2px' : '1px'} solid ${isHighlight ? 'var(--brand-c1)' : '#f0f0f0'}; box-shadow: ${isHighlight ? '0 4px 16px var(--brand-c1-glow)' : '0 2px 6px rgba(0,0,0,0.04)'}; position: relative;">
         ${isHighlight ? '<div style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--brand-c1); color: white; padding: 3px 10px; border-radius: 20px; font-family: \'Poppins\', sans-serif; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">RECOMMENDED</div>' : ''}
         <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px;">${tier.name}</div>
         <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; color: ${colors[i]}; margin-bottom: 2px; line-height: 1;">${tier.price}</div>
@@ -1443,7 +1451,7 @@ function renderSlide_S17_Licensing(proposal, client) {
 
       <!-- Note -->
       ${note ? `
-        <div style="background: rgba(230, 57, 70, 0.08); border-left: 4px solid var(--brand-c2); padding: 24px; border-radius: 8px;">
+        <div style="background: var(--brand-c2-wash); border-left: 4px solid var(--brand-c2); padding: 24px; border-radius: 8px;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #1a1a1a; line-height: 1.6;">${note}</div>
         </div>
       ` : ''}
