@@ -53,3 +53,15 @@ dist/
 build/
 .vercel
 .env*.local
+
+# ─── Mockup compositor scratch ───────────────────────
+mockup-assets/samples/
+mockup-assets/__pycache__/
+
+# ─── Scripts research scratch ────────────────────────
+scripts/__pycache__/
+scripts/*-result.json
+scripts/*-brief.json
+scripts/compare-*.html
+scripts/*-live-preview.html
+scripts/*-raw.txt

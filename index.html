@@ -485,6 +485,13 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <label data-i18n="form.desc">Client Description <span class="hint" data-i18n="form.desc.hint">— what do they do, who are their customers?</span></label>
           <textarea id="clientDesc" data-i18n-placeholder="form.desc.ph" placeholder="e.g. Jumbo is one of the largest supermarket chains in the Netherlands with 700+ stores. Their HR team handles thousands of new employee onboarding cases per year and is overwhelmed with repetitive policy questions..."></textarea>
         </div>
+        <div class="form-group full">
+          <label data-i18n="form.brief">
+            Pitch Brief <span class="hint" data-i18n="form.brief.hint">(optional — tell the AI what this pitch is about, what to emphasize, what to skip)</span>
+          </label>
+          <textarea id="pitchBrief" rows="3" data-i18n-placeholder="form.brief.ph"
+            placeholder="e.g. Returning client. Upselling API tier for multi-surface rollout across web + watch + car. Skip market opportunity and licensing. Emphasize technical ease, a 3-month rollout, and ROI from their existing iOS deployment."></textarea>
+        </div>
         <!-- Color pickers are hidden from Step 1. Colors come from Brandfetch
              auto-fetch (URL field above) or from the palette picker in Step 3.
              Inputs kept as display:none so the form-collector / history-loader /
@@ -1048,6 +1055,9 @@ const I18N = {
     'form.desc': 'Client Description <span class="hint">— what do they do, who are their customers?</span>',
     'form.desc.hint': '— what do they do, who are their customers?',
     'form.desc.ph': 'e.g. Jumbo is one of the largest supermarket chains in the Netherlands with 700+ stores. Their HR team handles thousands of new employee onboarding cases per year and is overwhelmed with repetitive policy questions...',
+    'form.brief': 'Pitch Brief <span class="hint">(optional — tell the AI what this pitch is about, what to emphasize, what to skip)</span>',
+    'form.brief.hint': '(optional — tell the AI what this pitch is about, what to emphasize, what to skip)',
+    'form.brief.ph': 'e.g. Returning client. Upselling API tier for multi-surface rollout across web + watch + car. Skip market opportunity and licensing. Emphasize technical ease, a 3-month rollout, and ROI from their existing iOS deployment.',
     'form.color1': 'Main Color <span class="hint">(primary)</span>',
     'form.color1.hint': '(primary)',
     'form.color2': 'Accent 1 <span class="hint">(optional)</span>',
@@ -1129,6 +1139,9 @@ const I18N = {
     'form.useCase.compliance': '法遵、政策與常見問答',
     'form.desc': '客戶描述 <span class="hint">— 他們在做什麼?主要顧客是誰?</span>',
     'form.desc.hint': '— 他們在做什麼?主要顧客是誰?',
+    'form.brief': '本次提案重點 <span class="hint">(選填 — 告訴 AI 這次要強調什麼、跳過什麼)</span>',
+    'form.brief.hint': '(選填 — 告訴 AI 這次要強調什麼、跳過什麼)',
+    'form.brief.ph': '例如:回頭客,本次升級 API 版本跨 web/watch/car。跳過市場機會與授權頁,強調技術整合順暢度、3 個月 rollout、以及既有 iOS 部署的 ROI。',
     'form.desc.ph': '例如:Jumbo 是荷蘭最大的連鎖超市之一,擁有超過 700 家分店。他們的 HR 團隊每年處理數千筆新員工導引案件,被重複的政策問題壓得喘不過氣⋯',
     'form.color1': '主色 <span class="hint">(主要)</span>',
     'form.color1.hint': '(主要)',
@@ -1211,6 +1224,9 @@ const I18N = {
     'form.useCase.compliance': 'コンプライアンス・ポリシー・FAQ',
     'form.desc': 'クライアント説明 <span class="hint">— 何をしていて、顧客は誰ですか?</span>',
     'form.desc.hint': '— 何をしていて、顧客は誰ですか?',
+    'form.brief': 'ピッチ・ブリーフ <span class="hint">(任意 — このピッチで何を強調し、何を省くか AI に伝える)</span>',
+    'form.brief.hint': '(任意 — このピッチで何を強調し、何を省くか AI に伝える)',
+    'form.brief.ph': '例:既存クライアント、API ティア・アップセル。マーケット機会と Licensing はスキップ。技術統合、3 か月ロールアウト、iOS の既存デプロイからの ROI を強調。',
     'form.desc.ph': '例:Jumbo はオランダ最大級のスーパーマーケットチェーンで、700 店舗以上を展開。人事チームは毎年数千件の新人オンボーディングを処理しており、繰り返される方針に関する質問に追われている⋯',
     'form.color1': 'メインカラー <span class="hint">(プライマリ)</span>',
     'form.color1.hint': '(プライマリ)',
@@ -1970,6 +1986,7 @@ async function startGeneration() {
   const industry = document.getElementById('industry').value.trim();
   const useCase = document.getElementById('useCase').value;
   const desc = document.getElementById('clientDesc').value.trim();
+  const brief = (document.getElementById('pitchBrief') || {}).value?.trim() || '';
   const key = document.getElementById('claudeKey').value.trim();
 
   if (!name) { showError('Please enter the Client Name.'); return; }
@@ -1983,7 +2000,7 @@ async function startGeneration() {
   btn.disabled = true;
 
   client = {
-    name, industry, useCase, desc,
+    name, industry, useCase, desc, brief,
     color1: document.getElementById('color1hex').value || '#000000',
     color2: document.getElementById('color2hex').value || '#FFFFFF',
     color3: document.getElementById('color3hex').value || '#F5A623',
@@ -2007,7 +2024,7 @@ async function startGeneration() {
   try {
     // Stash key for later features (pencil edit, mascot regen)
     try { sessionStorage.setItem('claudeKey', key); } catch {}
-    proposal = await callGemini(client, key);
+    proposal = await callProposalContentEndpoint(client, key);
     clearInterval(interval);
     document.getElementById('progressBar').style.width = '100%';
     document.getElementById('loadTitle').textContent = 'Done! Building your preview...';
@@ -2096,6 +2113,70 @@ Every slide has a 1-sentence lead-text that sits right below the title. Think of
 - Be highly specific to this client and this slide's topic.
 - Match the output language.
 - Use plain text only (no markdown, no emoji).`;
+
+/* ─── NEW: AI architect + copywriter (Claude Opus 4.6 via server endpoint)
+ *   Reads client description + optional pitch brief. ALWAYS writes content
+ *   for all 18 slides, AND returns a recommended subset the user can accept
+ *   or override. Response shape:
+ *     { recommended_slides: [...], recommendation_rationale,
+ *       content: {s1:..., s2:..., ..., s18:...} }
+ *   Frontend behavior: defaults selectedSlides to the AI's recommendation,
+ *   but content for every slide is pre-populated so the user can toggle any
+ *   slide back on without regenerating.
+ *  ─── */
+async function callProposalContentEndpoint(info, key) {
+  const res = await fetch('/api/proposal/generate-content', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      claudeKey: key,
+      clientName: info.name,
+      industry: info.industry,
+      useCase: info.useCase,
+      desc: info.desc,
+      mascotName: info.mascotName || '',
+      color1: info.color1, color2: info.color2, color3: info.color3, color4: info.color4,
+      designStyle: info.designStyle || 'notso-signature',
+      outputLang: info.lang || 'en',
+      brief: info.brief || '',
+    }),
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.error || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const content = data.content || {};
+  // Accept new and legacy field names
+  const recommended = Array.isArray(data.recommended_slides) ? data.recommended_slides
+                     : Array.isArray(data.selected_slides)   ? data.selected_slides
+                     : [];
+  const rationale = data.recommendation_rationale || data.selection_rationale || '';
+
+  // Default the UI's selectedSlides Set to the AI's recommendation.
+  // Content for ALL 18 slides is already in `content` so the user can toggle
+  // any non-recommended slide back on without a regenerate round-trip.
+  try {
+    if (recommended.length && typeof selectedSlides !== 'undefined') {
+      selectedSlides = new Set(recommended);
+      if (typeof renderSlidePicker === 'function') renderSlidePicker();
+      console.log('[AI] Recommended slides:', recommended);
+      console.log('[AI] Rationale:', rationale);
+      console.log('[AI] Content available for:',
+        Object.keys(content).filter(k => /^s\d+$/.test(k)).sort());
+    }
+  } catch (e) {
+    console.warn('[AI] Could not sync selectedSlides:', e.message);
+  }
+
+  // Stash metadata on the proposal for Preview & Edit to surface
+  content.__ai = {
+    recommended_slides: recommended,
+    recommendation_rationale: rationale,
+  };
+  return content;
+}
+
 
 async function callGemini(info, key) {
   const ucMap = {

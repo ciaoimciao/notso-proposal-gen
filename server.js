@@ -567,6 +567,275 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
   }
 
   // ──────────────────────────────────────
+  // API: Generate full proposal content (Claude Opus 4.6)
+  // POST /api/proposal/generate-content
+  //   { claudeKey, clientName, industry, useCase, desc, mascotName,
+  //     color1, color2, color3, color4, designStyle, outputLang, brief? }
+  // Returns: { selected_slides: [...], selection_rationale, content: {s1:..., s3:..., ...} }
+  //
+  // Architect + copywriter: Claude READS the client description, SELECTS the
+  // subset of 18 slides that fits this specific pitch, and WRITES tailored
+  // marketing-punchy copy. Optional `brief` overrides defaults.
+  // ──────────────────────────────────────
+  if (url.pathname === '/api/proposal/generate-content' && req.method === 'POST') {
+    try {
+      const body = JSON.parse((await collectBody(req)).toString());
+      const {
+        claudeKey,
+        clientName = 'Client', industry = '', useCase = '',
+        desc = '',
+        mascotName = '',
+        color1 = '', color2 = '', color3 = '', color4 = '',
+        designStyle = 'notso-signature',
+        outputLang = 'en',
+        brief = '',
+      } = body || {};
+      if (!claudeKey) return json(res, 400, { error: 'Missing Claude API key' });
+      if (!desc) return json(res, 400, { error: 'Missing client description' });
+
+      const langMap = {
+        en: 'natural American English',
+        'zh-TW': '繁體中文 (台灣用語, punchy 的行銷調性, 品牌名保留原文)',
+        zh: '繁體中文 (台灣用語, punchy 的行銷調性)',
+        ja: 'パンチの効いた日本語マーケティング調',
+        nl: 'punchy natural Dutch (Nederlands)',
+        ko: 'punchy 한국어 마케팅 톤',
+        de: 'punchy natural German (Deutsch)',
+        fr: 'punchy natural French (Français)',
+        es: 'punchy natural Spanish (Español)',
+      };
+      const langInstr = langMap[outputLang] || langMap.en;
+
+      const styleGuide = `Writing style — every line must follow these rules:
+1. PUNCHY. Short sentences, verbs first, no corporate fluff.
+2. BENEFIT BEFORE FEATURE. Start with what the customer FEELS or GETS, not "we offer".
+3. CONCRETE. Replace "help you" / "enable you to" with specific verbs: "spot", "cut", "unlock", "turn X into Y", "stop Xing".
+4. NO AI BUZZWORDS unless the product is itself AI-first. Avoid "leverage", "empower", "seamless", "cutting-edge", "transform your business".
+5. HEADLINES ≤10 WORDS. Sub-headlines / taglines ≤14 words. Body: 1-2 tight sentences, never a wall.
+6. SPECIFIC TO THIS CLIENT. Name their industry, users, and problem by name. Generic = dead.
+7. COPY SHOULD MAKE A BUSY EXECUTIVE WANT TO READ THE NEXT SLIDE.`;
+
+      const fewShot = `Examples of GOOD copy (study the voice):
+
+Cover tagline (nutrition app): ✓ "Meet the coach your users already trust." / ✗ "We provide a comprehensive AI mascot solution."
+Pain-points intro (bank): ✓ "Your app does the job. It doesn't win hearts." / ✗ "Banking customers demand more engaging experiences."
+Core-features headline: ✓ "What your mascot actually does." / ✗ "Core Product Features and Capabilities."
+Thank-you closing: ✓ "Ready to give your brand a face?" / ✗ "We look forward to hearing from you."`;
+
+      const slideMenu = `ALL 18 SLIDES (every one must be written — the user decides what to keep).
+
+s1  Cover             — First impression with tagline.
+s2  TableOfContents   — Map of the deck.
+s3  PainPoints        — User pain today, 3-4 specific items.
+s4  MarketOpportunity — Industry size, growth, competitors, opportunity gap.
+s5  CoreFeatures      — What the mascot does (3-4 features).
+s6  MascotSelection   — 3-option shortlist (A / B / C).
+s7  MascotDesign      — Deep-dive on chosen mascot.
+s8  PersonalityEmpathy — Expression library (6 emotions).
+s9  ChatDemo          — Sample conversation transcript.
+s10 ChatflowDesign    — Architecture diagram (intent / routing / response).
+s11 KnowledgeBase     — Content strategy (3 categories).
+s12 DataInsights      — Analytics mockup (metrics + badges).
+s13 ROIEvidence       — Stats, case studies, before/after.
+s14 Roadmap           — 5-phase 10-week timeline.
+s15 Pricing           — Recommended tier + reasoning.
+s16 PromoMaterials    — Co-marketing assets (posters, toys, banners).
+s17 Licensing         — Legal / data cards.
+s18 ThankYou          — CTA + contact.
+
+RECOMMENDATION RULES:
+On top of writing all 18, recommend a subset that is the BEST pitch for THIS client:
+- Typical recommended deck: 8–14 slides.
+- ALWAYS recommend: s1, s5, s13, s15, s18.
+- Recommend s2 only if the rest of the recommendation is ≥8 slides.
+- Usually recommend s6 OR s7, not both.
+- Cut anything that doesn't earn its place for this specific client's pitch.
+- Order recommendations ascending (s1, s2, ...).`;
+
+      const ucMap = {
+        customer_support: 'Customer Support & Service',
+        hr_onboarding: 'HR Onboarding & Internal Workflows',
+        sales_conversion: 'Sales & Lead Conversion',
+        product_experience: 'Product Discovery & Guided Buying',
+        events_kiosk: 'Events & Kiosk Experience',
+        compliance: 'Compliance, Policy & FAQ',
+      };
+
+      const briefBlock = (brief && brief.trim())
+        ? `\nTHIS PITCH'S SPECIFIC BRIEF (from the account owner — HIGH PRIORITY, override defaults as needed):\n${brief.trim()}\n`
+        : '';
+
+      // The per-slide SCHEMA mirrors the existing renderers' expected shape
+      // (objects for points/features/chat/etc). Write ALL 18 slides so the user
+      // can toggle any of them back on; also recommend a strong subset.
+      const schema = `Return ONLY a JSON object with these three top-level keys:
+{
+  "recommended_slides": ["s1", ...],                        // ascending IDs the AI recommends showing
+  "recommendation_rationale": "2-4 sentence plain explanation of WHY you recommend these slides for THIS client, naming what you cut from the default and why.",
+  "content": {                                              // MUST include ALL 18 entries s1..s18
+    "s1":  {"mascot_name":"", "tagline":"≤14-word punchy tagline", "lead":"1-sentence supporting insight", "greeting":"short mascot hook ≤12 words"},
+    "s3":  {"headline":"≤10-word pain headline", "lead":"1-sentence so-what", "intro":"1-2 sentence setup",
+            "points":[{"title":"≤5-word pain title","desc":"≤15-word specific pain"}, ...3-4 items]},
+    "s4":  {"headline":"market headline", "lead":"1-sentence why-now",
+            "industry_size":{"value":"exact size with currency","source":"source name"},
+            "growth_rate":{"value":"annual growth %","source":"source name"},
+            "projected_size":{"value":"projected size","source":"source name"},
+            "competitors":[{"name":"competitor","gap":"what they lack"}, ...2 items],
+            "opportunity":"1-2 sentences on the gap notso.ai fills"},
+    "s5":  {"headline":"what the mascot does for client", "lead":"1-sentence so-what", "intro":"1-sentence value statement",
+            "features":[{"icon":"emoji","title":"feature solving pain","desc":"how it applies"}, ...3-4 items]},
+    "s6":  {"headline":"find the right fit", "lead":"1-sentence so-what",
+            "option_a":{"name":"","archetype":"The [Archetype]","traits":["","","",""],"desc":"2-3 sentences","why":"1 sentence fit","formal":40,"playful":70},
+            "option_b":{"name":"","archetype":"","traits":["","","",""],"desc":"","why":"","formal":70,"playful":30},
+            "option_c":{"name":"","archetype":"","traits":["","","",""],"desc":"","why":"","formal":55,"playful":55}},
+    "s7":  {"name":"", "rec_note":"which of s6 you recommend and why (1 sentence)", "lead":"so-what",
+            "personality":"2 sentences", "tone_desc":"how they speak",
+            "phrases":["sample 1","sample 2","sample 3"],
+            "interests":["industry interest","","",]},
+    "s8":  {"name":"", "lead":"so-what on emotional range", "personality_summary":"1 sentence",
+            "expressions":[{"emotion":"Happy","context":"~8 words when it fires"},
+                           {"emotion":"Empathetic","context":""}, {"emotion":"Curious","context":""},
+                           {"emotion":"Celebrating","context":""}, {"emotion":"Apologetic","context":""},
+                           {"emotion":"Helpful","context":""}]},
+    "s9":  {"mascot_name":"", "lead":"so-what on what audience will feel", "scenario":"brief chat scenario",
+            "chat":[{"r":"bot","m":"EXACTLY 3 complete sentences ending with . ! or ?. No ellipsis."},
+                    {"r":"user","m":"1-2 complete sentences"},
+                    {"r":"bot","m":"EXACTLY 3 complete sentences"},
+                    {"r":"user","m":"1-2 complete sentences"},
+                    {"r":"bot","m":"EXACTLY 3 complete sentences"}]},
+    "s10": {"headline":"how conversation flows", "lead":"so-what",
+            "flow":{"columns":[{"type":"bot_msg","title":"Welcome","text":"warm opener"},
+                               {"type":"user_msg","title":"User","text":"typical first question"},
+                               {"type":"stack","nodes":[{"type":"options","title":"Detect intent","items":["4 intents"],"highlight":0},
+                                                        {"type":"options","title":"Source docs","items":["3 sources"],"highlight":0}]},
+                               {"type":"badge","title":"Control Agent"},
+                               {"type":"bot_msg","title":"Answer","text":"grounded answer","tags":["tag","tag"]},
+                               {"type":"user_msg","title":"User","text":"follow-up"},
+                               {"type":"bot_msg","title":"Handoff","text":"closes loop"},
+                               {"type":"link","title":"Open resource"}]}},
+    "s11": {"headline":"what the mascot knows", "lead":"so-what",
+            "categories":[{"title":"","items":["","",""],"docs":["",""]}, ...3 items]},
+    "s12": {"headline":"", "lead":"so-what on data→growth", "subheadline":"Standard Included",
+            "intro":"2 sentences on analytics as business intelligence",
+            "metrics":[{"label":"≤8-word metric","desc":"what it reveals"}, ...5 items],
+            "badges":["tag","tag","tag","tag"]},
+    "s13": {"headline":"Proven ROI", "lead":"so-what",
+            "stats":[{"n":"7x","l":"Better brand recall","detail":"explanation"},
+                     {"n":"35%","l":"Higher trust","detail":""},
+                     {"n":"40%","l":"More engagement","detail":""},
+                     {"n":"custom","l":"industry-specific metric","detail":""}],
+            "case_studies":[{"client":"","result":"","industry":""}, ...2 items],
+            "before_after":{"rows":[{"label":"","before":"","after":""}, ...3 items]}},
+    "s14": {"headline":"roadmap", "lead":"so-what",
+            "milestones":[{"week":"Week 1-2","title":"Discovery & Design","desc":"outcome"},
+                          {"week":"Week 3-4","title":"Brain Training","desc":""},
+                          {"week":"Week 5-6","title":"Engineering & QA","desc":""},
+                          {"week":"Week 7-8","title":"Soft Launch","desc":""},
+                          {"week":"Week 9-10","title":"Full Launch","desc":""}]},
+    "s15": {"rec_tier":"Starter or Premium or Enterprise", "lead":"so-what",
+            "reasoning":"1-2 sentences on fit", "next_step":"specific CTA"},
+    "s16": {"headline":"omnichannel rollout", "lead":"so-what",
+            "materials":[{"type":"Poster & Media Kit","status":"Included","desc":""},
+                         {"type":"Vinyl Toy","status":"Price on request","desc":""},
+                         {"type":"Banner & Digital Kit","status":"Price on request","desc":""}]},
+    "s17": {"headline":"Licensing & Ownership", "lead":"so-what",
+            "cards":[{"title":"Character License","desc":""},
+                     {"title":"Content Ownership","desc":""},
+                     {"title":"Platform Access","desc":""},
+                     {"title":"Data Privacy","desc":""}],
+            "note":"1 line fine-print reassurance"},
+    "s18": {"lead":"so-what single takeaway", "closing":"2-sentence warm direct CTA",
+            "next_steps":["step 1","step 2","step 3"],
+            "email":"hello@notso.ai", "phone":"+31 6 40450599", "website":"www.notso.ai"}
+  }
+}
+
+IMPORTANT: Write CONTENT for ALL 18 slides (s1 through s18) — the user needs every slide ready in case they want to toggle one back on. Your "recommended_slides" list is just your suggestion; content for non-recommended slides must still be complete and tailored to THIS client.
+Return ONLY the JSON. No markdown fences, no preamble, no trailing text.`;
+
+      const userMsg = `You are the proposal architect AND copywriter for notso.ai — a Dutch startup (backed by Rabobank) that builds 3D-animated brand mascots acting as chat widgets on the client's website and app.
+
+Your job has TWO parts:
+  1) Read the client's own description below carefully. SELECT which of the 18 available slides will make the strongest pitch to THIS specific client. Skip slides that don't earn their place.
+  2) WRITE punchy, specific, client-tailored copy for each selected slide.
+
+CLIENT:
+  Name:        ${clientName}
+  Industry:    ${industry}
+  Use case:    ${ucMap[useCase] || useCase}
+  Mascot hint: ${mascotName || '(none)'}
+  Brand color: ${color1}
+
+About the client (verbatim, their own words):
+${desc}
+${briefBlock}
+Write all output in ${langInstr}. Keep proper nouns (brand names, product names) in their original form.
+
+${styleGuide}
+
+${fewShot}
+
+${slideMenu}
+
+${schema}`;
+
+      console.log(`  📝 Proposal content gen for ${clientName} (brief: ${brief ? 'yes' : 'no'})`);
+      const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': claudeKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-6',
+          max_tokens: 16000,   // all 18 slides worth of JSON needs the room
+          messages: [{ role: 'user', content: userMsg }],
+        }),
+      });
+
+      if (!anthropicRes.ok) {
+        const errTxt = await anthropicRes.text();
+        console.error('  ❌ Claude proposal-content error:', errTxt.slice(0, 300));
+        return json(res, anthropicRes.status, { error: `Claude error ${anthropicRes.status}: ${errTxt.slice(0, 200)}` });
+      }
+
+      const data = await anthropicRes.json();
+      let text = (data.content || []).map(c => c.text || '').join('').trim();
+      // Strip possible code fences
+      if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\s*/, '').replace(/```\s*$/, '');
+      }
+      let parsed;
+      try { parsed = JSON.parse(text); }
+      catch (e) {
+        console.error('  ⚠️ JSON parse failed, raw:', text.slice(0, 400));
+        return json(res, 500, { error: 'Claude returned invalid JSON', raw: text.slice(0, 800) });
+      }
+
+      // Accept both old and new response shapes for backward compatibility
+      const recommended = Array.isArray(parsed.recommended_slides)
+        ? parsed.recommended_slides
+        : (Array.isArray(parsed.selected_slides) ? parsed.selected_slides : []);
+      const rationale = parsed.recommendation_rationale || parsed.selection_rationale || '';
+      const contentObj = (parsed.content && typeof parsed.content === 'object') ? parsed.content : {};
+      const filled = Object.keys(contentObj).filter(k => /^s\d+$/.test(k)).length;
+      console.log(`  ✨ Opus wrote ${filled}/18 slides, recommends ${recommended.length}: ${recommended.join(', ')}`);
+      return json(res, 200, {
+        recommended_slides: recommended,
+        recommendation_rationale: rationale,
+        content: contentObj,
+        // legacy aliases (frontend may still read these)
+        selected_slides: recommended,
+        selection_rationale: rationale,
+      });
+    } catch (err) {
+      console.error('  ❌ proposal/generate-content error:', err.message);
+      return json(res, 500, { error: err.message });
+    }
+  }
+
+  // ──────────────────────────────────────
   // API: Generate mascot images via Gemini Imagen
   // POST /api/mascot/generate  { geminiKey, clientName, industry, mascotName, personality, color1, numOptions, variations? }
   // Returns: { images: [ { id, data_url }, ... ] }
