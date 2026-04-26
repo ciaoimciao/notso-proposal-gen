@@ -426,7 +426,7 @@ function getImageHTML(imagePath, alt = 'Image', classes = '', slotKey = '') {
   const slotAttr = slotKey ? ` data-slot-key="${slotKey}"` : '';
   if (!imagePath) {
     return `<div class="image-placeholder ${classes}"${slotAttr}>
-      <div style="text-align: center; color: #d1d5db; font-size: 13px; padding: 20px;">
+      <div style="text-align: center; color: #d1d5db; font-size: 17px; padding: 20px;">
         [Image placeholder]
       </div>
     </div>`;
@@ -437,7 +437,7 @@ function getImageHTML(imagePath, alt = 'Image', classes = '', slotKey = '') {
     return `<img src="${dataURI}" alt="${alt}" style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;"${slotAttr} />`;
   } else {
     return `<div class="image-placeholder ${classes}"${slotAttr}>
-      <div style="text-align: center; color: #d1d5db; font-size: 13px; padding: 20px;">
+      <div style="text-align: center; color: #d1d5db; font-size: 17px; padding: 20px;">
         [Image not found]
       </div>
     </div>`;
@@ -464,10 +464,10 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
       <!-- Header: Logo + Date -->
       <div style="padding: 40px 50px; display: flex; justify-content: space-between; align-items: flex-start;">
         <div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px;">notso.ai</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af; font-weight: 500;">presents:</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px;">notso.ai</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af; font-weight: 500;">presents:</div>
         </div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 11px; letter-spacing: 2px; color: #9ca3af; font-weight: 600; text-transform: uppercase;">Proposal · 2026</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 13px; letter-spacing: 2px; color: #9ca3af; font-weight: 600; text-transform: uppercase;">Proposal · 2026</div>
       </div>
 
       <!-- Main Content -->
@@ -475,7 +475,7 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
         <!-- Left: Title & Info -->
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
           <!-- Badge -->
-          <div style="display: inline-block; background: #1a1a1a; color: white; padding: 8px 18px; border-radius: 20px; width: fit-content; margin-bottom: 40px; font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">AI Mascot Proposal</div>
+          <div style="display: inline-block; background: #1a1a1a; color: white; padding: 8px 18px; border-radius: 20px; width: fit-content; margin-bottom: 40px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">AI Mascot Proposal</div>
 
           <!-- Title: "Meet your [name] buddy." -->
           <div style="margin-bottom: 40px;">
@@ -491,8 +491,8 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
 
           <!-- Client Pill -->
           <div style="display: inline-flex; align-items: center; gap: 12px; width: fit-content;">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; font-weight: 500;">for</div>
-            <div style="background: #F0F0F0; padding: 10px 16px; border-radius: 20px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; color: #1a1a1a;">
+            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; font-weight: 500;">for</div>
+            <div style="background: #F0F0F0; padding: 10px 16px; border-radius: 20px; font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 600; color: #1a1a1a;">
               ${stripEmoji(clientName)} — AI companion
             </div>
           </div>
@@ -558,9 +558,9 @@ function renderSlide_S2_TableOfContents(proposal, client, selectedSlides) {
   const itemCards = items
     .map(item => `
       <div style="background: #F4F0E8; padding: 20px; border-radius: 16px; display: flex; flex-direction: column; justify-content: center;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-c1); margin-bottom: 8px;">${String(item.num).padStart(2, '0')}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px;">${item.title}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">${item.subtitle}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: var(--brand-c1); margin-bottom: 8px;">${String(item.num).padStart(2, '0')}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px;">${item.title}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">${item.subtitle}</div>
       </div>
     `)
     .join('');
@@ -569,15 +569,15 @@ function renderSlide_S2_TableOfContents(proposal, client, selectedSlides) {
     <div class="slide" style="background: white; padding: 50px;">
       <!-- Header: Logo + Page Number -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 50px; padding-bottom: 30px; border-bottom: 1px solid #f0f0f0;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: #1a1a1a;">notso.ai</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 11px; letter-spacing: 1px; color: #9ca3af; font-weight: 600; text-transform: uppercase;">02 / Client Proposal</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: #1a1a1a;">notso.ai</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 13px; letter-spacing: 1px; color: #9ca3af; font-weight: 600; text-transform: uppercase;">02 / Client Proposal</div>
       </div>
 
       <!-- Content: Left Title + Right Grid -->
       <div style="display: flex; gap: 60px;">
         <!-- Left: Section Title -->
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 11px; letter-spacing: 2px; color: var(--brand-c1); font-weight: 700; text-transform: uppercase; margin-bottom: 16px;">Contents</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 13px; letter-spacing: 2px; color: var(--brand-c1); font-weight: 700; text-transform: uppercase; margin-bottom: 16px;">Contents</div>
           <div style="display: flex; gap: 4px; align-items: baseline; margin-bottom: 20px;">
             <div style="font-family: 'Poppins', sans-serif; font-size: 72px; font-weight: 800; line-height: 0.95; color: #1a1a1a;">Table</div>
           </div>
@@ -595,7 +595,7 @@ function renderSlide_S2_TableOfContents(proposal, client, selectedSlides) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -614,8 +614,8 @@ function renderSlide_S3_PainPoints(proposal, client) {
       return `
         <div style="background: white; padding: 32px; border-radius: 12px; border-top: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <div style="font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 800; color: ${colors[i]}; margin-bottom: 12px;">${String(i + 1).padStart(2, '0')}</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${stripEmoji(p.title || '')}</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280; line-height: 1.6;">${stripEmoji(p.desc || '')}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${stripEmoji(p.title || '')}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; line-height: 1.6;">${stripEmoji(p.desc || '')}</div>
         </div>
       `;
     })
@@ -626,7 +626,7 @@ function renderSlide_S3_PainPoints(proposal, client) {
       <!-- Header -->
       <div style="margin-bottom: 50px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Content: 3-column grid -->
@@ -635,7 +635,7 @@ function renderSlide_S3_PainPoints(proposal, client) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -666,7 +666,7 @@ function renderSlide_S4_MarketOpportunity(proposal, client) {
       return `
         <div style="background: white; padding: 32px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <div style="font-family: 'Poppins', sans-serif; font-size: 36px; font-weight: 800; color: ${colors[i]}; margin-bottom: 12px; line-height: 1;">${stat.value}</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280; font-weight: 500;">${stat.label}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; font-weight: 500;">${stat.label}</div>
         </div>
       `;
     })
@@ -677,7 +677,7 @@ function renderSlide_S4_MarketOpportunity(proposal, client) {
       <!-- Header -->
       <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Stats Grid -->
@@ -687,14 +687,14 @@ function renderSlide_S4_MarketOpportunity(proposal, client) {
 
       <!-- Insight Box -->
       <div style="background: var(--brand-c1-wash); border-left: 4px solid var(--brand-c1); padding: 24px; border-radius: 8px;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 600; color: var(--brand-c1); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Market Gap</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #1a1a1a; line-height: 1.6;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 600; color: var(--brand-c1); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Market Gap</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #1a1a1a; line-height: 1.6;">
           Notso fills a unique gap by providing AI companions that combine personality, empathy, and intelligence to create genuine user connections.
         </div>
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -711,8 +711,8 @@ function renderSlide_S5_CoreFeatures(proposal, client) {
   const featureCards = features
     .map((f, i) => `
       <div style="background: white; padding: 32px; border-radius: 12px; border-left: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${stripEmoji(f.title || '')}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280; line-height: 1.6;">${stripEmoji(f.desc || '')}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${stripEmoji(f.title || '')}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; line-height: 1.6;">${stripEmoji(f.desc || '')}</div>
       </div>
     `)
     .join('');
@@ -722,7 +722,7 @@ function renderSlide_S5_CoreFeatures(proposal, client) {
       <!-- Header -->
       <div style="margin-bottom: 50px; padding-bottom: 30px; border-bottom: 1px solid #f0f0f0;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Features Grid: 2x2 -->
@@ -731,7 +731,7 @@ function renderSlide_S5_CoreFeatures(proposal, client) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -791,7 +791,7 @@ function renderSlide_S6_MascotSelection(proposal, client, mascotImages) {
       <!-- Header -->
       <div style="margin-bottom: 40px; padding-bottom: 30px; border-bottom: 1px solid #f0f0f0;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Options Grid -->
@@ -800,7 +800,7 @@ function renderSlide_S6_MascotSelection(proposal, client, mascotImages) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -817,7 +817,7 @@ function renderSlide_S7_MascotDesign(proposal, client, mascotImages) {
 
   const phrasePills = phrases
     .map(phrase => `
-      <div style="background: var(--c1-tint); padding: 10px 16px; border-radius: 20px; border: 1px solid var(--brand-c1); font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; color: var(--brand-c1); white-space: nowrap;">
+      <div style="background: var(--c1-tint); padding: 10px 16px; border-radius: 20px; border: 1px solid var(--brand-c1); font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 600; color: var(--brand-c1); white-space: nowrap;">
         "${stripEmoji(phrase)}"
       </div>
     `)
@@ -829,7 +829,7 @@ function renderSlide_S7_MascotDesign(proposal, client, mascotImages) {
       <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 64px; font-weight: 800; color: #1a1a1a; line-height: 0.95; margin-bottom: 24px;">${mascotName}</div>
 
-        <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; font-style: italic; margin-bottom: 32px; line-height: 1.6;">${personality}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; font-style: italic; margin-bottom: 32px; line-height: 1.6;">${personality}</div>
 
         ${phrasePills ? `
           <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 32px;">
@@ -838,8 +838,8 @@ function renderSlide_S7_MascotDesign(proposal, client, mascotImages) {
         ` : ''}
 
         <div style="background: var(--brand-c1-wash); border-left: 4px solid var(--brand-c1); padding: 24px; border-radius: 8px;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Character Overview</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #1a1a1a; line-height: 1.6;">${stripEmoji(d.lead || d.description || 'A thoughtful character designed to guide users with empathy and intelligence.')}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Character Overview</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #1a1a1a; line-height: 1.6;">${stripEmoji(d.lead || d.description || 'A thoughtful character designed to guide users with empathy and intelligence.')}</div>
         </div>
       </div>
 
@@ -852,7 +852,7 @@ function renderSlide_S7_MascotDesign(proposal, client, mascotImages) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -876,7 +876,7 @@ function renderSlide_S8_PersonalityEmpathy(proposal, client, mascotImages) {
           <div style="width: 100%; height: 200px; background: #F4F4F3; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; overflow: hidden;">
             ${getImageHTML(imagePath, exprName, '', exprKey)}
           </div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; color: #1a1a1a;">${exprName}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 600; color: #1a1a1a;">${exprName}</div>
         </div>
       `;
     })
@@ -887,7 +887,7 @@ function renderSlide_S8_PersonalityEmpathy(proposal, client, mascotImages) {
       <!-- Header -->
       <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Expressions Grid: 3x2 -->
@@ -896,7 +896,7 @@ function renderSlide_S8_PersonalityEmpathy(proposal, client, mascotImages) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -924,7 +924,7 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
       const body = stripEmoji(String(text)).trim();
       return `
         <div style="display: flex; justify-content: ${isUser ? 'flex-end' : 'flex-start'}; margin-bottom: 10px;">
-          <div style="background: ${isUser ? 'var(--brand-main, var(--brand-c1))' : '#f3f4f6'}; color: ${isUser ? 'white' : '#1a1a1a'}; padding: 10px 14px; border-radius: 16px; max-width: 82%; font-family: 'Poppins', sans-serif; font-size: 13px; line-height: 1.5;">
+          <div style="background: ${isUser ? 'var(--brand-main, var(--brand-c1))' : '#f3f4f6'}; color: ${isUser ? 'white' : '#1a1a1a'}; padding: 10px 14px; border-radius: 16px; max-width: 82%; font-family: 'Poppins', sans-serif; font-size: 17px; line-height: 1.5;">
             ${body}
           </div>
         </div>
@@ -937,7 +937,7 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
       <!-- Header -->
       <div style="margin-bottom: 40px; padding-bottom: 30px; border-bottom: 1px solid #f0f0f0;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Content: Mascot + Chat -->
@@ -954,7 +954,7 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -970,9 +970,9 @@ function renderSlide_S10_ChatflowDesign(proposal, client) {
   const stageNodes = stages
     .map((stage, i) => `
       <div style="flex: 1; background: rgba(255,255,255,0.1); padding: 24px; border-radius: 12px; border-left: 3px solid var(--brand-c3); position: relative;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 700; color: var(--brand-c3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Step ${i + 1}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: white; margin-bottom: 8px;">${stripEmoji(stage.title || stage.stage || '')}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #d1d5db; line-height: 1.5;">${stripEmoji(stage.description || '')}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 700; color: var(--brand-c3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Step ${i + 1}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: white; margin-bottom: 8px;">${stripEmoji(stage.title || stage.stage || '')}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #d1d5db; line-height: 1.5;">${stripEmoji(stage.description || '')}</div>
         ${i < stages.length - 1 ? '<div style="position: absolute; right: -16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--brand-c3);">→</div>' : ''}
       </div>
     `)
@@ -983,7 +983,7 @@ function renderSlide_S10_ChatflowDesign(proposal, client) {
       <!-- Header -->
       <div style="margin-bottom: 50px; padding-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1);">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: white; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #d1d5db; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #d1d5db; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Flow Diagram -->
@@ -992,7 +992,7 @@ function renderSlide_S10_ChatflowDesign(proposal, client) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -1009,8 +1009,8 @@ function renderSlide_S11_KnowledgeBase(proposal, client, mascotImages) {
     .map((cat, i) => `
       <div style="display: flex; align-items: center; gap: 24px; padding: 28px; background: white; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
         <div style="flex: 1;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Input</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 600; color: #1a1a1a;">${stripEmoji(cat.input_label || cat.title || '')}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Input</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 600; color: #1a1a1a;">${stripEmoji(cat.input_label || cat.title || '')}</div>
         </div>
         <div style="width: 40px; text-align: center; font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c1);">→</div>
         <div style="width: 80px; height: 80px; flex-shrink: 0; background: #F4F4F3; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
@@ -1018,8 +1018,8 @@ function renderSlide_S11_KnowledgeBase(proposal, client, mascotImages) {
         </div>
         <div style="width: 40px; text-align: center; font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c1);">→</div>
         <div style="flex: 1;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Output</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 600; color: #1a1a1a;">${stripEmoji(cat.output_label || cat.output || '')}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Output</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 600; color: #1a1a1a;">${stripEmoji(cat.output_label || cat.output || '')}</div>
         </div>
       </div>
     `)
@@ -1030,7 +1030,7 @@ function renderSlide_S11_KnowledgeBase(proposal, client, mascotImages) {
       <!-- Header -->
       <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Process Flow -->
@@ -1039,7 +1039,7 @@ function renderSlide_S11_KnowledgeBase(proposal, client, mascotImages) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -1053,57 +1053,13 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
   const metrics = Array.isArray(d.metrics || d.badges) ? (d.metrics || d.badges).slice(0, 4) : [];
   const dashboardImagePath = mascotImages?.dashboard;
 
-  // Build a CSS dashboard mockup if no image provided
-  const dashboardMockup = dashboardImagePath ? `
-    <div style="background: #1a1a2e; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.15);">
-      <!-- MacBook top bar -->
-      <div style="background: #2d2d44; padding: 8px 16px; display: flex; gap: 6px; align-items: center;">
-        <div style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f57;"></div>
-        <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e;"></div>
-        <div style="width: 10px; height: 10px; border-radius: 50%; background: #28c840;"></div>
-        <div style="flex: 1; text-align: center; font-family: 'Poppins', sans-serif; font-size: 11px; color: #888;">notso.ai — Dashboard</div>
-      </div>
-      <div style="padding: 4px;">
-        ${getImageHTML(dashboardImagePath, 'Dashboard', '', 'dashboard')}
-      </div>
-    </div>
-  ` : `
-    <!-- CSS-drawn dashboard mockup -->
-    <div style="background: #1a1a2e; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.15);">
-      <!-- MacBook top bar -->
-      <div style="background: #2d2d44; padding: 8px 16px; display: flex; gap: 6px; align-items: center;">
-        <div style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f57;"></div>
-        <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e;"></div>
-        <div style="width: 10px; height: 10px; border-radius: 50%; background: #28c840;"></div>
-        <div style="flex: 1; text-align: center; font-family: 'Poppins', sans-serif; font-size: 11px; color: #888;">notso.ai — Dashboard</div>
-      </div>
-      <!-- Dashboard content -->
-      <div style="padding: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-        <div style="background: #252547; border-radius: 8px; padding: 14px;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 10px; color: #888; margin-bottom: 4px;">Active Users</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c1);">2,847</div>
-        </div>
-        <div style="background: #252547; border-radius: 8px; padding: 14px;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 10px; color: #888; margin-bottom: 4px;">Messages Today</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c3);">12.4K</div>
-        </div>
-        <div style="background: #252547; border-radius: 8px; padding: 14px;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 10px; color: #888; margin-bottom: 4px;">Satisfaction</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c2);">94.2%</div>
-        </div>
-      </div>
-      <!-- Chart area -->
-      <div style="padding: 0 16px 16px 16px;">
-        <div style="background: #252547; border-radius: 8px; padding: 14px; height: 120px; display: flex; align-items: flex-end; gap: 8px;">
-          <div style="flex: 1; background: linear-gradient(to top, var(--brand-c1), transparent); border-radius: 4px 4px 0 0; height: 40%;"></div>
-          <div style="flex: 1; background: linear-gradient(to top, var(--brand-c1), transparent); border-radius: 4px 4px 0 0; height: 60%;"></div>
-          <div style="flex: 1; background: linear-gradient(to top, var(--brand-c1), transparent); border-radius: 4px 4px 0 0; height: 45%;"></div>
-          <div style="flex: 1; background: linear-gradient(to top, var(--brand-c1), transparent); border-radius: 4px 4px 0 0; height: 80%;"></div>
-          <div style="flex: 1; background: linear-gradient(to top, var(--brand-c1), transparent); border-radius: 4px 4px 0 0; height: 70%;"></div>
-          <div style="flex: 1; background: linear-gradient(to top, var(--brand-c1), transparent); border-radius: 4px 4px 0 0; height: 90%;"></div>
-          <div style="flex: 1; background: linear-gradient(to top, var(--brand-c3), transparent); border-radius: 4px 4px 0 0; height: 95%;"></div>
-        </div>
-      </div>
+  // Static dashboard mockup PNG (replaces the previous CSS-drawn dashboard).
+  // Lives in mockup-assets/ and served as a static asset.
+  const STATIC_DASHBOARD = '/mockup-assets/dashboard-mockup.png';
+  const dashboardMockup = `
+    <div style="text-align: center;">
+      <img src="${STATIC_DASHBOARD}" alt="Real-Time Dashboard"
+           style="max-width: 100%; height: auto; max-height: 480px; object-fit: contain; border-radius: 12px;">
     </div>
   `;
 
@@ -1114,7 +1070,7 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
     const lbl = typeof m === 'object' ? stripEmoji(String(m.label || m.name || '')) : '';
     return `<div style="text-align: center;">
       <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 800; color: ${colors[i]};">${val}</div>
-      <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: #6b7280;">${lbl}</div>
+      <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280;">${lbl}</div>
     </div>`;
   }).join('') : '';
 
@@ -1123,7 +1079,7 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
       <!-- Header -->
       <div style="margin-bottom: 24px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 40px; font-weight: 800; color: #1a1a1a; margin-bottom: 8px;">${headline}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280; max-width: 70%; line-height: 1.5;">${lead}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; max-width: 70%; line-height: 1.5;">${lead}</div>
       </div>
 
       <!-- Dashboard Mockup -->
@@ -1135,7 +1091,7 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
       ${metricBadges ? `<div style="display: flex; justify-content: space-around; padding: 12px 0;">${metricBadges}</div>` : ''}
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 30px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 30px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -1157,7 +1113,7 @@ function renderSlide_S13_ROIEvidence(proposal, client) {
       return `
         <div style="background: white; padding: 28px; border-radius: 12px; text-align: center; border-top: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <div style="font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 800; color: ${colors[i]}; margin-bottom: 8px; line-height: 1;">${val}</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; font-weight: 500;">${lbl}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; font-weight: 500;">${lbl}</div>
         </div>
       `;
     })
@@ -1168,7 +1124,7 @@ function renderSlide_S13_ROIEvidence(proposal, client) {
       <!-- Header -->
       <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Stats Grid: 4 columns -->
@@ -1190,14 +1146,14 @@ function renderSlide_S13_ROIEvidence(proposal, client) {
         }
         if (rows.length > 0) {
           return `<div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            <div style="display: grid; grid-template-columns: 1.2fr 2fr 0.3fr 2fr; padding: 12px 20px; background: #f8f8f8; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: #6b7280;">
+            <div style="display: grid; grid-template-columns: 1.2fr 2fr 0.3fr 2fr; padding: 12px 20px; background: #f8f8f8; font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #6b7280;">
               <div></div><div style="color: var(--brand-c2); text-align: center;">Before</div><div></div><div style="color: var(--brand-c1); text-align: center;">After notso.ai</div>
             </div>
             ${rows.slice(0, 3).map(r => `<div style="display: grid; grid-template-columns: 1.2fr 2fr 0.3fr 2fr; padding: 10px 20px; border-top: 1px solid #f0f0f0; align-items: center;">
-              <div style="font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 600; color: #1a1a1a;">${stripEmoji(String(r.label || ''))}</div>
-              <div style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #6b7280; text-align: center;">${stripEmoji(String(r.before || ''))}</div>
-              <div style="text-align: center; font-size: 14px; color: var(--brand-c1);">→</div>
-              <div style="font-family: 'Poppins', sans-serif; font-size: 12px; color: var(--brand-c1); font-weight: 600; text-align: center;">${stripEmoji(String(r.after || ''))}</div>
+              <div style="font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; color: #1a1a1a;">${stripEmoji(String(r.label || ''))}</div>
+              <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; text-align: center;">${stripEmoji(String(r.before || ''))}</div>
+              <div style="text-align: center; font-size: 18px; color: var(--brand-c1);">→</div>
+              <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: var(--brand-c1); font-weight: 600; text-align: center;">${stripEmoji(String(r.after || ''))}</div>
             </div>`).join('')}
           </div>`;
         }
@@ -1206,18 +1162,18 @@ function renderSlide_S13_ROIEvidence(proposal, client) {
         const afterText = stripEmoji(String(d.after || 'AI-powered automation and tailored experiences'));
         return `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
           <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-c2); margin-bottom: 12px;">Before</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; line-height: 1.5;">${beforeText}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: var(--brand-c2); margin-bottom: 12px;">Before</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; line-height: 1.5;">${beforeText}</div>
           </div>
           <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-c1); margin-bottom: 12px;">After</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; line-height: 1.5;">${afterText}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: var(--brand-c1); margin-bottom: 12px;">After</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; line-height: 1.5;">${afterText}</div>
           </div>
         </div>`;
       })()}
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -1240,10 +1196,10 @@ function renderSlide_S14_Roadmap(proposal, client) {
       return `
         <div style="flex: 1; position: relative;">
           <div style="background: white; padding: 24px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid ${phaseColors[i] || 'var(--brand-c1)'};">
-            ${time ? `<div style="font-family: 'Poppins', sans-serif; font-size: 11px; font-weight: 600; color: #9ca3af; margin-bottom: 6px;">${time}</div>` : ''}
-            <div style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Phase ${i + 1}</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${title}</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #6b7280; line-height: 1.5;">${desc}</div>
+            ${time ? `<div style="font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; color: #9ca3af; margin-bottom: 6px;">${time}</div>` : ''}
+            <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Phase ${i + 1}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${title}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; line-height: 1.5;">${desc}</div>
           </div>
           ${i < milestones.length - 1 ? '<div style="position: absolute; right: -10px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; background: var(--brand-c1); border-radius: 50%; border: 3px solid #F4F4F3;"></div>' : ''}
         </div>
@@ -1256,7 +1212,7 @@ function renderSlide_S14_Roadmap(proposal, client) {
       <!-- Header -->
       <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Timeline -->
@@ -1268,7 +1224,7 @@ function renderSlide_S14_Roadmap(proposal, client) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -1314,16 +1270,18 @@ function renderSlide_S15_Pricing(proposal, client) {
 
   const tierCards = FIXED_PRICING_TIERS.map((tier, i) => {
     const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)'];
-    const isHighlight = i === 1;
+    // No "RECOMMENDED" tag — different clients fit different tiers, AI writes
+    // per-client reasoning in d.reasoning instead.
+    const isHighlight = false;
     return `
-      <div style="background: white; padding: 18px; border-radius: 12px; border: ${isHighlight ? '2px' : '1px'} solid ${isHighlight ? 'var(--brand-c1)' : '#f0f0f0'}; box-shadow: ${isHighlight ? '0 4px 16px var(--brand-c1-glow)' : '0 2px 6px rgba(0,0,0,0.04)'}; position: relative;">
-        ${isHighlight ? '<div style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--brand-c1); color: white; padding: 3px 10px; border-radius: 20px; font-family: \'Poppins\', sans-serif; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">RECOMMENDED</div>' : ''}
-        <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px;">${tier.name}</div>
+      <div style="background: white; padding: 18px; border-radius: 12px; border: 1px solid #f0f0f0; box-shadow: 0 2px 6px rgba(0,0,0,0.04); position: relative;">
+
+        <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px;">${tier.name}</div>
         <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; color: ${colors[i]}; margin-bottom: 2px; line-height: 1;">${tier.price}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 10px; color: #6b7280; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #6b7280; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px;">
           ${tier.users} · ${tier.journeys}
         </div>
-        <ul style="list-style: none; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; font-size: 10px; color: #6b7280; line-height: 1.6;">
+        <ul style="list-style: none; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; font-size: 12px; color: #6b7280; line-height: 1.6;">
           ${tier.features.map(f => `<li style="margin-bottom: 3px;">✓ ${stripEmoji(f)}</li>`).join('')}
         </ul>
       </div>
@@ -1333,10 +1291,10 @@ function renderSlide_S15_Pricing(proposal, client) {
   const addonCards = FIXED_PRICING_ADDONS.map(addon => `
     <div style="display: flex; align-items: center; gap: 8px; background: white; padding: 8px 12px; border-radius: 8px; border: 1px solid #f0f0f0;">
       <div style="flex: 1;">
-        <span style="font-family: 'Poppins', sans-serif; font-size: 10px; font-weight: 700; color: #1a1a1a;">${stripEmoji(addon.name)}</span>
-        <span style="font-family: 'Poppins', sans-serif; font-size: 10px; color: #6b7280;"> — ${stripEmoji(addon.desc)}</span>
+        <span style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: #1a1a1a;">${stripEmoji(addon.name)}</span>
+        <span style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #6b7280;"> — ${stripEmoji(addon.desc)}</span>
       </div>
-      <div style="font-family: 'Poppins', sans-serif; font-size: 10px; font-weight: 700; color: var(--brand-c1); white-space: nowrap;">${stripEmoji(addon.price)}</div>
+      <div style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: var(--brand-c1); white-space: nowrap;">${stripEmoji(addon.price)}</div>
     </div>
   `).join('');
 
@@ -1345,7 +1303,7 @@ function renderSlide_S15_Pricing(proposal, client) {
       <!-- Header -->
       <div style="margin-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 16px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 36px; font-weight: 800; color: #1a1a1a; margin-bottom: 6px;">${headline}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; max-width: 70%; line-height: 1.4;">${lead}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; max-width: 70%; line-height: 1.4;">${lead}</div>
       </div>
 
       <!-- Pricing Tiers: 3 columns -->
@@ -1355,14 +1313,14 @@ function renderSlide_S15_Pricing(proposal, client) {
 
       <!-- Add-ons Section: compact list -->
       <div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px;">Add-ons</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px;">Add-ons</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
           ${addonCards}
         </div>
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 30px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 30px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -1381,11 +1339,11 @@ function renderSlide_S16_PromoMaterials(proposal, client, mascotImages) {
       const imagePath = mascotImages?.[matKey];
       return `
         <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px;">${stripEmoji(mat.name || `Material ${i + 1}`)}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px;">${stripEmoji(mat.name || `Material ${i + 1}`)}</div>
           <div style="width: 100%; height: 200px; background: #F4F4F3; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; border: 2px dashed #d1d5db; overflow: hidden;">
             ${getImageHTML(imagePath, `Promo Material ${i + 1}`, '', matKey)}
           </div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280; line-height: 1.6;">${stripEmoji(mat.description || '')}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; line-height: 1.6;">${stripEmoji(mat.description || '')}</div>
         </div>
       `;
     })
@@ -1396,7 +1354,7 @@ function renderSlide_S16_PromoMaterials(proposal, client, mascotImages) {
       <!-- Header -->
       <div style="margin-bottom: 40px; padding-bottom: 30px; border-bottom: 1px solid #f0f0f0;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Materials Grid: 3 columns -->
@@ -1405,7 +1363,7 @@ function renderSlide_S16_PromoMaterials(proposal, client, mascotImages) {
       </div>
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -1428,9 +1386,9 @@ function renderSlide_S17_Licensing(proposal, client) {
       const terms = lic.terms || lic.term || '';
       return `
         <div style="background: white; padding: 28px; border-radius: 12px; border-left: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${name}</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280; line-height: 1.6; margin-bottom: 12px;">${desc}</div>
-          ${terms ? `<div style="font-family: 'Poppins', sans-serif; font-size: 12px; color: var(--brand-c1); font-weight: 600;">${stripEmoji(String(terms))}</div>` : ''}
+          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${name}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; line-height: 1.6; margin-bottom: 12px;">${desc}</div>
+          ${terms ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: var(--brand-c1); font-weight: 600;">${stripEmoji(String(terms))}</div>` : ''}
         </div>
       `;
     })
@@ -1441,7 +1399,7 @@ function renderSlide_S17_Licensing(proposal, client) {
       <!-- Header -->
       <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Licenses Grid: 2x2 -->
@@ -1452,12 +1410,12 @@ function renderSlide_S17_Licensing(proposal, client) {
       <!-- Note -->
       ${note ? `
         <div style="background: var(--brand-c2-wash); border-left: 4px solid var(--brand-c2); padding: 24px; border-radius: 8px;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #1a1a1a; line-height: 1.6;">${note}</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #1a1a1a; line-height: 1.6;">${note}</div>
         </div>
       ` : ''}
 
       <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 12px; color: #9ca3af;">
+      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
         Prepared for ${stripEmoji(client.name)} · by notso.ai
       </div>
     </div>
@@ -1502,7 +1460,7 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
       <!-- Right: Content -->
       <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 50px 50px 50px 20px;">
         <!-- notso.ai logo -->
-        <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: white; margin-bottom: 40px;">notso.ai</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: white; margin-bottom: 40px;">notso.ai</div>
 
         <!-- Title: "Thank you!" -->
         <div style="margin-bottom: 24px;">
@@ -1511,27 +1469,27 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
         </div>
 
         <!-- Message -->
-        <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: rgba(255,255,255,0.7); line-height: 1.6; margin-bottom: 40px; max-width: 90%;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: rgba(255,255,255,0.7); line-height: 1.6; margin-bottom: 40px; max-width: 90%;">
           ${lead}
         </div>
 
         <!-- Contact Grid: 2x2 -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Email</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: white; font-weight: 600;">${email}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Email</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: white; font-weight: 600;">${email}</div>
           </div>
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Phone</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: white; font-weight: 600;">${phone}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Phone</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: white; font-weight: 600;">${phone}</div>
           </div>
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Web</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: white; font-weight: 600;">${website}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Web</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: white; font-weight: 600;">${website}</div>
           </div>
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 11px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Office</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: white; font-weight: 600;">Amsterdam, NL</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Office</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: white; font-weight: 600;">Amsterdam, NL</div>
           </div>
         </div>
       </div>

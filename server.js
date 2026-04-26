@@ -615,12 +615,26 @@ Propose 9 diverse mascot archetypes for this client. Return ONLY the JSON array.
 6. SPECIFIC TO THIS CLIENT. Name their industry, users, and problem by name. Generic = dead.
 7. COPY SHOULD MAKE A BUSY EXECUTIVE WANT TO READ THE NEXT SLIDE.`;
 
-      const fewShot = `Examples of GOOD copy (study the voice):
+      const fewShot = `Examples of GOOD copy (study the voice — note headline is just a label, lead carries the punch):
 
-Cover tagline (nutrition app): ✓ "Meet the coach your users already trust." / ✗ "We provide a comprehensive AI mascot solution."
-Pain-points intro (bank): ✓ "Your app does the job. It doesn't win hearts." / ✗ "Banking customers demand more engaging experiences."
-Core-features headline: ✓ "What your mascot actually does." / ✗ "Core Product Features and Capabilities."
-Thank-you closing: ✓ "Ready to give your brand a face?" / ✗ "We look forward to hearing from you."`;
+S1 cover tagline (nutrition app): ✓ "Turn your blue monster into every user's pocket coach."
+S1 cover tagline (charity): ✓ "Give every donor a reason to stay and give."
+S3 lead (nutrition): ✓ "Calorie tracking is a lonely habit. Most users quit because no one's there."
+S3 lead (bank): ✓ "Mobile banking is a transactional habit. Users open the app and leave faster every month."
+S3 lead (charity): ✓ "Online giving is a one-time habit. Most donors come once and never return."
+S5 lead (nutrition): ✓ "Yaz handles logging, hype, and coaching, 24/7 across 150 countries."
+S11 lead (nutrition): ✓ "Yaz studies how your users actually eat, snack, and slip."
+S12 lead (any): ✓ "Yaz's chat logs become your product roadmap."
+S13 lead: ✓ "Mascots aren't decoration. They're retention engines, with receipts."
+S17 lead: ✓ "You own the character, the content, and the data."
+S18 closing_title: ✓ "Ready to give your brand a face?"
+
+Examples of BAD copy (avoid this voice):
+✗ "We provide a comprehensive AI mascot solution."          (corporate fluff)
+✗ "Banking customers demand more engaging experiences."     (generic, no stake)
+✗ "Your app tracks meals. It can't high-five."              (cute but punchline in headline, should be in lead)
+✗ "Core Product Features and Capabilities."                 (label as a sentence)
+✗ "We turn your data into your next product call."          ("call" as jargon, unclear)`;
 
       const slideMenu = `ALL 18 SLIDES (every one must be written — the user decides what to keep).
 
@@ -671,39 +685,67 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
       const schema = `Return ONLY a JSON object with these three top-level keys:
 {
   "recommended_slides": ["s1", ...],                        // ascending IDs the AI recommends showing
-  "recommendation_rationale": "2-4 sentence plain explanation of WHY you recommend these slides for THIS client, naming what you cut from the default and why.",
+  "recommendation_rationale": "2-4 sentence plain explanation of WHY you recommend these slides for THIS client, naming what you cut and why.",
   "content": {                                              // MUST include ALL 18 entries s1..s18
-    "s1":  {"mascot_name":"", "tagline":"≤14-word punchy tagline", "lead":"1-sentence supporting insight", "greeting":"short mascot hook ≤12 words"},
-    "s3":  {"headline":"≤10-word pain headline", "lead":"1-sentence so-what", "intro":"1-2 sentence setup",
-            "points":[{"title":"≤5-word pain title","desc":"≤15-word specific pain"}, ...3-4 items]},
-    "s4":  {"headline":"market headline", "lead":"1-sentence why-now",
+
+    // ── HEADLINE RULE ──────────────────────────────────────────
+    // For s3..s17 the "headline" field is a FIXED section label. Copy the
+    // exact string given below verbatim. Do NOT rewrite, do NOT add a punchy
+    // line in the headline. Punchy lines go in "lead" only.
+    // ───────────────────────────────────────────────────────────
+
+    "s1":  {"mascot_name":"", "tagline":"≤14-word punchy tagline (AI writes)", "lead":"1-sentence supporting insight, no em-dash", "greeting":"short mascot hook ≤12 words"},
+
+    "s3":  {"headline":"Pain Points",                       // FIXED label — copy verbatim
+            "lead":"1 sentence following the pattern '[client's core action] is a [emotional adjective] habit. [user drop-off behavior].' No em-dash.",
+            "intro":"1-2 sentence setup",
+            "points":[{"title":"≤5-word pain title","desc":"≤15-word specific pain"}, "...3-4 items"]},
+
+    "s4":  {"headline":"Market Opportunity",                // FIXED label
+            "lead":"1 sentence why-now, specific to client's industry. No em-dash.",
             "industry_size":{"value":"exact size with currency","source":"source name"},
             "growth_rate":{"value":"annual growth %","source":"source name"},
             "projected_size":{"value":"projected size","source":"source name"},
-            "competitors":[{"name":"competitor","gap":"what they lack"}, ...2 items],
+            "competitors":[{"name":"competitor","gap":"what they lack"}, "...2 items"],
             "opportunity":"1-2 sentences on the gap notso.ai fills"},
-    "s5":  {"headline":"what the mascot does for client", "lead":"1-sentence so-what", "intro":"1-sentence value statement",
-            "features":[{"icon":"emoji","title":"feature solving pain","desc":"how it applies"}, ...3-4 items]},
-    "s6":  {"headline":"find the right fit", "lead":"1-sentence so-what",
+
+    "s5":  {"headline":"Core Features",                     // FIXED label
+            "lead":"1-sentence so-what naming WHAT the mascot does for THIS client. No em-dash.",
+            "intro":"1-sentence value statement",
+            "features":[{"icon":"emoji","title":"feature solving pain","desc":"how it applies"}, "...3-4 items"]},
+
+    "s6":  {"headline":"Mascot Selection",                  // FIXED label
+            "lead":"1-sentence framing the choice. No em-dash.",
             "option_a":{"name":"","archetype":"The [Archetype]","traits":["","","",""],"desc":"2-3 sentences","why":"1 sentence fit","formal":40,"playful":70},
             "option_b":{"name":"","archetype":"","traits":["","","",""],"desc":"","why":"","formal":70,"playful":30},
             "option_c":{"name":"","archetype":"","traits":["","","",""],"desc":"","why":"","formal":55,"playful":55}},
-    "s7":  {"name":"", "rec_note":"which of s6 you recommend and why (1 sentence)", "lead":"so-what",
+
+    "s7":  {"name":"recommended mascot name", "rec_note":"which of s6 you recommend (1 sentence)",
+            "lead":"so-what intro to this character. No em-dash.",
             "personality":"2 sentences", "tone_desc":"how they speak",
             "phrases":["sample 1","sample 2","sample 3"],
-            "interests":["industry interest","","",]},
-    "s8":  {"name":"", "lead":"so-what on emotional range", "personality_summary":"1 sentence",
+            "interests":["industry interest","",""]},
+
+    "s8":  {"headline":"Personality & Expressions",         // FIXED label
+            "name":"", "lead":"so-what on emotional range. No em-dash.",
+            "personality_summary":"1 sentence",
             "expressions":[{"emotion":"Happy","context":"~8 words when it fires"},
                            {"emotion":"Empathetic","context":""}, {"emotion":"Curious","context":""},
                            {"emotion":"Celebrating","context":""}, {"emotion":"Apologetic","context":""},
                            {"emotion":"Helpful","context":""}]},
-    "s9":  {"mascot_name":"", "lead":"so-what on what audience will feel", "scenario":"brief chat scenario",
-            "chat":[{"r":"bot","m":"EXACTLY 3 complete sentences ending with . ! or ?. No ellipsis."},
-                    {"r":"user","m":"1-2 complete sentences"},
-                    {"r":"bot","m":"EXACTLY 3 complete sentences"},
-                    {"r":"user","m":"1-2 complete sentences"},
-                    {"r":"bot","m":"EXACTLY 3 complete sentences"}]},
-    "s10": {"headline":"how conversation flows", "lead":"so-what",
+
+    "s9":  {"headline":"Chat Experience",                   // FIXED label
+            "mascot_name":"", "lead":"so-what on what audience will feel. No em-dash.",
+            "scenario":"brief chat scenario",
+            // Bot turns: 1–2 SHORT sentences (NOT 3). User turns: 1 sentence. Total 5 turns.
+            "chat":[{"r":"bot","m":"1-2 short sentences. Warm, on-brand. End with . ! or ?. No ellipsis."},
+                    {"r":"user","m":"1 sentence."},
+                    {"r":"bot","m":"1-2 short sentences."},
+                    {"r":"user","m":"1 sentence."},
+                    {"r":"bot","m":"1-2 short sentences (closing)."}]},
+
+    "s10": {"headline":"Chatflow Design",                   // FIXED label
+            "lead":"so-what on how the flow compounds into outcomes. No em-dash.",
             "flow":{"columns":[{"type":"bot_msg","title":"Welcome","text":"warm opener"},
                                {"type":"user_msg","title":"User","text":"typical first question"},
                                {"type":"stack","nodes":[{"type":"options","title":"Detect intent","items":["4 intents"],"highlight":0},
@@ -713,44 +755,68 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
                                {"type":"user_msg","title":"User","text":"follow-up"},
                                {"type":"bot_msg","title":"Handoff","text":"closes loop"},
                                {"type":"link","title":"Open resource"}]}},
-    "s11": {"headline":"what the mascot knows", "lead":"so-what",
-            "categories":[{"title":"","items":["","",""],"docs":["",""]}, ...3 items]},
-    "s12": {"headline":"", "lead":"so-what on data→growth", "subheadline":"Standard Included",
+
+    "s11": {"headline":"Knowledge Base",                    // FIXED label
+            "lead":"1 sentence following the pattern '[mascot] studies how [client's] users actually [verb1], [verb2], and [verb3].' No em-dash.",
+            "categories":[{"title":"","items":["","",""],"docs":["",""]}, "...3 items"]},
+
+    "s12": {"headline":"Real-Time Dashboard",               // FIXED label
+            "lead":"1 sentence following the pattern '[Mascot]'s chat logs become your product roadmap.' Adapt to client's domain. No em-dash.",
+            "subheadline":"Standard Included",
             "intro":"2 sentences on analytics as business intelligence",
-            "metrics":[{"label":"≤8-word metric","desc":"what it reveals"}, ...5 items],
+            "metrics":[{"label":"≤8-word metric","desc":"what it reveals"}, "...5 items"],
             "badges":["tag","tag","tag","tag"]},
-    "s13": {"headline":"Proven ROI", "lead":"so-what",
+
+    "s13": {"headline":"ROI Evidence",                      // FIXED label (changed from 'Proven ROI')
+            "lead":"so-what punchy line. Allowed to be bold here. No em-dash.",
             "stats":[{"n":"7x","l":"Better brand recall","detail":"explanation"},
                      {"n":"35%","l":"Higher trust","detail":""},
                      {"n":"40%","l":"More engagement","detail":""},
                      {"n":"custom","l":"industry-specific metric","detail":""}],
-            "case_studies":[{"client":"","result":"","industry":""}, ...2 items],
-            "before_after":{"rows":[{"label":"","before":"","after":""}, ...3 items]}},
-    "s14": {"headline":"roadmap", "lead":"so-what",
+            "case_studies":[{"client":"","result":"","industry":""}, "...2 items"],
+            "before_after":{"rows":[{"label":"","before":"","after":""}, "...3 items"]}},
+
+    "s14": {"headline":"Roadmap",                           // FIXED label
+            "lead":"",                                       // INTENTIONALLY EMPTY — leave as empty string
             "milestones":[{"week":"Week 1-2","title":"Discovery & Design","desc":"outcome"},
                           {"week":"Week 3-4","title":"Brain Training","desc":""},
                           {"week":"Week 5-6","title":"Engineering & QA","desc":""},
                           {"week":"Week 7-8","title":"Soft Launch","desc":""},
                           {"week":"Week 9-10","title":"Full Launch","desc":""}]},
-    "s15": {"rec_tier":"Starter or Premium or Enterprise", "lead":"so-what",
-            "reasoning":"1-2 sentences on fit", "next_step":"specific CTA"},
-    "s16": {"headline":"omnichannel rollout", "lead":"so-what",
+
+    "s15": {"headline":"Pricing",                           // FIXED label
+            "lead":"",                                       // INTENTIONALLY EMPTY
+            "rec_tier":"Starter or Premium or Enterprise",   // Used internally; no 'RECOMMENDED' badge shown
+            "reasoning":"1-2 sentences on fit for THIS client", "next_step":"specific CTA"},
+
+    "s16": {"headline":"Promotional Materials",             // FIXED label
+            "lead":"so-what on omnichannel presence. No em-dash.",
             "materials":[{"type":"Poster & Media Kit","status":"Included","desc":""},
                          {"type":"Vinyl Toy","status":"Price on request","desc":""},
                          {"type":"Banner & Digital Kit","status":"Price on request","desc":""}]},
-    "s17": {"headline":"Licensing & Ownership", "lead":"so-what",
+
+    "s17": {"headline":"Licensing",                         // FIXED label
+            "lead":"1 sentence following the pattern 'You own the character, the content, and the data.' No em-dash.",
             "cards":[{"title":"Character License","desc":""},
                      {"title":"Content Ownership","desc":""},
                      {"title":"Platform Access","desc":""},
                      {"title":"Data Privacy","desc":""}],
             "note":"1 line fine-print reassurance"},
-    "s18": {"lead":"so-what single takeaway", "closing":"2-sentence warm direct CTA",
+
+    "s18": {"closing_title":"AI-written punchy hook ≤8 words. No em-dash.",
+            "lead":"so-what single takeaway",
+            "closing":"2-sentence warm direct CTA. No em-dash.",
             "next_steps":["step 1","step 2","step 3"],
             "email":"hello@notso.ai", "phone":"+31 6 40450599", "website":"www.notso.ai"}
   }
 }
 
-IMPORTANT: Write CONTENT for ALL 18 slides (s1 through s18) — the user needs every slide ready in case they want to toggle one back on. Your "recommended_slides" list is just your suggestion; content for non-recommended slides must still be complete and tailored to THIS client.
+CRITICAL RULES:
+- Write CONTENT for ALL 18 slides — every entry must be complete and tailored to THIS client. recommended_slides is just a suggestion.
+- For s3..s17 the "headline" field MUST equal the FIXED label shown above (verbatim). Do not invent your own. Punchy AI writing goes in "lead" only.
+- s14.lead and s15.lead are INTENTIONALLY EMPTY STRINGS (""). The Roadmap and Pricing pages don't need a punchy line — the section label alone is the title.
+- NEVER use em-dash characters (— or –) in any "lead", "tagline", "intro", or "closing" field. Use period, comma, or rephrase.
+- s9 chat: bot turns are 1-2 SHORT sentences (NOT 3). The previous version was too verbose.
 Return ONLY the JSON. No markdown fences, no preamble, no trailing text.`;
 
       const userMsg = `You are the proposal architect AND copywriter for notso.ai — a Dutch startup (backed by Rabobank) that builds 3D-animated brand mascots acting as chat widgets on the client's website and app.
