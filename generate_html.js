@@ -120,6 +120,115 @@ function buildBrandCSS(client) {
 //   neo             — bright yellow bg + thick 3px black frame + hard 5px 5px 0 #111 shadows + CAPS
 //   bento           — soft off-white, colored bento tiles (orange/teal/black alternating)
 //   clay            — lavender bg + inset+outset neumorphic shadows + 22px radius
+// ─────────────────────────────────────────────────────────────────────
+// Text-color taxonomy + canvas mode + universal contrast safeguards.
+// Active for ALL design styles. Adds 6 text-role CSS vars (display/headline/
+// stat/body/caption/metadata), maps each font-size to its var via attribute
+// selector, and wires canvas modes:
+//   white  — default, slide bg follows the per-style original CSS
+//   brand  — slide bg = var(--brand-c1) (immersive)
+//   hybrid — first + last slide brand, middle slides white
+// Universal contrast safeguards override known hazards (var(--brand-c3) text,
+// c1-tint pills, c1 borders) so text never fades into bg.
+// ─────────────────────────────────────────────────────────────────────
+function buildTextAndContrastLayerCSS(client) {
+  const tc = (client && client.textColors) || {};
+  const display  = tc.display  || '#1a1a1a';
+  const headline = tc.headline || '#1a1a1a';
+  const stat     = tc.stat     || 'var(--brand-c1)';
+  const body     = tc.body     || '#1a1a1a';
+  const caption  = tc.caption  || '#6b7280';
+  const metadata = tc.metadata || '#9ca3af';
+  return `
+    /* ── Text role variables (overridable per-client via picker) ── */
+    :root {
+      --text-display:   ${display};
+      --text-headline:  ${headline};
+      --text-stat:      ${stat};
+      --text-body:      ${body};
+      --text-caption:   ${caption};
+      --text-metadata:  ${metadata};
+      /* These get overwritten by the auto-contrast script below */
+      --text-on-c1: #1a1a1a;
+      --text-on-c2: #ffffff;
+      --text-on-c3: #1a1a1a;
+      --text-on-c4: #1a1a1a;
+    }
+
+    /* ── Map font-size to text role (overrides inline color) ── */
+    .slide [style*="font-size: 64px"],
+    .slide [style*="font-size: 72px"],
+    .slide [style*="font-size: 90px"],
+    .slide [style*="font-size: 96px"],
+    .slide [style*="font-size: 108px"] { color: var(--text-display) !important; }
+
+    .slide [style*="font-size: 48px"]  { color: var(--text-headline) !important; }
+
+    .slide [style*="font-size: 28px"],
+    .slide [style*="font-size: 32px"],
+    .slide [style*="font-size: 36px"],
+    .slide [style*="font-size: 40px"]  { color: var(--text-stat) !important; }
+
+    .slide [style*="font-size: 18px"],
+    .slide [style*="font-size: 19px"],
+    .slide [style*="font-size: 20px"],
+    .slide [style*="font-size: 22px"]  { color: var(--text-body) !important; }
+
+    .slide [style*="font-size: 16px"],
+    .slide [style*="font-size: 17px"]  { color: var(--text-caption) !important; }
+
+    .slide [style*="font-size: 12px"],
+    .slide [style*="font-size: 13px"]  { color: var(--text-metadata) !important; }
+
+    /* ── CONTRAST SAFEGUARDS (active for every canvas mode) ── */
+    /* (1) brand-c3 used as text on a white card = invisible. Auto-replace. */
+    .slide div[style*="background: white"] [style*="color: var(--brand-c3)"],
+    .slide div[style*="background: #fff"] [style*="color: var(--brand-c3)"] {
+      color: #1a1a1a !important;
+    }
+    /* (2) Phrase pills (S7) — background var(--c1-tint) blends into brand
+       canvas. Force white pill with dark border + dark text. */
+    .slide div[style*="background: var(--c1-tint)"][style*="border: 1px solid var(--brand-c1)"] {
+      background: #ffffff !important;
+      border-color: var(--brand-c2) !important;
+      color: #1a1a1a !important;
+    }
+
+    /* ── CANVAS MODE: brand (immersive) ── */
+    html[data-canvas-mode="brand"] .slide {
+      background: var(--brand-c1) !important;
+      color: var(--text-on-c1) !important;
+    }
+    html[data-canvas-mode="brand"] .slide div[style*="background: white"] {
+      box-shadow: 0 4px 18px rgba(0,0,0,.10) !important;
+    }
+    /* Light-grey labels directly on the colored canvas: flip with --text-on-c1 */
+    html[data-canvas-mode="brand"] .slide > * [style*="color: #9ca3af"],
+    html[data-canvas-mode="brand"] .slide > * [style*="color: #d1d5db"] {
+      color: var(--text-on-c1) !important;
+      opacity: 0.75;
+    }
+
+    /* ── CANVAS MODE: hybrid (first + last brand, middle white) ── */
+    html[data-canvas-mode="hybrid"] .slide:first-of-type,
+    html[data-canvas-mode="hybrid"] .slide:last-of-type {
+      background: var(--brand-c1) !important;
+      color: var(--text-on-c1) !important;
+    }
+    html[data-canvas-mode="hybrid"] .slide:first-of-type div[style*="background: white"],
+    html[data-canvas-mode="hybrid"] .slide:last-of-type div[style*="background: white"] {
+      box-shadow: 0 4px 18px rgba(0,0,0,.10) !important;
+    }
+    html[data-canvas-mode="hybrid"] .slide:first-of-type > * [style*="color: #9ca3af"],
+    html[data-canvas-mode="hybrid"] .slide:first-of-type > * [style*="color: #d1d5db"],
+    html[data-canvas-mode="hybrid"] .slide:last-of-type > * [style*="color: #9ca3af"],
+    html[data-canvas-mode="hybrid"] .slide:last-of-type > * [style*="color: #d1d5db"] {
+      color: var(--text-on-c1) !important;
+      opacity: 0.75;
+    }
+  `;
+}
+
 function buildStyleVariantCSS() {
   // Attribute-selector tokens that match the inline-styled elements the slide
   // renderers emit. Keep them as constants so adding a new style is just a
@@ -610,7 +719,7 @@ function renderSlide_S3_PainPoints(proposal, client) {
 
   const cards = points
     .map((p, i) => {
-      const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)'];
+      const colors = ['var(--brand-c1)', 'var(--brand-c4)', 'var(--brand-c2)'];
       return `
         <div style="background: white; padding: 32px; border-radius: 12px; border-top: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <div style="font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 800; color: ${colors[i]}; margin-bottom: 12px;">${String(i + 1).padStart(2, '0')}</div>
@@ -662,7 +771,7 @@ function renderSlide_S4_MarketOpportunity(proposal, client) {
     { value: projected_size, label: 'Projected Size' },
   ]
     .map((stat, i) => {
-      const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)'];
+      const colors = ['var(--brand-c1)', 'var(--brand-c4)', 'var(--brand-c2)'];
       return `
         <div style="background: white; padding: 32px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <div style="font-family: 'Poppins', sans-serif; font-size: 36px; font-weight: 800; color: ${colors[i]}; margin-bottom: 12px; line-height: 1;">${stat.value}</div>
@@ -706,7 +815,7 @@ function renderSlide_S5_CoreFeatures(proposal, client) {
   const headline = stripEmoji(d.headline || 'Core Features');
   const lead = stripEmoji(d.lead || d.intro || '');
   const features = (d.features || []).slice(0, 4);
-  const colors = ['var(--brand-c1)', 'var(--brand-c2)', 'var(--brand-c3)', 'var(--brand-c4)'];
+  const colors = ['var(--brand-c1)', 'var(--brand-c2)', 'var(--brand-c4)', 'var(--brand-c1)'];
 
   const featureCards = features
     .map((f, i) => `
@@ -1065,7 +1174,7 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
 
   // Small metric badges below the mockup
   const metricBadges = metrics.length > 0 ? metrics.map((m, i) => {
-    const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)', 'var(--brand-c4)'];
+    const colors = ['var(--brand-c1)', 'var(--brand-c4)', 'var(--brand-c2)', 'var(--brand-c1)'];
     const val = typeof m === 'object' ? stripEmoji(String(m.value || m.v || '')) : stripEmoji(String(m));
     const lbl = typeof m === 'object' ? stripEmoji(String(m.label || m.name || '')) : '';
     return `<div style="text-align: center;">
@@ -1107,7 +1216,7 @@ function renderSlide_S13_ROIEvidence(proposal, client) {
 
   const statCards = stats
     .map((stat, i) => {
-      const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)', 'var(--brand-c4)'];
+      const colors = ['var(--brand-c1)', 'var(--brand-c4)', 'var(--brand-c2)', 'var(--brand-c1)'];
       const val = typeof stat === 'object' ? stripEmoji(String(stat.n || stat.value || stat.v || stat.number || 'N/A')) : stripEmoji(String(stat));
       const lbl = typeof stat === 'object' ? stripEmoji(String(stat.l || stat.label || stat.name || '')) : '';
       return `
@@ -1269,7 +1378,7 @@ function renderSlide_S15_Pricing(proposal, client) {
   const lead = stripEmoji(d.lead || d.reasoning || 'Flexible plans that scale with your needs');
 
   const tierCards = FIXED_PRICING_TIERS.map((tier, i) => {
-    const colors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c2)'];
+    const colors = ['var(--brand-c1)', 'var(--brand-c4)', 'var(--brand-c2)'];
     // No "RECOMMENDED" tag — different clients fit different tiers, AI writes
     // per-client reasoning in d.reasoning instead.
     const isHighlight = false;
@@ -1380,7 +1489,7 @@ function renderSlide_S17_Licensing(proposal, client) {
 
   const licenseCards = cards
     .map((lic, i) => {
-      const colors = ['var(--brand-c1)', 'var(--brand-c2)', 'var(--brand-c3)', 'var(--brand-c4)'];
+      const colors = ['var(--brand-c1)', 'var(--brand-c2)', 'var(--brand-c4)', 'var(--brand-c1)'];
       const name = stripEmoji(String(lic.name || lic.title || `License ${i + 1}`));
       const desc = stripEmoji(String(lic.description || lic.desc || lic.details || 'Details to be confirmed'));
       const terms = lic.terms || lic.term || '';
@@ -1677,10 +1786,16 @@ function buildProposalHtml(data) {
 
   const brandCSS = buildBrandCSS(client);
   const variantCSS = buildStyleVariantCSS();
+  const textLayerCSS = buildTextAndContrastLayerCSS(client);
   const ds = (client && client.designStyle) || 'notso-signature';
+  // Canvas mode controls the slide canvas behavior:
+  //   white  — default per-design-style background (current legacy behaviour)
+  //   brand  — full var(--brand-c1) on every slide (immersive)
+  //   hybrid — first + last slide brand, middle slides white
+  const canvasMode = (client && client.canvasMode) || 'white';
 
   return `<!DOCTYPE html>
-<html lang="en" data-design-style="${ds}">
+<html lang="en" data-design-style="${ds}" data-canvas-mode="${canvasMode}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -1717,6 +1832,7 @@ function buildProposalHtml(data) {
 
     ${brandCSS}
     ${variantCSS}
+    ${textLayerCSS}
 
     @media print {
       .slide {
@@ -1725,8 +1841,30 @@ function buildProposalHtml(data) {
       }
     }
   </style>
+  <!-- Auto-contrast: compute --text-on-cN per brand color via WCAG luminance -->
+  <script>
+  (function() {
+    const luminance = hex => {
+      if (!hex) return 1;
+      hex = String(hex).replace('#','');
+      if (hex.length === 3) hex = [...hex].map(c=>c+c).join('');
+      if (hex.length !== 6) return 1;
+      const [r,g,b] = [hex.slice(0,2), hex.slice(2,4), hex.slice(4,6)]
+        .map(s => parseInt(s,16)/255)
+        .map(c => c <= 0.04045 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4));
+      return 0.2126*r + 0.7152*g + 0.0722*b;
+    };
+    const safeText = bg => luminance(bg) > 0.18 ? '#1a1a1a' : '#ffffff';
+    const root = document.documentElement;
+    const css = getComputedStyle(root);
+    ['c1','c2','c3','c4'].forEach(k => {
+      const v = (css.getPropertyValue('--brand-' + k) || '').trim();
+      if (v) root.style.setProperty('--text-on-' + k, safeText(v));
+    });
+  })();
+  </script>
 </head>
-<body data-design-style="${ds}">
+<body data-design-style="${ds}" data-canvas-mode="${canvasMode}">
   <div class="slides-container" data-design-style="${ds}">
     ${slides}
   </div>

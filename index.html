@@ -932,6 +932,12 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
             <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
           </div>
         </details>
+        <details class="unified-side-section">
+          <summary>🖼️ Canvas &amp; text <span class="side-sub">colors per role</span></summary>
+          <div id="unifiedCanvasTextContent">
+            <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
+          </div>
+        </details>
       </aside>
     </div>
   </div>
@@ -1430,6 +1436,25 @@ function applyBrandTheme(c) {
   if (c.color4) root.setProperty('--brand-accent-3', c.color4);
   // Also map the legacy --accent var to the main brand color so old slide CSS picks it up
   if (c.color1) root.setProperty('--accent', c.color1);
+
+  // ── Auto-contrast: compute --text-on-cN for each brand color (WCAG luminance)
+  // Lets any text that sits on a brand-cN background pick #1a1a1a or #ffffff
+  // automatically. Threshold 0.18 = WCAG-ish boundary.
+  const luminance = hex => {
+    if (!hex) return 1;
+    hex = String(hex).replace('#','');
+    if (hex.length === 3) hex = [...hex].map(ch=>ch+ch).join('');
+    if (hex.length !== 6) return 1;
+    const [r,g,b] = [hex.slice(0,2), hex.slice(2,4), hex.slice(4,6)]
+      .map(s => parseInt(s,16)/255)
+      .map(ch => ch <= 0.04045 ? ch/12.92 : Math.pow((ch+0.055)/1.055, 2.4));
+    return 0.2126*r + 0.7152*g + 0.0722*b;
+  };
+  const safeText = bg => luminance(bg) > 0.18 ? '#1a1a1a' : '#ffffff';
+  if (c.color1) root.setProperty('--text-on-c1', safeText(c.color1));
+  if (c.color2) root.setProperty('--text-on-c2', safeText(c.color2));
+  if (c.color3) root.setProperty('--text-on-c3', safeText(c.color3));
+  if (c.color4) root.setProperty('--text-on-c4', safeText(c.color4));
 }
 
 /* ─── STEP INDICATOR ─── */
@@ -3435,6 +3460,7 @@ async function openUnifiedEditor() {
     _unifiedRenderBackupMascots();
     _unifiedRenderDesignStyle();
     _unifiedRenderPalette();
+    _unifiedRenderCanvasText();
     // Re-apply the active palette so live overrides stick after a re-fetch.
     if (client && client._activePaletteId) {
       const p = _suggestedPalettes(client.color1 || '#3BB28E')
@@ -3458,6 +3484,7 @@ function closeUnifiedEditor() {
   clearIfExists('unifiedBackupMascotsContent');
   clearIfExists('unifiedDesignStyleContent');
   clearIfExists('unifiedPaletteContent');
+  clearIfExists('unifiedCanvasTextContent');
   _unifiedSlideIds = [];
   _unifiedActiveSlideId = null;
   _unifiedSlideNodes = new Map();
@@ -4588,6 +4615,128 @@ function _unifiedApplyPalette(palette) {
   } catch (_) {}
 
   _unifiedRenderPalette();  // refresh "selected" state
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// CANVAS + TEXT COLORS PANEL (Step 3 sidebar)
+//   · Canvas mode: white | brand | hybrid (first+last brand, middle white)
+//   · Text colors: 6 role-based pickers (display / headline / stat / body /
+//     caption / metadata) + 3 quick presets (default / brand-led / mono)
+// All edits write to client.canvasMode and client.textColors, then push CSS
+// vars into the rendered iframe live (no preview re-render needed for color
+// tweaks). On Save / Export the values are persisted server-side too.
+// ─────────────────────────────────────────────────────────────────────
+const _TEXT_ROLES = [
+  { key:'display',  label:'Display',  hint:'64-108px' },
+  { key:'headline', label:'Headline', hint:'48px' },
+  { key:'stat',     label:'Numbers',  hint:'28-40px' },
+  { key:'body',     label:'Body',     hint:'18-22px' },
+  { key:'caption',  label:'Caption',  hint:'16-17px' },
+  { key:'metadata', label:'Metadata', hint:'12-13px' },
+];
+const _TEXT_PRESETS = {
+  default:    { display:'#1a1a1a', headline:'#1a1a1a', stat:'',         body:'#1a1a1a', caption:'#6b7280', metadata:'#9ca3af' },
+  'brand-led':{ display:'',         headline:'',         stat:'',         body:'#1a1a1a', caption:'#6b7280', metadata:'#9ca3af' }, // empty = use brand-c1
+  mono:       { display:'#1a1a1a', headline:'#1a1a1a', stat:'#1a1a1a', body:'#1a1a1a', caption:'#444444', metadata:'#888888' },
+};
+
+function _getCanvasMode() {
+  return (client && client.canvasMode) || 'white';
+}
+function _getTextColors() {
+  return (client && client.textColors) || {};
+}
+// Push canvas mode + text colors into the live iframe so the user sees the
+// change immediately. Writes attributes / CSS vars on the iframe document.
+function _applyCanvasAndTextLive() {
+  const iframe = document.querySelector('#unifiedShellHost iframe');
+  const docs = [];
+  if (iframe && iframe.contentDocument) docs.push(iframe.contentDocument);
+  // Also drive any in-page rendered preview (no iframe scenario)
+  if (document.getElementById('unifiedShellHost')) docs.push(document);
+  const mode = _getCanvasMode();
+  const tc = _getTextColors();
+  docs.forEach(doc => {
+    const html = doc.documentElement;
+    if (!html) return;
+    html.setAttribute('data-canvas-mode', mode);
+    const body = doc.body;
+    if (body) body.setAttribute('data-canvas-mode', mode);
+    Object.entries(tc).forEach(([k, v]) => {
+      if (v) html.style.setProperty('--text-' + k, v);
+      else   html.style.removeProperty('--text-' + k);
+    });
+  });
+}
+function _setCanvasMode(mode) {
+  client = client || {};
+  client.canvasMode = mode;
+  _applyCanvasAndTextLive();
+  _unifiedRenderCanvasText();
+}
+function _setTextColor(key, value) {
+  client = client || {};
+  client.textColors = client.textColors || {};
+  client.textColors[key] = value;
+  _applyCanvasAndTextLive();
+}
+function _applyTextPreset(name) {
+  client = client || {};
+  client.textColors = Object.assign({}, _TEXT_PRESETS[name] || {});
+  _applyCanvasAndTextLive();
+  _unifiedRenderCanvasText();
+}
+
+function _unifiedRenderCanvasText() {
+  const host = document.getElementById('unifiedCanvasTextContent');
+  if (!host) return;
+  const mode = _getCanvasMode();
+  const tc = _getTextColors();
+  const modeBtn = (id, label, sub) =>
+    `<button type="button" class="ds-card${mode === id ? ' selected' : ''}" data-canvas-mode="${id}"
+       style="flex:1; min-width:0; padding:8px 6px;">
+       <div class="ds-name" style="font-size:12px;">${label}</div>
+       <div class="ds-tag"  style="font-size:10px;">${sub}</div>
+     </button>`;
+  const colorRow = (role) => `
+    <div style="display:flex; align-items:center; gap:10px; margin:4px 0;">
+      <div style="flex:1;">
+        <div style="font-weight:600; font-size:12px;">${role.label}</div>
+        <div style="font-size:10px; color:#9ca3af;">${role.hint}</div>
+      </div>
+      <input type="color" data-text-role="${role.key}"
+             value="${(tc[role.key] || '').match(/^#[0-9a-fA-F]{6}$/) ? tc[role.key] : '#1a1a1a'}"
+             style="width:34px; height:28px; padding:0; border:none; cursor:pointer;">
+    </div>`;
+  host.innerHTML = `
+    <div style="padding:6px;">
+      <div style="font-size:11px; color:#6b7280; margin-bottom:6px;">CANVAS</div>
+      <div style="display:flex; gap:6px; margin-bottom:14px;">
+        ${modeBtn('white',  'White',  'all slides')}
+        ${modeBtn('brand',  'Brand',  'all slides')}
+        ${modeBtn('hybrid', 'Hybrid', 'first+last')}
+      </div>
+      <div style="font-size:11px; color:#6b7280; margin-bottom:4px;">TEXT</div>
+      ${_TEXT_ROLES.map(colorRow).join('')}
+      <div style="margin-top:10px; padding-top:8px; border-top:1px solid #eee;
+                  font-size:11px; color:#6b7280; margin-bottom:4px;">Presets</div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap;">
+        <button type="button" data-text-preset="default"   style="font-size:11px; padding:5px 10px; border:1px solid #ddd; background:#fff; border-radius:4px; cursor:pointer;">Default</button>
+        <button type="button" data-text-preset="brand-led" style="font-size:11px; padding:5px 10px; border:1px solid #ddd; background:#fff; border-radius:4px; cursor:pointer;">Brand-led</button>
+        <button type="button" data-text-preset="mono"      style="font-size:11px; padding:5px 10px; border:1px solid #ddd; background:#fff; border-radius:4px; cursor:pointer;">Mono</button>
+      </div>
+    </div>
+  `;
+  // Wire interactions
+  host.querySelectorAll('[data-canvas-mode]').forEach(b =>
+    b.addEventListener('click', () => _setCanvasMode(b.dataset.canvasMode)));
+  host.querySelectorAll('input[type=color]').forEach(inp => {
+    inp.addEventListener('input', e => _setTextColor(e.target.dataset.textRole, e.target.value));
+  });
+  host.querySelectorAll('[data-text-preset]').forEach(b =>
+    b.addEventListener('click', () => _applyTextPreset(b.dataset.textPreset)));
+  // Push current state into iframe (covers page reload / restore)
+  _applyCanvasAndTextLive();
 }
 
 // Render the palette section — swatches per palette + custom-c1 picker.
