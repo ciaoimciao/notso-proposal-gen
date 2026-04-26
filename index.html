@@ -130,6 +130,8 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
 
 .divider{border:none;border-top:1.5px solid var(--gray-200);margin:24px 0}
 .section-label{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:16px}
+.info-tip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#E5E7EB;color:#6b7280;font-size:10px;font-weight:700;cursor:help;margin-left:4px;vertical-align:middle}
+.info-tip:hover{background:var(--brand-c1, #44A8B3);color:#fff}
 
 /* ── BUTTONS ── */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .15s;font-family:var(--font);text-decoration:none}
@@ -452,6 +454,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
     <div class="page-sub" data-i18n="page.sub">Fill in the details — we'll research, write, and structure the entire pitch deck for you.</div>
 
     <div class="card">
+      <!-- ── REQUIRED FIELDS (always visible) ── -->
       <div class="form-grid">
         <div class="form-group">
           <label data-i18n="form.clientName">Client Name</label>
@@ -470,7 +473,10 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <div id="fetchBrandStatus" style="font-size:11px;color:var(--gray-400);margin-top:4px;display:none"></div>
         </div>
         <div class="form-group full">
-          <label data-i18n="form.useCase">Primary Use Case</label>
+          <label data-i18n="form.useCase">
+            Primary Use Case
+            <span class="info-tip" title="AI uses this to write industry-specific copy on every slide.">ⓘ</span>
+          </label>
           <select id="useCase">
             <option value="" data-i18n="form.useCase.ph">Select use case...</option>
             <option value="customer_support" data-i18n="form.useCase.support">Customer Support & Service (24/7 chat)</option>
@@ -486,82 +492,58 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <textarea id="clientDesc" data-i18n-placeholder="form.desc.ph" placeholder="e.g. Jumbo is one of the largest supermarket chains in the Netherlands with 700+ stores. Their HR team handles thousands of new employee onboarding cases per year and is overwhelmed with repetitive policy questions..."></textarea>
         </div>
         <div class="form-group full">
-          <label data-i18n="form.brief">
-            Pitch Brief <span class="hint" data-i18n="form.brief.hint">(optional — tell the AI what this pitch is about, what to emphasize, what to skip)</span>
-          </label>
-          <textarea id="pitchBrief" rows="3" data-i18n-placeholder="form.brief.ph"
-            placeholder="e.g. Returning client. Upselling API tier for multi-surface rollout across web + watch + car. Skip market opportunity and licensing. Emphasize technical ease, a 3-month rollout, and ROI from their existing iOS deployment."></textarea>
+          <label data-i18n="form.claudeKey">Claude API Key <span class="hint" data-i18n="form.claudeKey.hint">— from Anthropic Console (console.anthropic.com)</span></label>
+          <input type="password" id="claudeKey" placeholder="sk-ant-..." />
         </div>
-        <!-- Color pickers are hidden from Step 1. Colors come from Brandfetch
-             auto-fetch (URL field above) or from the palette picker in Step 3.
-             Inputs kept as display:none so the form-collector / history-loader /
-             Brandfetch writer don't break. -->
-        <div style="display:none" aria-hidden="true">
-          <input type="color" id="color1" value="#FFD700" />
-          <input type="text"  id="color1hex" value="#FFD700" />
-          <input type="color" id="color2" value="#000000" />
-          <input type="text"  id="color2hex" value="#000000" />
-          <input type="color" id="color3" value="#F5A623" />
-          <input type="text"  id="color3hex" value="#F5A623" />
-          <input type="color" id="color4" value="#E74C3C" />
-          <input type="text"  id="color4hex" value="#E74C3C" />
-        </div>
-        <div class="form-group">
-          <label data-i18n="form.mascotName">Suggested Mascot Name <span class="hint" data-i18n="form.optional">(optional)</span></label>
-          <input type="text" id="mascotName" data-i18n-placeholder="form.mascotName.ph" placeholder="e.g. Liza, Finn, Max, Biek..." />
-        </div>
-        <div class="form-group full">
-          <label data-i18n="form.mascotRef.label">Mascot Reference Images <span class="hint" data-i18n="form.mascotRef.hint">(optional — upload one or more pictures of the style/look you want)</span></label>
-          <div class="file-drop" id="mascotRefDrop" onclick="document.getElementById('mascotRefImage').click()">
-            <input type="file" id="mascotRefImage" accept="image/*" multiple onchange="handleMascotUpload(this)" />
-            <div class="file-drop-empty" id="mascotRefEmpty">
-              <div class="file-drop-icon">🖼</div>
-              <div>
-                <div class="file-drop-cta" data-i18n="form.mascotRef.cta">Click or drop images here</div>
-                <div class="file-drop-sub" data-i18n="form.mascotRef.sub">PNG, JPG — multiple files OK</div>
-              </div>
-            </div>
-            <div class="file-drop-thumbs" id="mascotRefThumbs" style="display:none"></div>
+      </div>
+
+      <!-- ── MORE OPTIONS (collapsed by default) ── -->
+      <details id="moreOptionsDetails" style="margin-top:14px; border:1px solid var(--gray-200); border-radius:10px; padding:10px 14px;">
+        <summary style="cursor:pointer; font-weight:600; font-size:13px; color:#1a1a1a; padding:4px 0;" data-i18n="form.moreOptions">
+          ⚙️ More options <span style="color:var(--gray-400); font-weight:400;">(mascot name, output language, Gemini key)</span>
+        </summary>
+        <div class="form-grid" style="margin-top:14px;">
+          <div class="form-group">
+            <label data-i18n="form.mascotName">Suggested Mascot Name <span class="hint" data-i18n="form.optional">(optional)</span></label>
+            <input type="text" id="mascotName" data-i18n-placeholder="form.mascotName.ph" placeholder="e.g. Liza, Finn, Max, Biek..." />
           </div>
-          <div style="margin-top:10px;padding:10px 12px;background:#FFF7E8;border:1.5px solid #F5C971;border-radius:8px">
-            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;line-height:1.45;color:#5A4500;font-weight:600">
-              <input type="checkbox" id="useExistingMascot" style="margin-top:2px;width:16px;height:16px;cursor:pointer;accent-color:#E8A317" />
-              <span>
-                <span data-i18n="form.styleTransfer.label">I already have a mascot design — use it as the style-transfer source</span>
-                <span style="display:block;font-weight:400;color:#7A6A40;font-size:11px;margin-top:2px" data-i18n="form.styleTransfer.sub">
-                  Style-transfer mode — the uploaded image(s) above will be preserved as-is (silhouette, species, colours) and re-rendered in Notso signature style. Requires at least one reference image.
-                </span>
-              </span>
+          <div class="form-group">
+            <label data-i18n="form.outputLang">
+              Output Language
+              <span class="info-tip" title="All slide text will be written in this language.">ⓘ</span>
             </label>
+            <select id="outputLang">
+              <option value="en">English</option>
+              <option value="zh-TW">繁體中文</option>
+              <option value="ja">日本語</option>
+              <option value="nl">Nederlands</option>
+              <option value="ko">한국어</option>
+              <option value="de">Deutsch</option>
+              <option value="fr">Français</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label data-i18n="form.geminiKey">Google Gemini API Key <span class="hint" data-i18n="form.geminiKey.hint">— optional, for AI mascot generation (aistudio.google.com)</span></label>
+            <input type="password" id="googleGeminiKey" placeholder="AIza..." />
           </div>
         </div>
-        <div class="form-group full">
-          <label data-i18n="form.clientSite.label">Customer Website Screenshot <span class="hint" data-i18n="form.clientSite.hint">(optional — used for website composite mockups in the asset pack)</span></label>
-          <div class="file-drop" id="clientSiteDrop" onclick="document.getElementById('clientSiteImage').click()">
-            <input type="file" id="clientSiteImage" accept="image/*" onchange="handleSiteUpload(this)" />
-            <div class="file-drop-empty" id="clientSiteEmpty">
-              <div class="file-drop-icon">🌐</div>
-              <div>
-                <div class="file-drop-cta" data-i18n="form.clientSite.cta">Click or drop a screenshot here</div>
-                <div class="file-drop-sub" data-i18n="form.clientSite.sub">PNG, JPG — one image</div>
-              </div>
-            </div>
-            <div class="file-drop-thumbs" id="clientSiteThumbs" style="display:none"></div>
-          </div>
-        </div>
-        <div class="form-group">
-          <label data-i18n="form.outputLang">Output Language</label>
-          <select id="outputLang">
-            <option value="en">English</option>
-            <option value="zh-TW">繁體中文</option>
-            <option value="ja">日本語</option>
-            <option value="nl">Nederlands</option>
-            <option value="ko">한국어</option>
-            <option value="de">Deutsch</option>
-            <option value="fr">Français</option>
-            <option value="es">Español</option>
-          </select>
-        </div>
+      </details>
+
+      <!-- ── Hidden state holders (color pickers + uploads moved to Step 2.5/Asset Pack) ── -->
+      <div style="display:none" aria-hidden="true">
+        <input type="color" id="color1" value="#FFD700" />
+        <input type="text"  id="color1hex" value="#FFD700" />
+        <input type="color" id="color2" value="#000000" />
+        <input type="text"  id="color2hex" value="#000000" />
+        <input type="color" id="color3" value="#F5A623" />
+        <input type="text"  id="color3hex" value="#F5A623" />
+        <input type="color" id="color4" value="#E74C3C" />
+        <input type="text"  id="color4hex" value="#E74C3C" />
+        <!-- Mascot reference image (file input only — visible UI lives in Step 2.5 viewMascot) -->
+        <input type="file" id="mascotRefImage" accept="image/*" multiple onchange="handleMascotUpload(this)" />
+        <!-- Customer site screenshot (file input only — visible UI lives in Asset Pack flow) -->
+        <input type="file" id="clientSiteImage" accept="image/*" onchange="handleSiteUpload(this)" />
       </div>
 
       <hr class="divider" />
@@ -570,17 +552,22 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
       <div id="designStylePicker" class="design-style-picker"></div>
       <input type="hidden" id="designStyle" value="notso-signature" />
 
-      <hr class="divider" />
-      <div class="section-label" data-i18n="form.apiSection">API Configuration</div>
-      <div class="form-grid">
-        <div class="form-group full">
-          <label data-i18n="form.claudeKey">Claude API Key <span class="hint" data-i18n="form.claudeKey.hint">— from Anthropic Console (console.anthropic.com)</span></label>
-          <input type="password" id="claudeKey" placeholder="sk-ant-..." />
+      <!-- ── PITCH BRIEF (prominent, just above Generate button) ── -->
+      <div class="brief-block" style="margin-top:24px; padding:18px 20px; background:linear-gradient(135deg, #FFFCF0 0%, #FFF7E8 100%); border:1.5px solid #E8A317; border-radius:12px;">
+        <label for="pitchBrief" style="display:flex; align-items:center; gap:8px; font-size:15px; font-weight:700; color:#5A4500; margin-bottom:6px;" data-i18n="form.brief.title">
+          📝 What's special about this pitch?
+          <span class="info-tip" title="AI uses this to set tone, scope, and which slides to recommend. The most impactful field on this form.">ⓘ</span>
+        </label>
+        <div style="font-size:12px; color:#7A6A40; margin-bottom:10px;" data-i18n="form.brief.sub">
+          Optional, but writing 1-2 lines here makes the AI 10× more relevant.
+          <a href="#" id="briefExamplesToggle" style="color:#7A6A40; text-decoration:underline; font-weight:600; margin-left:6px;" data-i18n="form.brief.examples">Show examples ▾</a>
         </div>
-        <div class="form-group full">
-          <label data-i18n="form.geminiKey">Google Gemini API Key <span class="hint" data-i18n="form.geminiKey.hint">— optional, for AI mascot generation (aistudio.google.com)</span></label>
-          <input type="password" id="googleGeminiKey" placeholder="AIza..." />
+        <div id="briefExamples" style="display:none; margin-bottom:12px; padding:12px 14px; background:#fff; border-radius:8px; border:1px solid #F5C971; font-size:12px; line-height:1.55; color:#444;">
+          <!-- populated by JS so it's i18n-aware -->
         </div>
+        <textarea id="pitchBrief" rows="3" data-i18n-placeholder="form.brief.ph"
+          placeholder="e.g. Returning client, API upsell for multi-surface rollout. Skip market and licensing. Emphasize 3-month timeline and ROI from existing iOS deployment."
+          style="width:100%; padding:12px 14px; border:1.5px solid #E8A317; border-radius:8px; font-size:14px; line-height:1.5; font-family:inherit; resize:vertical; background:#fff;"></textarea>
       </div>
 
       <div id="errorBox" style="display:none;background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:10px;padding:12px 16px;margin-top:16px;font-size:13px;color:#991B1B;font-weight:600"></div>
@@ -636,18 +623,41 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
             <option value="imagen4">Imagen 4</option>
           </select>
         </div>
-        <!-- Reference image mode checkboxes -->
+        <!-- Reference image upload (moved here from Step 1 — only relevant for mascot generation) -->
+        <div style="margin-bottom:12px;padding:12px 14px;background:#F9FAFB;border:1px solid var(--gray-200);border-radius:10px">
+          <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px" data-i18n="mascot.refImg.label">Reference images <span style="font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></div>
+          <div class="file-drop" id="mascotRefDrop" onclick="document.getElementById('mascotRefImage').click()" style="background:#fff;">
+            <div class="file-drop-empty" id="mascotRefEmpty">
+              <div class="file-drop-icon">🖼</div>
+              <div>
+                <div class="file-drop-cta" data-i18n="form.mascotRef.cta">Click or drop images here</div>
+                <div class="file-drop-sub" data-i18n="form.mascotRef.sub">PNG, JPG — multiple files OK</div>
+              </div>
+            </div>
+            <div class="file-drop-thumbs" id="mascotRefThumbs" style="display:none"></div>
+          </div>
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;line-height:1.4;margin-top:10px;padding:8px 10px;background:#FFF7E8;border:1.5px solid #F5C971;border-radius:8px;color:#5A4500;font-weight:600">
+            <input type="checkbox" id="useExistingMascot" style="margin-top:2px;width:15px;height:15px;cursor:pointer;accent-color:#E8A317" />
+            <span>
+              <span data-i18n="form.styleTransfer.label">I already have a mascot design — use it as the style-transfer source</span>
+              <span style="display:block;font-weight:400;color:#7A6A40;font-size:11px;margin-top:2px" data-i18n="form.styleTransfer.sub">
+                Style-transfer mode — uploaded image is preserved as-is and re-rendered in Notso signature style.
+              </span>
+            </span>
+          </label>
+        </div>
+        <!-- Reference image mode checkboxes (Faithful / Mimic — separate from style-transfer above) -->
         <div style="margin-bottom:12px;padding:10px 12px;background:#F9FAFB;border:1px solid var(--gray-200);border-radius:10px">
-          <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px" data-i18n="mascot.refmode.label">Reference Image Mode</div>
+          <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px" data-i18n="mascot.refmode.label">Generation mode (advanced)</div>
           <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;line-height:1.4;margin-bottom:6px">
             <input type="checkbox" id="mascotFaithful" style="margin-top:2px;width:15px;height:15px;cursor:pointer;accent-color:#E8A317" />
-            <span data-i18n="mascot.refmode.faithful"><b>Faithful mascot reproduction</b> — 100% faithful reproduction, only swap to 3D clay material. No Notso eye/eyebrow override.</span>
+            <span data-i18n="mascot.refmode.faithful"><b>Faithful mascot reproduction</b> — 100% faithful, only swap to 3D clay material.</span>
           </label>
           <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;line-height:1.4;color:var(--gray-500)">
             <input type="checkbox" id="mascotMimicRef" style="margin-top:2px;width:15px;height:15px;cursor:pointer;accent-color:var(--accent)" />
-            <span data-i18n="mascot.refmode.mimic"><b>Generate from reference</b> — Mimic the reference image's art style, proportions, and vibe (but create a new character per variation).</span>
+            <span data-i18n="mascot.refmode.mimic"><b>Generate from reference</b> — Mimic art style + proportions but create new characters.</span>
           </label>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:6px" data-i18n="mascot.refmode.note">Both options require reference image(s) uploaded in Step 1. If neither is checked, references are used as loose style inspiration.</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:6px">If neither checked, references are loose style inspiration.</div>
         </div>
         <!-- Custom Prompt -->
         <div style="margin-bottom:12px">
@@ -1357,6 +1367,65 @@ function _extractDomain(rawUrl) {
   s = s.split('/')[0].split('?')[0].split('#')[0];
   return s.toLowerCase();
 }
+
+// ─── Pitch Brief examples (expandable list) ───
+const BRIEF_EXAMPLES = [
+  {
+    title: 'New consumer brand',
+    text: 'First pitch to a global health app. They have millions of users but no personality on the AI side. Emphasize emotional retention, voice logging, and how a mascot makes their app stickier. Audience: CMO + Head of Product.'
+  },
+  {
+    title: 'Returning client / upsell',
+    text: 'Returning client. Upselling API tier for multi-surface rollout (web + watch + car). Skip market opportunity and licensing — they already bought once. Emphasize technical ease, 3-month rollout, and ROI from existing iOS deployment.'
+  },
+  {
+    title: 'Charity / nonprofit',
+    text: 'Pitch to a global children\'s charity. Focus on emergency-response donor engagement, trust at scale, and impact storytelling. Skip generic market sizing — they ARE the category. Keep licensing because their legal team needs data-privacy spelled out.'
+  },
+  {
+    title: 'Enterprise / regulated industry',
+    text: 'EU bank legal team. Emphasize GDPR, data residency, audit logs, no third-party data sharing. Tone: professional, conservative. Skip casual chat demo. Focus chatflow on compliance routing and human handoff.'
+  },
+  {
+    title: 'Short / tactical project',
+    text: 'A 4-week pilot for an event. Skip licensing, skip roadmap. Emphasize fast deploy and post-event ROI metrics. CTA is a 2-week prototype delivery.'
+  },
+];
+function _initBriefExamples() {
+  const toggle = document.getElementById('briefExamplesToggle');
+  const box = document.getElementById('briefExamples');
+  const ta = document.getElementById('pitchBrief');
+  if (!toggle || !box || !ta) return;
+  if (!box.dataset.populated) {
+    box.innerHTML = BRIEF_EXAMPLES.map((ex, i) => `
+      <div style="padding:8px 0; ${i ? 'border-top:1px dashed #F5C971;' : ''}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px;">
+          <div style="font-weight:700; color:#5A4500;">${ex.title}</div>
+          <button type="button" data-brief-idx="${i}" style="font-size:11px; padding:3px 8px; border:1px solid #E8A317; background:#fff; color:#5A4500; border-radius:4px; cursor:pointer; white-space:nowrap;">Use this →</button>
+        </div>
+        <div style="color:#666; line-height:1.5;">${ex.text}</div>
+      </div>
+    `).join('');
+    box.dataset.populated = '1';
+    box.querySelectorAll('button[data-brief-idx]').forEach(b =>
+      b.addEventListener('click', () => {
+        const idx = +b.dataset.briefIdx;
+        ta.value = BRIEF_EXAMPLES[idx].text;
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+        ta.focus();
+        box.style.display = 'none';
+        toggle.textContent = 'Show examples ▾';
+      })
+    );
+  }
+  toggle.addEventListener('click', e => {
+    e.preventDefault();
+    const open = box.style.display !== 'none';
+    box.style.display = open ? 'none' : 'block';
+    toggle.textContent = open ? 'Show examples ▾' : 'Hide examples ▴';
+  });
+}
+document.addEventListener('DOMContentLoaded', _initBriefExamples);
 
 async function autoFetchBrandColors() {
   const raw = (document.getElementById('clientWebsite') || {}).value || '';
@@ -7126,6 +7195,19 @@ document.addEventListener('blur', function(e) {
           <option value="option_b">Option B (green)</option>
           <option value="option_c">Option C (amber)</option>
         </select>
+
+        <!-- Customer site screenshot upload (moved here from Step 1 — only relevant for the Website Composite asset) -->
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--gray-500);margin-top:16px;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Customer website screenshot <span style="font-weight:400; text-transform:none; letter-spacing:0;">(optional — for Website Composite)</span></label>
+        <div class="file-drop" id="clientSiteDrop" onclick="document.getElementById('clientSiteImage').click()" style="background:#fff;">
+          <div class="file-drop-empty" id="clientSiteEmpty">
+            <div class="file-drop-icon">🌐</div>
+            <div>
+              <div class="file-drop-cta" data-i18n="form.clientSite.cta">Click or drop a screenshot here</div>
+              <div class="file-drop-sub" data-i18n="form.clientSite.sub">PNG, JPG — one image</div>
+            </div>
+          </div>
+          <div class="file-drop-thumbs" id="clientSiteThumbs" style="display:none"></div>
+        </div>
       </div>
       <div id="assetPackProgress" style="display:none">
         <div style="text-align:center;padding:30px 20px">
