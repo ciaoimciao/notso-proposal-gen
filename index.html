@@ -554,12 +554,12 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
 
       <!-- ── PITCH BRIEF (prominent, just above Generate button) ── -->
       <div class="brief-block" style="margin-top:24px; padding:18px 20px; background:linear-gradient(135deg, #FFFCF0 0%, #FFF7E8 100%); border:1.5px solid #E8A317; border-radius:12px;">
-        <label for="pitchBrief" style="display:flex; align-items:center; gap:8px; font-size:15px; font-weight:700; color:#5A4500; margin-bottom:6px;" data-i18n="form.brief.title">
-          📝 What's special about this pitch?
+        <label for="pitchBrief" style="display:flex; align-items:center; gap:8px; font-size:15px; font-weight:700; color:#5A4500; margin-bottom:6px;">
+          <span data-i18n="form.brief.title">📝 What's special about this pitch?</span>
           <span class="info-tip" title="AI uses this to set tone, scope, and which slides to recommend. The most impactful field on this form.">ⓘ</span>
         </label>
-        <div style="font-size:12px; color:#7A6A40; margin-bottom:10px;" data-i18n="form.brief.sub">
-          Optional, but writing 1-2 lines here makes the AI 10× more relevant.
+        <div style="font-size:12px; color:#7A6A40; margin-bottom:10px;">
+          <span data-i18n="form.brief.sub">Optional, but writing 1-2 lines here makes the AI 10× more relevant.</span>
           <a href="#" id="briefExamplesToggle" style="color:#7A6A40; text-decoration:underline; font-weight:600; margin-left:6px;" data-i18n="form.brief.examples">Show examples ▾</a>
         </div>
         <div id="briefExamples" style="display:none; margin-bottom:12px; padding:12px 14px; background:#fff; border-radius:8px; border:1px solid #F5C971; font-size:12px; line-height:1.55; color:#444;">
@@ -1074,6 +1074,10 @@ const I18N = {
     'form.brief': 'Pitch Brief <span class="hint">(optional — tell the AI what this pitch is about, what to emphasize, what to skip)</span>',
     'form.brief.hint': '(optional — tell the AI what this pitch is about, what to emphasize, what to skip)',
     'form.brief.ph': 'e.g. Returning client. Upselling API tier for multi-surface rollout across web + watch + car. Skip market opportunity and licensing. Emphasize technical ease, a 3-month rollout, and ROI from their existing iOS deployment.',
+    'form.brief.title': '📝 What\'s special about this pitch?',
+    'form.brief.sub': 'Optional, but writing 1-2 lines here makes the AI 10× more relevant.',
+    'form.brief.examples': 'Show examples ▾',
+    'form.moreOptions': '⚙️ More options <span style="color:var(--gray-400); font-weight:400;">(mascot name, output language, Gemini key)</span>',
     'form.color1': 'Main Color <span class="hint">(primary)</span>',
     'form.color1.hint': '(primary)',
     'form.color2': 'Accent 1 <span class="hint">(optional)</span>',
@@ -1158,6 +1162,10 @@ const I18N = {
     'form.brief': '本次提案重點 <span class="hint">(選填 — 告訴 AI 這次要強調什麼、跳過什麼)</span>',
     'form.brief.hint': '(選填 — 告訴 AI 這次要強調什麼、跳過什麼)',
     'form.brief.ph': '例如:回頭客,本次升級 API 版本跨 web/watch/car。跳過市場機會與授權頁,強調技術整合順暢度、3 個月 rollout、以及既有 iOS 部署的 ROI。',
+    'form.brief.title': '📝 這次提案有什麼特別的?',
+    'form.brief.sub': '選填,但寫個 1-2 行可以讓 AI 寫出來的內容相關度提升 10×。',
+    'form.brief.examples': '看範例 ▾',
+    'form.moreOptions': '⚙️ 更多選項 <span style="color:var(--gray-400); font-weight:400;">(吉祥物名、語言、Gemini 金鑰)</span>',
     'form.desc.ph': '例如:Jumbo 是荷蘭最大的連鎖超市之一,擁有超過 700 家分店。他們的 HR 團隊每年處理數千筆新員工導引案件,被重複的政策問題壓得喘不過氣⋯',
     'form.color1': '主色 <span class="hint">(主要)</span>',
     'form.color1.hint': '(主要)',
@@ -1243,6 +1251,10 @@ const I18N = {
     'form.brief': 'ピッチ・ブリーフ <span class="hint">(任意 — このピッチで何を強調し、何を省くか AI に伝える)</span>',
     'form.brief.hint': '(任意 — このピッチで何を強調し、何を省くか AI に伝える)',
     'form.brief.ph': '例:既存クライアント、API ティア・アップセル。マーケット機会と Licensing はスキップ。技術統合、3 か月ロールアウト、iOS の既存デプロイからの ROI を強調。',
+    'form.brief.title': '📝 このピッチの特別な点は?',
+    'form.brief.sub': '任意ですが、1〜2 行書くと AI の関連性が 10 倍上がります。',
+    'form.brief.examples': '例を見る ▾',
+    'form.moreOptions': '⚙️ 詳細オプション <span style="color:var(--gray-400); font-weight:400;">(マスコット名、出力言語、Gemini キー)</span>',
     'form.desc.ph': '例:Jumbo はオランダ最大級のスーパーマーケットチェーンで、700 店舗以上を展開。人事チームは毎年数千件の新人オンボーディングを処理しており、繰り返される方針に関する質問に追われている⋯',
     'form.color1': 'メインカラー <span class="hint">(プライマリ)</span>',
     'form.color1.hint': '(プライマリ)',
