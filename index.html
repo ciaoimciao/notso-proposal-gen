@@ -1380,61 +1380,96 @@ function _extractDomain(rawUrl) {
   return s.toLowerCase();
 }
 
-// ─── Pitch Brief examples (expandable list) ───
-const BRIEF_EXAMPLES = [
-  {
-    title: 'New consumer brand',
-    text: 'First pitch to a global health app. They have millions of users but no personality on the AI side. Emphasize emotional retention, voice logging, and how a mascot makes their app stickier. Audience: CMO + Head of Product.'
-  },
-  {
-    title: 'Returning client / upsell',
-    text: 'Returning client. Upselling API tier for multi-surface rollout (web + watch + car). Skip market opportunity and licensing — they already bought once. Emphasize technical ease, 3-month rollout, and ROI from existing iOS deployment.'
-  },
-  {
-    title: 'Charity / nonprofit',
-    text: 'Pitch to a global children\'s charity. Focus on emergency-response donor engagement, trust at scale, and impact storytelling. Skip generic market sizing — they ARE the category. Keep licensing because their legal team needs data-privacy spelled out.'
-  },
-  {
-    title: 'Enterprise / regulated industry',
-    text: 'EU bank legal team. Emphasize GDPR, data residency, audit logs, no third-party data sharing. Tone: professional, conservative. Skip casual chat demo. Focus chatflow on compliance routing and human handoff.'
-  },
-  {
-    title: 'Short / tactical project',
-    text: 'A 4-week pilot for an event. Skip licensing, skip roadmap. Emphasize fast deploy and post-event ROI metrics. CTA is a 2-week prototype delivery.'
-  },
-];
+// ─── Pitch Brief quickstarts ───
+// Chip-style templates with [brackets] for the user to fill in.
+// Click a chip → textarea pre-fills the template AND auto-selects the
+// first [bracket] so they can start typing over it immediately.
+const BRIEF_QUICKSTARTS_BY_LANG = {
+  en: [
+    { chip: '🆕 New client · brand-led',
+      template: '[New client / first pitch]. Client is a [industry] [short description]. Decision-maker is [CMO / Head of Product / founder]. Emphasize [emotional retention / technical integration / ROI proof / brand consistency]. Skip [market opportunity / licensing / detailed roadmap].' },
+    { chip: '🔁 Returning client · upsell',
+      template: 'Returning client. Last engagement was [previous project]. This pitch upgrades [new feature / scope]. Skip [pain points / market opportunity / mascot selection] — no need to re-educate. Emphasize [new feature ROI / multi-surface rollout / upgrade path]. CTA is [target signing date].' },
+    { chip: '⏱ Short tactical pilot',
+      template: '[N-week] tactical pilot for [event / campaign]. Tight timeline. Skip roadmap / licensing / market opportunity. Emphasize [fast deployment / post-event metrics]. CTA is [2-week prototype delivery].' },
+    { chip: '🏛 Enterprise / regulated',
+      template: '[Industry — e.g. EU bank / health / gov]. Legal team will review. Emphasize [GDPR / data residency / audit logs / no third-party sharing]. Tone: [professional, conservative]. Skip [casual chat demo]. Chatflow focused on [compliance routing + human handoff].' },
+  ],
+  'zh-TW': [
+    { chip: '🆕 新客戶 · 品牌導向',
+      template: '[新客戶 / 首次提案]. 客戶是 [產業] 的 [簡短描述]. 主要決策人是 [CMO / Head of Product / 創辦人]. 重點放在 [情緒留存 / 技術整合 / ROI 證據 / 品牌一致性]. 跳過 [市場機會頁 / 授權頁 / 詳細時程].' },
+    { chip: '🔁 回頭客 · 升級',
+      template: '回頭客. 上次合作做了 [前一個 project]. 這次要升級 [新 feature / 新 scope]. 跳過 [pain points / 市場機會 / 吉祥物選擇] — 不需要重複教育. 強調 [新功能 ROI / 多平台 rollout / 升級路徑]. CTA 是 [簽約日期].' },
+    { chip: '⏱ 短期 pilot',
+      template: '[N 週] tactical pilot for [event / campaign]. 時限緊. 跳過 roadmap / licensing / 市場機會. 重點 [快速部署 / 事件後 metrics]. CTA 是 [兩週內交付 prototype].' },
+    { chip: '🏛 企業 / 受監管產業',
+      template: '[產業 — 例: EU 銀行 / 健保 / 政府]. 法務團隊會審. 強調 [GDPR / 資料駐留 / 審計日誌 / 第三方資料隔離]. Tone 要 [專業保守]. 跳過 [輕鬆 chat demo]. 對話流程聚焦在 [合規 routing 與真人 handoff].' },
+  ],
+  ja: [
+    { chip: '🆕 新規 · ブランド主導',
+      template: '[新規クライアント / 初回ピッチ]. クライアントは [業界] の [簡潔な説明]. 意思決定者は [CMO / プロダクト責任者 / 創業者]. 重点は [感情的リテンション / 技術統合 / ROI 実績 / ブランド一貫性]. スキップ: [市場機会 / ライセンス / 詳細ロードマップ].' },
+    { chip: '🔁 既存 · アップセル',
+      template: '既存クライアント. 前回は [前プロジェクト]. 今回は [新機能 / スコープ] のアップグレード. [ペインポイント / 市場機会 / マスコット選択] はスキップ. 重点: [新機能の ROI / マルチプラットフォーム展開 / アップグレード経路]. CTA は [契約目標日].' },
+    { chip: '⏱ 短期パイロット',
+      template: '[N 週間の] tactical pilot ([イベント / キャンペーン] 向け). タイトな期限. ロードマップ / ライセンス / 市場機会はスキップ. 重点: [迅速なデプロイ / イベント後の指標]. CTA は [2 週間でのプロトタイプ納品].' },
+    { chip: '🏛 エンタープライズ / 規制業界',
+      template: '[業界 — 例: EU 銀行 / 医療 / 政府]. 法務チームが審査. 重点: [GDPR / データ常駐 / 監査ログ / 第三者共有なし]. トーン: [プロフェッショナル、保守的]. [カジュアルなチャットデモ] はスキップ. チャットフローは [コンプライアンス routing + 人間への引き継ぎ] に焦点.' },
+  ],
+};
 function _initBriefExamples() {
   const toggle = document.getElementById('briefExamplesToggle');
   const box = document.getElementById('briefExamples');
   const ta = document.getElementById('pitchBrief');
   if (!toggle || !box || !ta) return;
-  if (!box.dataset.populated) {
-    box.innerHTML = BRIEF_EXAMPLES.map((ex, i) => `
-      <div style="padding:8px 0; ${i ? 'border-top:1px dashed #F5C971;' : ''}">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:4px;">
-          <div style="font-weight:700; color:#5A4500;">${ex.title}</div>
-          <button type="button" data-brief-idx="${i}" style="font-size:11px; padding:3px 8px; border:1px solid #E8A317; background:#fff; color:#5A4500; border-radius:4px; cursor:pointer; white-space:nowrap;">Use this →</button>
-        </div>
-        <div style="color:#666; line-height:1.5;">${ex.text}</div>
+
+  // Pick the appropriate language list (fallback to English)
+  const lang = (window._currentLang || document.documentElement.lang || 'en');
+  const list = BRIEF_QUICKSTARTS_BY_LANG[lang] || BRIEF_QUICKSTARTS_BY_LANG.en;
+
+  function render() {
+    box.innerHTML = `
+      <div style="font-size:11px; color:#7A6A40; margin-bottom:8px; line-height:1.5;">
+        ${lang === 'zh-TW' ? '點一下 chip → textarea 帶入模板。括號裡會自動選取,直接打字就替換。'
+          : lang === 'ja' ? 'チップをクリック → テキストエリアにテンプレートが入ります。括弧が自動選択されるので、そのまま入力できます。'
+          : 'Click a chip → textarea fills with the template. The first [bracket] is auto-selected so you can type to replace it.'}
       </div>
-    `).join('');
-    box.dataset.populated = '1';
-    box.querySelectorAll('button[data-brief-idx]').forEach(b =>
+      <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        ${list.map((q, i) => `
+          <button type="button" data-qs-idx="${i}"
+            style="padding:6px 12px; border-radius:999px; border:1.5px solid #E8A317; background:#fff; color:#5A4500; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition: all .15s;"
+            onmouseover="this.style.background='#FFF3D6'; this.style.transform='translateY(-1px)';"
+            onmouseout="this.style.background='#fff'; this.style.transform='translateY(0)';"
+          >${q.chip}</button>
+        `).join('')}
+      </div>
+    `;
+    box.querySelectorAll('button[data-qs-idx]').forEach(b => {
       b.addEventListener('click', () => {
-        const idx = +b.dataset.briefIdx;
-        ta.value = BRIEF_EXAMPLES[idx].text;
+        const idx = +b.dataset.qsIdx;
+        const tpl = list[idx].template;
+        ta.value = tpl;
         ta.dispatchEvent(new Event('input', { bubbles: true }));
         ta.focus();
-        box.style.display = 'none';
-        toggle.textContent = 'Show examples ▾';
-      })
-    );
+        // Auto-select the first [bracket] for instant overtype
+        const m = tpl.match(/\[[^\]]+\]/);
+        if (m) ta.setSelectionRange(m.index, m.index + m[0].length);
+      });
+    });
   }
+  render();
   toggle.addEventListener('click', e => {
     e.preventDefault();
     const open = box.style.display !== 'none';
     box.style.display = open ? 'none' : 'block';
-    toggle.textContent = open ? 'Show examples ▾' : 'Hide examples ▴';
+    // Match the i18n toggle label
+    const k = open ? 'form.brief.examples' : 'form.brief.examples.hide';
+    if (typeof I18N !== 'undefined' && window._currentLang && I18N[window._currentLang]?.[k]) {
+      toggle.textContent = I18N[window._currentLang][k];
+    } else {
+      toggle.textContent = open
+        ? (lang === 'zh-TW' ? '看範例 ▾' : lang === 'ja' ? '例を見る ▾' : 'Show examples ▾')
+        : (lang === 'zh-TW' ? '收起範例 ▴' : lang === 'ja' ? '閉じる ▴' : 'Hide examples ▴');
+    }
   });
 }
 document.addEventListener('DOMContentLoaded', _initBriefExamples);
