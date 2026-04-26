@@ -911,43 +911,58 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           </div>
         </div>
       </main>
-      <!-- Pane 3: collapsible sections - Asset Pack / Backup Mascots / Design Style -->
-      <aside id="unifiedAssetSidebar" style="border-left:1px solid #e5e7eb;background:#fff;overflow-y:auto;padding:4px 10px 16px">
-        <details class="unified-side-section" open>
-          <summary>🎁 Asset pack</summary>
+      <!-- Pane 3: 4-tab sidebar — Design / Colors / Mascot / Assets -->
+      <aside id="unifiedAssetSidebar" style="border-left:1px solid #e5e7eb;background:#fff;overflow-y:auto;padding:0 0 16px">
+        <!-- Tab nav (sticky on top) -->
+        <div class="unified-tabs" id="unifiedTabs" style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;padding:4px 6px 0">
+          <button type="button" data-tab="design"  class="unified-tab active">🎨 <span data-i18n="tabs.design">Design</span></button>
+          <button type="button" data-tab="colors"  class="unified-tab">🌈 <span data-i18n="tabs.colors">Colors</span></button>
+          <button type="button" data-tab="mascot"  class="unified-tab">🎭 <span data-i18n="tabs.mascot">Mascot</span></button>
+          <button type="button" data-tab="assets"  class="unified-tab">📦 <span data-i18n="tabs.assets">Assets</span></button>
+        </div>
+
+        <!-- Tab panels — content from existing render functions writes here -->
+        <div data-tab-panel="design" class="unified-tab-panel" style="padding:10px">
+          <!-- AI rationale block (top of Design — shows recommended_slides count + reasoning) -->
+          <div id="unifiedAiRationaleContent" style="margin-bottom:10px"></div>
+          <!-- Design style picker (existing) -->
+          <div id="unifiedDesignStyleContent">
+            <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
+          </div>
+          <!-- Advanced: canvas mode + 6 text-role colors -->
+          <details style="margin-top:10px;padding:8px 10px;border:1px solid #f0f0f0;border-radius:8px">
+            <summary style="cursor:pointer;font-weight:600;font-size:12px;color:#6b7280" data-i18n="tabs.design.advanced">⚙️ Advanced — canvas &amp; text colors</summary>
+            <div id="unifiedCanvasTextContent" style="margin-top:8px">
+              <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
+            </div>
+          </details>
+        </div>
+
+        <div data-tab-panel="colors" class="unified-tab-panel" hidden style="padding:10px">
+          <div id="unifiedPaletteContent">
+            <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
+          </div>
+        </div>
+
+        <div data-tab-panel="mascot" class="unified-tab-panel" hidden style="padding:10px">
+          <div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+            🎭 <span data-i18n="tabs.mascot.title">Backup mascots</span> <span class="side-sub" id="unifiedBackupMascotsCount"></span>
+          </div>
+          <div id="unifiedBackupMascotsContent">
+            <div style="padding:14px 6px;color:#9ca3af;font-size:12px;line-height:1.5">
+              Generate mascots in Step 2 to see backup options here.
+            </div>
+          </div>
+        </div>
+
+        <div data-tab-panel="assets" class="unified-tab-panel" hidden style="padding:10px">
           <div id="unifiedAssetSidebarContent">
             <div style="padding:20px 6px;color:#9ca3af;font-size:12px;line-height:1.5">
               No asset pack yet.<br>
               <button class="btn btn-primary" style="margin-top:12px;font-size:11px;padding:6px 12px" onclick="openAssetPackModal()">🎁 Generate Asset Pack</button>
             </div>
           </div>
-        </details>
-        <details class="unified-side-section" open>
-          <summary>🎭 Backup mascots <span class="side-sub" id="unifiedBackupMascotsCount"></span></summary>
-          <div id="unifiedBackupMascotsContent">
-            <div style="padding:14px 6px;color:#9ca3af;font-size:12px;line-height:1.5">
-              Generate mascots in Step 2 to see backup options here.
-            </div>
-          </div>
-        </details>
-        <details class="unified-side-section" open>
-          <summary>🎨 Design style</summary>
-          <div id="unifiedDesignStyleContent">
-            <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
-          </div>
-        </details>
-        <details class="unified-side-section" open>
-          <summary>🌈 Colors &amp; palette <span class="side-sub">adjust live</span></summary>
-          <div id="unifiedPaletteContent">
-            <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
-          </div>
-        </details>
-        <details class="unified-side-section">
-          <summary>🖼️ Canvas &amp; text <span class="side-sub">colors per role</span></summary>
-          <div id="unifiedCanvasTextContent">
-            <div style="padding:14px 6px;color:#9ca3af;font-size:12px">Loading…</div>
-          </div>
-        </details>
+        </div>
       </aside>
     </div>
   </div>
@@ -1078,6 +1093,12 @@ const I18N = {
     'form.brief.sub': 'Optional, but writing 1-2 lines here makes the AI 10× more relevant.',
     'form.brief.examples': 'Show examples ▾',
     'form.moreOptions': '⚙️ More options <span style="color:var(--gray-400); font-weight:400;">(mascot name, output language, Gemini key)</span>',
+    'tabs.design': 'Design',
+    'tabs.colors': 'Colors',
+    'tabs.mascot': 'Mascot',
+    'tabs.assets': 'Assets',
+    'tabs.design.advanced': '⚙️ Advanced — canvas & text colors',
+    'tabs.mascot.title': 'Backup mascots',
     'form.color1': 'Main Color <span class="hint">(primary)</span>',
     'form.color1.hint': '(primary)',
     'form.color2': 'Accent 1 <span class="hint">(optional)</span>',
@@ -1166,6 +1187,12 @@ const I18N = {
     'form.brief.sub': '選填,但寫個 1-2 行可以讓 AI 寫出來的內容相關度提升 10×。',
     'form.brief.examples': '看範例 ▾',
     'form.moreOptions': '⚙️ 更多選項 <span style="color:var(--gray-400); font-weight:400;">(吉祥物名、語言、Gemini 金鑰)</span>',
+    'tabs.design': '設計',
+    'tabs.colors': '配色',
+    'tabs.mascot': '吉祥物',
+    'tabs.assets': '素材包',
+    'tabs.design.advanced': '⚙️ 進階 — 畫布與文字色',
+    'tabs.mascot.title': '備用吉祥物',
     'form.desc.ph': '例如:Jumbo 是荷蘭最大的連鎖超市之一,擁有超過 700 家分店。他們的 HR 團隊每年處理數千筆新員工導引案件,被重複的政策問題壓得喘不過氣⋯',
     'form.color1': '主色 <span class="hint">(主要)</span>',
     'form.color1.hint': '(主要)',
@@ -1255,6 +1282,12 @@ const I18N = {
     'form.brief.sub': '任意ですが、1〜2 行書くと AI の関連性が 10 倍上がります。',
     'form.brief.examples': '例を見る ▾',
     'form.moreOptions': '⚙️ 詳細オプション <span style="color:var(--gray-400); font-weight:400;">(マスコット名、出力言語、Gemini キー)</span>',
+    'tabs.design': 'デザイン',
+    'tabs.colors': 'カラー',
+    'tabs.mascot': 'マスコット',
+    'tabs.assets': 'アセット',
+    'tabs.design.advanced': '⚙️ 詳細 — キャンバス & テキスト色',
+    'tabs.mascot.title': 'バックアップマスコット',
     'form.desc.ph': '例:Jumbo はオランダ最大級のスーパーマーケットチェーンで、700 店舗以上を展開。人事チームは毎年数千件の新人オンボーディングを処理しており、繰り返される方針に関する質問に追われている⋯',
     'form.color1': 'メインカラー <span class="hint">(プライマリ)</span>',
     'form.color1.hint': '(プライマリ)',
@@ -3572,6 +3605,8 @@ async function openUnifiedEditor() {
 
     _unifiedRawHtml = data.html;
     _unifiedRenderShell(data.html);
+    _unifiedInitTabs();
+    _unifiedRenderAiRationale();
     _unifiedRenderAssetSidebar();
     _unifiedRenderBackupMascots();
     _unifiedRenderDesignStyle();
@@ -3739,6 +3774,36 @@ function _unifiedRenderShell(html) {
       border-radius: 4px;
     }
     /* Collapsible side-sections (Asset / Backup / Design Style) */
+    /* Tabbed sidebar (replaces the legacy collapsible sections) */
+    .unified-tab {
+      flex: 1; padding: 10px 6px; border: none; background: transparent;
+      cursor: pointer; font-size: 12px; font-weight: 600; color: #9ca3af;
+      border-bottom: 2px solid transparent; transition: color .12s, border-color .12s;
+      font-family: inherit;
+    }
+    .unified-tab:hover { color: #1a1a1a; }
+    .unified-tab.active {
+      color: #1a1a1a; border-bottom-color: var(--brand-c1, var(--accent, #44A8B3));
+    }
+    .unified-tab-panel { display: block; }
+    .unified-tab-panel[hidden] { display: none; }
+    /* AI rationale block */
+    .ai-rationale {
+      background: linear-gradient(135deg, #f0fdfa 0%, #f0f9ff 100%);
+      border: 1px solid #a5d8d3; border-radius: 10px; padding: 10px 12px; font-size: 12px;
+    }
+    .ai-rationale > summary { cursor: pointer; font-weight: 700; color: #0c4a6e; list-style: none; }
+    .ai-rationale > summary::-webkit-details-marker { display: none; }
+    .ai-rationale > summary::after { content: '▾'; float: right; transition: transform .15s; }
+    .ai-rationale[open] > summary::after { transform: rotate(180deg); }
+    .ai-rationale .body { margin-top: 8px; line-height: 1.55; color: #444; }
+    .ai-rationale .restore-btn {
+      margin-top: 10px; padding: 5px 10px; font-size: 11px; font-weight: 600;
+      background: #fff; color: #0c4a6e; border: 1px solid #a5d8d3; border-radius: 4px;
+      cursor: pointer; font-family: inherit;
+    }
+    .ai-rationale .restore-btn:hover { background: #e6f7f5; }
+
     .unified-side-section { border-bottom: 1px solid #F3F4F6; padding: 6px 0; }
     .unified-side-section > summary {
       list-style: none; cursor: pointer; padding: 6px 2px;
@@ -4731,6 +4796,64 @@ function _unifiedApplyPalette(palette) {
   } catch (_) {}
 
   _unifiedRenderPalette();  // refresh "selected" state
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// SIDEBAR TABS — wires up the 4 unified tabs (Design / Colors / Mascot
+// / Assets). Each tab shows a different panel, and the corresponding
+// render function (unchanged) writes into a panel-specific container.
+// ─────────────────────────────────────────────────────────────────────
+function _unifiedInitTabs() {
+  const tabsEl = document.getElementById('unifiedTabs');
+  if (!tabsEl || tabsEl.dataset.wired) return;
+  tabsEl.dataset.wired = '1';
+  tabsEl.addEventListener('click', e => {
+    const btn = e.target.closest('[data-tab]');
+    if (!btn) return;
+    const target = btn.dataset.tab;
+    tabsEl.querySelectorAll('.unified-tab').forEach(b =>
+      b.classList.toggle('active', b === btn));
+    document.querySelectorAll('[data-tab-panel]').forEach(p =>
+      p.hidden = p.dataset.tabPanel !== target);
+  });
+}
+
+// AI rationale block (top of Design tab) — shows recommended_slides count,
+// expandable to see the AI's reasoning, plus a "Restore all 18" button so
+// the user can override AI's selection with one click.
+function _unifiedRenderAiRationale() {
+  const host = document.getElementById('unifiedAiRationaleContent');
+  if (!host) return;
+  const ai = (proposal && proposal.__ai) || null;
+  const rec = (ai && ai.recommended_slides) || [];
+  const rationale = (ai && ai.recommendation_rationale) || '';
+  if (!rec.length) { host.innerHTML = ''; return; }
+  // Total available slide ids — fall back to ALL_SLIDES if defined
+  const totalCount = (typeof ALL_SLIDES !== 'undefined' && Array.isArray(ALL_SLIDES))
+    ? ALL_SLIDES.length : 18;
+  const allCurrentlyOn = (typeof selectedSlides !== 'undefined') &&
+    (selectedSlides.size === totalCount);
+  host.innerHTML = `
+    <details class="ai-rationale" ${rationale ? '' : 'data-no-rationale'}>
+      <summary>✨ AI selected ${rec.length}/${totalCount} slides</summary>
+      ${rationale ? `<div class="body">${_escHtml(rationale)}</div>` : ''}
+      <button type="button" class="restore-btn" onclick="_restoreAllSlides()" ${allCurrentlyOn ? 'disabled style="opacity:.5"' : ''}>
+        ${allCurrentlyOn ? '✓ All 18 already shown' : 'Restore all 18 slides'}
+      </button>
+    </details>
+  `;
+}
+function _restoreAllSlides() {
+  if (typeof ALL_SLIDES === 'undefined' || typeof selectedSlides === 'undefined') return;
+  selectedSlides = new Set(ALL_SLIDES.map(s => s.id));
+  if (typeof renderSlidePicker === 'function') renderSlidePicker();
+  // Trigger re-render so the new slides actually show
+  if (typeof _unifiedRefreshPreview === 'function') _unifiedRefreshPreview();
+  _unifiedRenderAiRationale();
+}
+function _escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ─────────────────────────────────────────────────────────────────────
