@@ -4646,26 +4646,18 @@ function _getCanvasMode() {
 function _getTextColors() {
   return (client && client.textColors) || {};
 }
-// Push canvas mode + text colors into the live iframe so the user sees the
-// change immediately. Writes attributes / CSS vars on the iframe document.
+// Push canvas mode + text colors into the live preview. The unified shell
+// inlines the rendered HTML into the main document (no iframe), so we write
+// straight to document.documentElement.
 function _applyCanvasAndTextLive() {
-  const iframe = document.querySelector('#unifiedShellHost iframe');
-  const docs = [];
-  if (iframe && iframe.contentDocument) docs.push(iframe.contentDocument);
-  // Also drive any in-page rendered preview (no iframe scenario)
-  if (document.getElementById('unifiedShellHost')) docs.push(document);
   const mode = _getCanvasMode();
   const tc = _getTextColors();
-  docs.forEach(doc => {
-    const html = doc.documentElement;
-    if (!html) return;
-    html.setAttribute('data-canvas-mode', mode);
-    const body = doc.body;
-    if (body) body.setAttribute('data-canvas-mode', mode);
-    Object.entries(tc).forEach(([k, v]) => {
-      if (v) html.style.setProperty('--text-' + k, v);
-      else   html.style.removeProperty('--text-' + k);
-    });
+  const html = document.documentElement;
+  html.setAttribute('data-canvas-mode', mode);
+  if (document.body) document.body.setAttribute('data-canvas-mode', mode);
+  Object.entries(tc).forEach(([k, v]) => {
+    if (v) html.style.setProperty('--text-' + k, v);
+    else   html.style.removeProperty('--text-' + k);
   });
 }
 function _setCanvasMode(mode) {

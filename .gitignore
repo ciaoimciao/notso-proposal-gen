@@ -65,3 +65,9 @@ scripts/*-brief.json
 scripts/compare-*.html
 scripts/*-live-preview.html
 scripts/*-raw.txt
+scripts/style-demos/
+scripts/style-demos-*/
+scripts/text-color-demo.html
+scripts/yazio-preview-v2.html
+scripts/yazio-system-*.html
+scripts/yazio-text-bumped.html

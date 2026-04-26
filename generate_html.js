@@ -1074,29 +1074,43 @@ function renderSlide_S10_ChatflowDesign(proposal, client) {
   const d = proposal.s10 || {};
   const headline = stripEmoji(d.headline || 'Chatflow Design');
   const lead = stripEmoji(d.lead || d.intro || '');
-  const stages = (d.stages || d.flow?.columns || []).slice(0, 5);
+  // Read from stages or flow.columns; filter out empty/legacy entries (no title)
+  const rawStages = (d.stages || d.flow?.columns || [])
+    .filter(s => s && (s.title || s.stage || s.name));
+  const stages = rawStages.slice(0, 4);   // 4 cards lay out best in a row
 
+  // Render each stage as a self-contained card with step number, title,
+  // description, and a brand-colored arrow connector between siblings.
   const stageNodes = stages
-    .map((stage, i) => `
-      <div style="flex: 1; background: rgba(255,255,255,0.1); padding: 24px; border-radius: 12px; border-left: 3px solid var(--brand-c3); position: relative;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 700; color: var(--brand-c3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Step ${i + 1}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: white; margin-bottom: 8px;">${stripEmoji(stage.title || stage.stage || '')}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #d1d5db; line-height: 1.5;">${stripEmoji(stage.description || '')}</div>
-        ${i < stages.length - 1 ? '<div style="position: absolute; right: -16px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--brand-c3);">→</div>' : ''}
-      </div>
-    `)
+    .map((stage, i) => {
+      const title = stripEmoji(stage.title || stage.stage || stage.name || '');
+      const desc  = stripEmoji(stage.description || stage.desc || stage.text || '');
+      const isLast = i === stages.length - 1;
+      return `
+        <div style="flex: 1; min-width: 0; display: flex; align-items: stretch; gap: 16px;">
+          <div style="flex: 1; min-width: 0; background: white; padding: 24px 22px; border-radius: 14px; border-top: 4px solid var(--brand-c1); box-shadow: 0 2px 12px rgba(0,0,0,0.06); display: flex; flex-direction: column;">
+            <div style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Step ${i + 1}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px; line-height: 1.2;">${title}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #4b5563; line-height: 1.55;">${desc}</div>
+          </div>
+          ${isLast ? '' : `
+            <div style="flex-shrink: 0; align-self: center; font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; color: var(--brand-c1); user-select: none;">→</div>
+          `}
+        </div>
+      `;
+    })
     .join('');
 
   return `
-    <div class="slide" style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 50px;">
+    <div class="slide" style="background: #F4F4F3; padding: 50px;">
       <!-- Header -->
-      <div style="margin-bottom: 50px; padding-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: white; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #d1d5db; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+      <div style="margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid rgba(0,0,0,0.08);">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.55;">${lead}</div>` : ''}
       </div>
 
-      <!-- Flow Diagram -->
-      <div style="display: flex; gap: 12px; margin-bottom: 50px;">
+      <!-- Flow diagram: 4 cards with arrow connectors -->
+      <div style="display: flex; align-items: stretch; gap: 0; margin-bottom: 40px;">
         ${stageNodes}
       </div>
 

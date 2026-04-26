@@ -746,15 +746,15 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
 
     "s10": {"headline":"Chatflow Design",                   // FIXED label
             "lead":"so-what on how the flow compounds into outcomes. No em-dash.",
-            "flow":{"columns":[{"type":"bot_msg","title":"Welcome","text":"warm opener"},
-                               {"type":"user_msg","title":"User","text":"typical first question"},
-                               {"type":"stack","nodes":[{"type":"options","title":"Detect intent","items":["4 intents"],"highlight":0},
-                                                        {"type":"options","title":"Source docs","items":["3 sources"],"highlight":0}]},
-                               {"type":"badge","title":"Control Agent"},
-                               {"type":"bot_msg","title":"Answer","text":"grounded answer","tags":["tag","tag"]},
-                               {"type":"user_msg","title":"User","text":"follow-up"},
-                               {"type":"bot_msg","title":"Handoff","text":"closes loop"},
-                               {"type":"link","title":"Open resource"}]}},
+            // Exactly 4 stages — every stage MUST have BOTH title (≤4 words)
+            // AND description (1 sentence ≤16 words explaining what happens).
+            // No empty descriptions; renderer shows them as cards in a row.
+            "stages":[
+              {"title":"≤4-word stage name","description":"1 sentence ≤16 words describing what happens at this stage for THIS client"},
+              {"title":"≤4-word stage name","description":"1 sentence ≤16 words"},
+              {"title":"≤4-word stage name","description":"1 sentence ≤16 words"},
+              {"title":"≤4-word stage name","description":"1 sentence ≤16 words"}
+            ]},
 
     "s11": {"headline":"Knowledge Base",                    // FIXED label
             "lead":"1 sentence following the pattern '[mascot] studies how [client's] users actually [verb1], [verb2], and [verb3].' No em-dash.",
