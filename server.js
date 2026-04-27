@@ -1969,11 +1969,20 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
         //    Output matches mockup-assets/samples/{phone,laptop}-yazi.png.
         if (_mockupCompose && (task.id === 'mock-phone-chat' || task.id === 'mock-website')) {
           try {
-            const mascotDataUrl = mascotImage.startsWith('data:')
-              ? mascotImage
-              : `data:image/png;base64,${mascotImage}`;
+            // Use the act-typing action (mascot using a laptop) as the mascot
+            // visual inside the phone screen / chat widget — matches the user's
+            // brand spec ("Typing Laptop" pose). Falls back to the original
+            // mascot reference when act-typing isn't in the results yet
+            // (e.g. it failed to generate). Tasks run in defaultTasks order
+            // so by the time we hit mock-* tasks, act-typing is already done.
+            const allResults = [...(existingResults || []), ...newResults];
+            const typingAct = allResults.find(r => r && r.id === 'act-typing' && r.ok && r.dataUrl);
+            const innerMascotDataUrl = typingAct?.dataUrl ||
+              (mascotImage.startsWith('data:') ? mascotImage : `data:image/png;base64,${mascotImage}`);
+            console.log(`    📍 Inner mascot for ${task.id}: ${typingAct ? 'act-typing' : 'original ref'}`);
+
             const mockupArgs = {
-              mascotDataUrl,
+              mascotDataUrl: innerMascotDataUrl,
               mascotName,
               brandColor,
               industry: _industryHint,
@@ -1983,11 +1992,18 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
             if (task.id === 'mock-phone-chat') {
               buf = await _mockupCompose.composePhoneMockup(mockupArgs);
             } else {
-              // mock-website needs the client's website screenshot (optional —
-              // compositor falls back to bundled mockup-assets/website.png).
+              // mock-website: prefer the user's uploaded site screenshot.
+              // Falls back to bundled mockup-assets/website.png ONLY if the
+              // user didn't upload one (the user has flagged this fallback
+              // as undesired — it shows notso.ai instead of their site).
               const siteDataUrl = clientSiteImage && clientSiteImage.startsWith('data:')
                 ? clientSiteImage
                 : (clientSiteImage ? `data:image/png;base64,${clientSiteImage}` : '');
+              if (siteDataUrl) {
+                console.log(`    🌐 Using user's uploaded site screenshot (${(siteDataUrl.length/1024).toFixed(0)}KB)`);
+              } else {
+                console.warn(`    ⚠️ No clientSiteImage provided — laptop mockup will show bundled notso.ai fallback. To use your own website background, upload a customer site screenshot in the Asset Pack modal.`);
+              }
               buf = await _mockupCompose.composeLaptopMockup({
                 ...mockupArgs,
                 websiteImageUrl: siteDataUrl,

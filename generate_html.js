@@ -1163,21 +1163,24 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   //   neither        → transcript only (legacy fallback)
   let bodyHtml;
   if (phoneMockup && laptopMockup) {
+    // Both — side-by-side phone+laptop. Both get data-slot-key so the
+    // transform-controls panel (size/move/rotate/flip) opens on click.
     bodyHtml = `
       <div style="display: flex; gap: 40px; align-items: center; height: 540px;">
         <div style="flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center;">
-          <img src="${phoneMockup}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+          <img src="${phoneMockup}" data-slot-key="cover_s9" style="max-height: 100%; max-width: 100%; object-fit: contain; transform-origin: center center;">
         </div>
         <div style="flex: 1.3; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center;">
-          <img src="${laptopMockup}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+          <img src="${laptopMockup}" data-slot-key="cover_s9_laptop" style="max-height: 100%; max-width: 100%; object-fit: contain; transform-origin: center center;">
         </div>
       </div>
     `;
   } else if (phoneMockup) {
+    // Phone-only with chat transcript on right (the user's preferred default).
     bodyHtml = `
       <div style="display: flex; gap: 40px; align-items: stretch; height: 540px;">
         <div style="flex-shrink: 0; width: 360px; display: flex; align-items: center; justify-content: center;">
-          <img src="${phoneMockup}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+          <img src="${phoneMockup}" data-slot-key="cover_s9" style="max-height: 100%; max-width: 100%; object-fit: contain; transform-origin: center center;">
         </div>
         <div style="flex: 1; min-width: 0; background: #F9F9F9; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: center;">
           ${transcriptBubbles}
@@ -1187,7 +1190,7 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   } else if (laptopMockup) {
     bodyHtml = `
       <div style="display: flex; align-items: center; justify-content: center; height: 540px;">
-        <img src="${laptopMockup}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+        <img src="${laptopMockup}" data-slot-key="cover_s9_laptop" style="max-height: 100%; max-width: 100%; object-fit: contain; transform-origin: center center;">
       </div>
     `;
   } else {
