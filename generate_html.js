@@ -768,11 +768,17 @@ function renderSlide_S2_TableOfContents(proposal, client, selectedSlides) {
   `;
 }
 
-function renderSlide_S3_PainPoints(proposal, client) {
+function renderSlide_S3_PainPoints(proposal, client, mascotImages) {
   const d = proposal.s3 || {};
   const headline = stripEmoji(d.headline || 'Pain Points');
   const lead = stripEmoji(d.lead || d.intro || '');
   const points = (d.points || []).slice(0, 3);
+
+  // Pain Points slide pairs naturally with the Apologetic expression
+  // ("we're sorry your users feel this way…"). cover_s3 lets the user
+  // override with any other asset; otherwise we default to expression_4
+  // (Apologetic — the 5th expression slot, 0-indexed).
+  const mascotImagePath = mascotImages?.cover_s3 || mascotImages?.expression_4;
 
   const cards = points
     .map((p, i) => {
@@ -790,14 +796,19 @@ function renderSlide_S3_PainPoints(proposal, client) {
   return `
     <div class="slide" style="background: #F4F4F3; padding: 50px;">
       <!-- Header -->
-      <div style="margin-bottom: 50px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
+      <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
         ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
       <!-- Content: 3-column grid -->
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 50px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 40px;">
         ${cards}
+      </div>
+
+      <!-- Mascot image area (bottom-right). Defaults to Apologetic expression. -->
+      <div style="position: absolute; bottom: 80px; right: 50px; width: 280px; height: 240px; display: flex; align-items: flex-end; justify-content: flex-end; pointer-events: none;">
+        ${getImageHTML(mascotImagePath, 'Apologetic Mascot', 'max-height:100%; max-width:100%; object-fit:contain;', 'cover_s3')}
       </div>
 
       <!-- Footer -->
@@ -1198,7 +1209,7 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   `;
 }
 
-function renderSlide_S10_ChatflowDesign(proposal, client) {
+function renderSlide_S10_ChatflowDesign(proposal, client, mascotImages) {
   const d = proposal.s10 || {};
   const headline = stripEmoji(d.headline || 'Chatflow Design');
   const lead = stripEmoji(d.lead || d.intro || '');
@@ -1206,6 +1217,12 @@ function renderSlide_S10_ChatflowDesign(proposal, client) {
   const rawStages = (d.stages || d.flow?.columns || [])
     .filter(s => s && (s.title || s.stage || s.name));
   const stages = rawStages.slice(0, 4);   // 4 cards lay out best in a row
+
+  // Chatflow Design pairs naturally with the laptop/website mockup
+  // ("here's how chat works in your product"). cover_s10 lets the user
+  // override; otherwise default to the laptop mockup that's auto-assigned
+  // to cover_s9_laptop by the asset pack.
+  const laptopImagePath = mascotImages?.cover_s10 || mascotImages?.cover_s9_laptop;
 
   // Render each stage as a self-contained card with step number, title,
   // description, and a brand-colored arrow connector between siblings.
@@ -1238,8 +1255,15 @@ function renderSlide_S10_ChatflowDesign(proposal, client) {
       </div>
 
       <!-- Flow diagram: 4 cards with arrow connectors -->
-      <div style="display: flex; align-items: stretch; gap: 0; margin-bottom: 40px;">
+      <div style="display: flex; align-items: stretch; gap: 0; margin-bottom: 30px;">
         ${stageNodes}
+      </div>
+
+      <!-- Laptop mockup area (bottom-right). Defaults to cover_s9_laptop (the
+           composed laptop+chat-widget mockup from the asset pack). Wider
+           aspect ratio than the mascot zones to fit the laptop frame. -->
+      <div style="position: absolute; bottom: 80px; right: 50px; width: 380px; height: 280px; display: flex; align-items: flex-end; justify-content: flex-end; pointer-events: none;">
+        ${getImageHTML(laptopImagePath, 'Laptop Mockup', 'max-height:100%; max-width:100%; object-fit:contain;', 'cover_s10')}
       </div>
 
       <!-- Footer -->
@@ -1789,14 +1813,14 @@ function renderSlide(slideId, proposal, client, mascotImages) {
   const renderFunctions = {
     s1: () => renderSlide_S1_Cover(proposal, client, mascotImages),
     s2: (selected) => renderSlide_S2_TableOfContents(proposal, client, selected),
-    s3: () => renderSlide_S3_PainPoints(proposal, client),
+    s3: () => renderSlide_S3_PainPoints(proposal, client, mascotImages),
     s4: () => renderSlide_S4_MarketOpportunity(proposal, client),
     s5: () => renderSlide_S5_CoreFeatures(proposal, client),
     s6: () => renderSlide_S6_MascotSelection(proposal, client, mascotImages),
     s7: () => renderSlide_S7_MascotDesign(proposal, client, mascotImages),
     s8: () => renderSlide_S8_PersonalityEmpathy(proposal, client, mascotImages),
     s9: () => renderSlide_S9_ChatDemo(proposal, client, mascotImages),
-    s10: () => renderSlide_S10_ChatflowDesign(proposal, client),
+    s10: () => renderSlide_S10_ChatflowDesign(proposal, client, mascotImages),
     s11: () => renderSlide_S11_KnowledgeBase(proposal, client, mascotImages),
     s12: () => renderSlide_S12_DataInsights(proposal, client, mascotImages),
     s13: () => renderSlide_S13_ROIEvidence(proposal, client),
