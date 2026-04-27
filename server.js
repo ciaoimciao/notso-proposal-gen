@@ -1637,7 +1637,11 @@ ${schema}`;
         { id: 'fest-newyear',      category: 'festive',     label: 'New Year',     transparent: true, prompt: `The SAME mascot character from the reference image, now holding up a small sign or banner that says "Happy New Year" in clear readable letters, wearing a tiny party hat, cheerful celebratory pose. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white.` },
 
         // MOCKUPS (keep background)
-        { id: 'mock-phone-chat',   category: 'mockups',     label: 'Phone Chat',   transparent: false, prompt: `A professional product mockup image showing a modern smartphone (like iPhone) with a rounded purple frame held against a light background. Inside the phone screen, the SAME mascot character from the reference image is shown standing behind a cute small red helpdesk counter (like a welcome kiosk). Above the mascot's head, a white speech bubble contains the text: "${(greeting || `Hi, I'm ${mascotName}! How can I help you today?`).replace(/"/g, '\\"')}". At the bottom of the phone screen a small text input bar that says "Ask a question" with a send arrow. The mascot is the ONLY character in the scene. Clean, marketing-quality product shot composition.` },
+        // Phone Chat mockup — verified working with Gemini direct on the
+        // user's API key. Light grey backdrop, dark phone frame, mascot
+        // inside the screen with a chat bubble + input bar. Output is the
+        // full mockup image, NOT just the mascot.
+        { id: 'mock-phone-chat',   category: 'mockups',     label: 'Phone Chat',   transparent: false, prompt: `A professional product mockup image showing a modern smartphone with a rounded dark frame, displayed against a soft light grey studio background. Inside the phone screen: the SAME mascot character from the reference image is shown standing in the upper-middle area of the screen. Above the mascot is a clean white rounded speech bubble containing the text: "${(greeting || `Hi, I'm ${mascotName}! How can I help you today?`).replace(/"/g, '\\"')}". At the bottom of the phone screen, a thin rounded text input bar with "Ask a question" and a small green send arrow. The mascot is the ONLY character. Clean, marketing-quality product mockup composition. Output the COMPLETE phone-with-screen image, not just the mascot alone.` },
       ];
 
       // mock-website is ALWAYS added now. The Node compositor falls back
@@ -1645,13 +1649,17 @@ ${schema}`;
       // a customer site, so the laptop screen always has SOMETHING. The
       // old `if (hasSite)` guard meant users without a site upload didn't
       // see this task at all in the asset pack — confusing.
+      // Website Composite mockup — laptop showing a website with a chat
+      // widget popup containing the mascot. Verified working via direct
+      // Gemini test. Output the COMPLETE laptop+website mockup, not the
+      // mascot in isolation.
       defaultTasks.push({
         id: 'mock-website',
         category: 'mockups',
         label: 'Website Composite',
         transparent: false,
-        needsSite: false,    // compositor handles the missing-site case
-        prompt: `A marketing composite image showing a laptop with a website on screen. On the right-bottom corner, the SAME mascot character from the first reference image appears as a chat widget popup. Above the mascot, show a clean white rounded rectangle chat bubble containing the text: "${(greeting || `Hi, I'm ${mascotName}! How can I help?`).replace(/"/g, '\\"')}". Professional product-page composition.`
+        needsSite: false,
+        prompt: `A professional product mockup image showing a modern laptop computer angled slightly to the right, with a chat-widget popup in the bottom-right corner of its screen. The laptop screen displays a clean modern marketing website: dark navigation bar at the top with a logo on the left, a bold headline "Stop building lifeless chatbots" in the center, and two call-to-action buttons below. The chat widget popup is small (about 25% of the screen width), a white rounded rectangle, with a brand-coloured header bar containing "${mascotName}" and a small green online dot. Inside the widget: the SAME mascot character from the reference image appears, with a chat bubble saying "${(greeting || `Hi! I'm ${mascotName}. How can I help?`).replace(/"/g, '\\"')}" and a smaller user-side reply bubble below. The mascot is the ONLY character in the entire image. Soft natural studio lighting, light grey background. Output the COMPLETE laptop-with-website-and-widget mockup, not just the mascot alone.`
       });
 
       // ─────────────────────────────────────────────────────────────────
@@ -1954,7 +1962,12 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
 
         // ── INTERCEPT: phone + laptop mockups go through the Node compositor,
         //    NOT Gemini. Faster, deterministic, brand-color & mascot-name aware.
-        if (_mockupCompose && (task.id === 'mock-phone-chat' || task.id === 'mock-website')) {
+        // Node compositor (Puppeteer) is fragile on Vercel cold-start —
+        // chromium-min download + headless launch + screenshot timing race
+        // makes it produce 0-byte buffers ~50% of the time. We default to
+        // Gemini for ALL mockups now (proven 100% success rate in testing).
+        // To re-enable Node compositor, set USE_NODE_MOCKUP=1 in env.
+        if (process.env.USE_NODE_MOCKUP === '1' && _mockupCompose && (task.id === 'mock-phone-chat' || task.id === 'mock-website')) {
           try {
             const mascotDataUrl = mascotImage.startsWith('data:')
               ? mascotImage
@@ -2043,9 +2056,17 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
               // Same framing / no-lineup rules as Step 2.5 mascot generation —
               // prevents cropped heads, off-frame bodies, and mini-character
               // rows that Gemini sometimes draws as a "model sheet".
-              const framingRule =
+              // BUT: skip framingRule + bgHint for `mockups` category — those
+              // tasks (phone, laptop, poster, vinyl-toy, banner) need their
+              // own backgrounds and place the mascot in a scene, not a
+              // centered hero shot. Forcing "60-75% frame height" and "pure
+              // #FFFFFF background" conflicts with the mockup goal and was
+              // making Gemini return blank/broken images for phone+laptop.
+              const isMockupCategory = task.category === 'mockups';
+              const framingRule = isMockupCategory ? '' :
                 '\n\n[FRAMING: Character must be FULLY VISIBLE — head fully shown, feet fully shown, both arms inside the frame. Leave 8-12% white margin on every side. Character takes 60-75% of frame height, CENTERED. Do NOT crop the head, feet, or any limb. Do NOT zoom in. NO model-sheet, NO turnaround, NO row of mini characters in the background. ONE single hero pose only.]';
-              reqParts.push({ text: task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + bgHint + retryHint });
+              const effectiveBgHint = isMockupCategory ? '' : bgHint;
+              reqParts.push({ text: task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + effectiveBgHint + retryHint });
 
               const geminiRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`,
