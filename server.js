@@ -965,7 +965,18 @@ ${schema}`;
 - Generate EXACTLY ONE (1) SINGLE character in the frame. One mascot only. Not two. Not a pair. Not a duo. Not twins. Not a group. Not a family. Not multiple versions side-by-side.
 - The image must contain a SINGLE SUBJECT — one body, one head, one face.
 - If you would normally draw companions, pets, sidekicks, reflections, shadows-as-characters, or "before/after" versions, DO NOT. Draw only the one mascot described.
-- NEGATIVE: no twins, no duplicates, no pair, no couple, no group, no two characters, no multiple mascots, no background characters, no second character in any form.`;
+- NEGATIVE: no twins, no duplicates, no pair, no couple, no group, no two characters, no multiple mascots, no background characters, no second character in any form.
+- ABSOLUTELY NO character-sheet layouts, NO model-sheet rows, NO turnaround views, NO miniature versions of the character running across the bottom or in the background. NO line-up of poses. The frame contains ONE character standing or posing alone — nothing else.
+
+★★★ CRITICAL FRAMING RULE ★★★
+- The character must be FULLY VISIBLE in the frame: head fully shown at the top, feet/base fully shown at the bottom, both arms inside the frame.
+- Compose with COMFORTABLE MARGINS around the character — do NOT touch any frame edge. Leave at least 8-12% white margin top/bottom/left/right.
+- Character takes about 60-75% of frame height. CENTER the character horizontally.
+- DO NOT crop the head. DO NOT crop the feet. DO NOT cut off limbs at the frame edge. NO out-of-frame body parts.
+- If the pose is dynamic (jumping, running), still keep ALL of the body visible — do NOT zoom in.
+
+★★★ BACKGROUND RULE ★★★
+- Pure white #FFFFFF solid background. NO scenery. NO accessory props placed on the floor. NO speech bubbles. NO text elements. NO ground-line shadow that looks like a separate object. ONLY the character and an empty white canvas.`;
 
       console.log(`  🎨 Generating ${numOptions} mascot options via Gemini Imagen (style lock v${STYLE_VERSION}${styleTransferMode ? ', style-transfer' : ''})...`);
 
