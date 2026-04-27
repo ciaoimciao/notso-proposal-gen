@@ -1953,6 +1953,7 @@ module.exports = {
   buildProposalHtml,
   generatePDF,         // writes to a file path
   generatePDFBuffer,   // returns Buffer (preferred for serverless)
+  launchBrowser,       // shared puppeteer launcher (used by mockup_compose.js)
 };
 
 // ───────── CLI mode (only when run directly: `node generate_html.js`) ─────────

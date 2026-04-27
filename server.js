@@ -1747,10 +1747,68 @@ ${schema}`;
       const fallbackModels = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image-preview'];
       const newResults = [];
 
+      // Lazy-load mockup compositor (only if a mockup task is in the list)
+      let _mockupCompose = null;
+      const _hasMockupTask = finalTasks.some(t => t.id === 'mock-phone-chat' || t.id === 'mock-website');
+      if (_hasMockupTask) {
+        try { _mockupCompose = require('./mockup_compose'); }
+        catch (e) { console.warn('  ⚠️ Could not load mockup_compose.js:', e.message); }
+      }
+      // Pull industry from client once for dialogue templating
+      const _industryHint = (body.industry || body.useCase || '').toString();
+
       for (const task of finalTasks) {
         console.log(`  🎨 Generating: ${task.category}/${task.label}`);
         let saved = false;
         let lastErr = '';
+
+        // ── INTERCEPT: phone + laptop mockups go through the Node compositor,
+        //    NOT Gemini. Faster, deterministic, brand-color & mascot-name aware.
+        if (_mockupCompose && (task.id === 'mock-phone-chat' || task.id === 'mock-website')) {
+          try {
+            const mascotDataUrl = mascotImage.startsWith('data:')
+              ? mascotImage
+              : `data:image/png;base64,${mascotImage}`;
+            const mockupArgs = {
+              mascotDataUrl,
+              mascotName,
+              brandColor,
+              industry: _industryHint,
+            };
+            let composedDataUrl;
+            if (task.id === 'mock-phone-chat') {
+              composedDataUrl = await _mockupCompose.composePhoneMockup(mockupArgs);
+            } else {
+              // mock-website needs the client's website screenshot
+              const siteDataUrl = clientSiteImage && clientSiteImage.startsWith('data:')
+                ? clientSiteImage
+                : (clientSiteImage ? `data:image/png;base64,${clientSiteImage}` : '');
+              composedDataUrl = await _mockupCompose.composeLaptopMockup({
+                ...mockupArgs,
+                websiteImageUrl: siteDataUrl,
+              });
+            }
+            // Write to disk + push to results
+            const fname = `${task.id}.png`;
+            const fpath = path.join(outDir, task.category, fname);
+            const m = /^data:image\/[^;]+;base64,(.+)$/.exec(composedDataUrl);
+            if (m) fs.writeFileSync(fpath, Buffer.from(m[1], 'base64'));
+            newResults.push({
+              id: task.id, category: task.category, label: task.label,
+              transparent: false, ok: true,
+              file: `${task.category}/${fname}`,
+              dataUrl: composedDataUrl,
+            });
+            console.log(`    ✅ ${task.label} → ${fname} (Node compositor, no Gemini)`);
+            saved = true;
+            continue;   // skip the Gemini fallback loop
+          } catch (compErr) {
+            console.error(`    ❌ Compositor failed for ${task.label}: ${compErr.message}`);
+            lastErr = `compositor: ${compErr.message}`;
+            // Fall through to Gemini path as a fallback
+          }
+        }
+
         // Try up to 2 models × 2 attempts each = 4 tries per task
         for (const m of fallbackModels) {
           if (saved) break;
