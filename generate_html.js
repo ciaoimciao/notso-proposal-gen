@@ -1104,40 +1104,18 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   const d = proposal.s9 || {};
   const headline = stripEmoji(d.headline || 'Chat Experience');
   const lead = stripEmoji(d.lead || d.intro || '');
-  const mascotName = stripEmoji(d.mascot_name || proposal?.s7?.name || client.mascotName || 'Buddy');
-  // Keep first 4 turns (2 mascot + 2 user) for the phone screen — anything
-  // longer overflows the bezel at typical slide-projector sizes.
   const messages = (d.messages || d.chat || []).slice(0, 4);
-  const coverImagePath = mascotImages?.cover_s9 || mascotImages?.cover;
-  const frameDataUrl = _phoneFrameDataUrl();
 
-  // Phone-frame coords (in original 5000×5000 PNG). At a 380px-wide phone,
-  // scale = 380/5000 = 0.076 → screen rect maps to (123, 46, 258, 334).
-  // We render the phone at 380×380 inside a flex column on the left.
-  const PH_W = 380;
-  const SCALE = PH_W / 5000;
-  const SX = 1615 * SCALE;
-  const SY = 601 * SCALE;
-  const SW = (3391 - 1615) * SCALE;
-  const SH = (4398 - 601) * SCALE;
+  // Two pre-composed mockup images from the asset pack:
+  //   cover_s9        ← mock-phone-chat (Node compositor) — image 2 layout
+  //   cover_s9_laptop ← mock-website    (Node compositor) — image 3 layout
+  // We render whichever ones are present at full hero size; the inline
+  // phone-frame renderer is gone (it always looked cramped at 380px).
+  const phoneMockup  = mascotImages?.cover_s9        || null;
+  const laptopMockup = mascotImages?.cover_s9_laptop || null;
 
-  // Render up to first 2 message pairs as bubbles inside the phone screen.
-  // Truncate text per bubble so layout stays clean.
-  const phoneBubbles = messages.slice(0, 4).map(msg => {
-    const role = msg.sender || msg.role || msg.r || msg.who || '';
-    const isUser = role === 'user' || role === 'User' || role === 'u';
-    const text = stripEmoji(String(msg.text || msg.message || msg.m || msg.content || '')).trim();
-    return `
-      <div style="display:flex; justify-content:${isUser ? 'flex-end' : 'flex-start'}; margin-bottom:6px;">
-        <div style="background:${isUser ? 'var(--brand-c1, var(--accent))' : '#fff'}; color:${isUser ? '#fff' : '#1a1a1a'}; padding:8px 12px; border-radius:14px; max-width:78%; font-family:'Poppins',sans-serif; font-size:11px; line-height:1.4; box-shadow:0 2px 6px rgba(0,0,0,.06);">
-          ${text}
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  // Right-side: the same transcript at full size (pretty for reading) but
-  // the visual hero on the left is the phone mockup itself.
+  // Fallback transcript — used only when NEITHER mockup is available
+  // (e.g. before the asset pack runs).
   const transcriptBubbles = messages
     .map(msg => {
       const role = msg.sender || msg.role || msg.r || msg.who || '';
@@ -1153,50 +1131,58 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
     })
     .join('');
 
-  return `
-    <div class="slide" style="background: white; padding: 50px;">
-      <!-- Header -->
-      <div style="margin-bottom: 30px; padding-bottom: 24px; border-bottom: 1px solid #f0f0f0;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.55;">${lead}</div>` : ''}
-      </div>
-
-      <!-- Body: phone mockup LEFT, full-size transcript RIGHT -->
-      <div style="display: flex; gap: 50px; align-items: stretch;">
-        <!-- Phone mockup (chat rendered inside the phone-frame.png hole) -->
-        <div style="flex-shrink: 0; width: ${PH_W}px; height: ${PH_W}px; position: relative;">
-          <!-- Screen content (under the frame) -->
-          <div style="position: absolute; left: ${SX}px; top: ${SY}px; width: ${SW}px; height: ${SH}px; border-radius: 16px; background: #f2f2f2; overflow: hidden; display: flex; flex-direction: column; padding: 12px 14px 10px; box-sizing: border-box;">
-            <!-- Top status bar -->
-            <div style="display: flex; justify-content: space-between; font-family: 'Poppins', sans-serif; font-size: 10px; color: #555; margin-bottom: 6px;">
-              <span>${mascotName} // online</span>
-              <span>online</span>
-            </div>
-            <!-- Bubbles -->
-            <div style="flex: 1; min-height: 0; overflow: hidden;">
-              ${phoneBubbles}
-            </div>
-            <!-- Mascot inside phone (small) -->
-            ${coverImagePath ? `
-              <div style="text-align: center; margin: 4px 0;">
-                <img src="${coverImagePath}" style="height: 80px; max-width: 75%; object-fit: contain;">
-              </div>
-            ` : ''}
-            <!-- Input bar -->
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #fff; border: 2px solid var(--brand-c1, var(--accent)); border-radius: 18px; padding: 6px 12px; font-family: 'Poppins', sans-serif; font-size: 11px; color: #999;">
-              <span>Ask a question</span>
-              <span style="color: var(--brand-c1, var(--accent)); font-weight: 700;">›</span>
-            </div>
-          </div>
-          <!-- Phone frame (transparent PNG, sits on top — bezel masks any overflow) -->
-          ${frameDataUrl ? `<img src="${frameDataUrl}" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none;">` : ''}
+  // Body layout decision tree:
+  //   both mockups   → phone left + laptop right (the most informative layout)
+  //   phone only     → phone left + transcript right
+  //   laptop only    → laptop hero centered
+  //   neither        → transcript only (legacy fallback)
+  let bodyHtml;
+  if (phoneMockup && laptopMockup) {
+    bodyHtml = `
+      <div style="display: flex; gap: 40px; align-items: center; height: 540px;">
+        <div style="flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center;">
+          <img src="${phoneMockup}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
         </div>
-
-        <!-- Right: full transcript at large readable size -->
-        <div style="flex: 1; min-width: 0; background: #F9F9F9; border-radius: 16px; padding: 24px; display: flex; flex-direction: column;">
+        <div style="flex: 1.3; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center;">
+          <img src="${laptopMockup}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+        </div>
+      </div>
+    `;
+  } else if (phoneMockup) {
+    bodyHtml = `
+      <div style="display: flex; gap: 40px; align-items: stretch; height: 540px;">
+        <div style="flex-shrink: 0; width: 360px; display: flex; align-items: center; justify-content: center;">
+          <img src="${phoneMockup}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+        </div>
+        <div style="flex: 1; min-width: 0; background: #F9F9F9; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: center;">
           ${transcriptBubbles}
         </div>
       </div>
+    `;
+  } else if (laptopMockup) {
+    bodyHtml = `
+      <div style="display: flex; align-items: center; justify-content: center; height: 540px;">
+        <img src="${laptopMockup}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+      </div>
+    `;
+  } else {
+    bodyHtml = `
+      <div style="background: #F9F9F9; border-radius: 16px; padding: 32px; max-width: 80%; margin: 0 auto;">
+        ${transcriptBubbles}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="slide" style="background: white; padding: 50px;">
+      <!-- Header -->
+      <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 12px;">${headline}</div>
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.55;">${lead}</div>` : ''}
+      </div>
+
+      <!-- Body: phone + laptop mockups (or fallback transcript) -->
+      ${bodyHtml}
 
       <!-- Footer -->
       <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">

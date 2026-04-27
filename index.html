@@ -3557,7 +3557,10 @@ const _UNIFIED_SLOTS = {
     { key: 'expression_4', label: 'Slot 5 — Apologetic' },
     { key: 'expression_5', label: 'Slot 6 — Helpful' },
   ],
-  s9:  [{ key: 'cover_s9', label: 'Mascot' }],
+  s9:  [
+    { key: 'cover_s9',        label: 'Phone mockup (left)' },
+    { key: 'cover_s9_laptop', label: 'Laptop mockup (right)' },
+  ],
   s11: [{ key: 'cover',    label: 'Mascot icon (shared cover)' }],
   s12: [{ key: 'dashboard', label: 'Dashboard mockup' }],
   s16: [
@@ -7048,6 +7051,21 @@ function autoAssignAssetPackToSlides() {
     const happy = byId.get('expr-happy');
     if (happy && happy.dataUrl) savedMascotPaths.cover = happy.dataUrl;
   }
+
+  // Auto-wire the two composed mockups into S9 so the user doesn't have to
+  // hunt through the dropdown. mock-phone-chat goes to the left hero,
+  // mock-website goes to the right. Manual user picks (already in
+  // _assetSlideAssignments) win — we only fill if the slot is empty.
+  const phoneMock   = byId.get('mock-phone-chat');
+  const websiteMock = byId.get('mock-website');
+  if (phoneMock && phoneMock.dataUrl && !_assetSlideAssignments['cover_s9']) {
+    savedMascotPaths['cover_s9'] = phoneMock.dataUrl;
+    _assetSlideAssignments['cover_s9'] = { assetId: phoneMock.id, file: phoneMock.file };
+  }
+  if (websiteMock && websiteMock.dataUrl && !_assetSlideAssignments['cover_s9_laptop']) {
+    savedMascotPaths['cover_s9_laptop'] = websiteMock.dataUrl;
+    _assetSlideAssignments['cover_s9_laptop'] = { assetId: websiteMock.id, file: websiteMock.file };
+  }
 }
 
 // Render the per-item status grid with IMAGE THUMBNAILS + download + regenerate buttons
@@ -7129,7 +7147,8 @@ function renderAssetPackResults() {
                 <option value="expression_4"${sel('expression_4')}>S8 Slot 5 — Apologetic</option>
                 <option value="expression_5"${sel('expression_5')}>S8 Slot 6 — Helpful</option>
               </optgroup>
-              <option value="cover_s9"${sel('cover_s9')}>S9 Chat Demo</option>
+              <option value="cover_s9"${sel('cover_s9')}>S9 Phone Mockup (left)</option>
+              <option value="cover_s9_laptop"${sel('cover_s9_laptop')}>S9 Laptop Mockup (right)</option>
               <option value="dashboard"${sel('dashboard')}>S12 Dashboard</option>
               <optgroup label="S16 Promo Materials">
                 <option value="material_0"${sel('material_0')}>S16 Slot 1</option>
