@@ -174,12 +174,21 @@ async function composePhoneMockup({
     // so there's nothing on the network to wait for. networkidle0 was
     // timing out at 60s on Vercel and silently failing the asset task.
     await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // Give the inline images a tick to decode + paint before screenshotting.
+    // Without this, on a cold-start Vercel function the screenshot fires
+    // before the mascot/website images render and we get a blank PNG.
+    await page.evaluate(() => new Promise(r => setTimeout(r, 250)));
     const buf = await page.screenshot({
       type: 'png',
       omitBackground: true,
       clip: { x: 0, y: 0, width: N, height: N },
     });
     await page.close();
+    if (!buf || buf.length < 1024) {
+      // A successful PNG screenshot at 1500x1500 should be tens-to-hundreds
+      // of KB. Anything under 1KB is almost certainly a blank/broken render.
+      throw new Error(`screenshot returned ${buf ? buf.length : 0} bytes (expected > 1024)`);
+    }
     return 'data:image/png;base64,' + buf.toString('base64');
   } finally {
     await browser.close();
@@ -349,12 +358,21 @@ async function composeLaptopMockup({
     // so there's nothing on the network to wait for. networkidle0 was
     // timing out at 60s on Vercel and silently failing the asset task.
     await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // Give the inline images a tick to decode + paint before screenshotting.
+    // Without this, on a cold-start Vercel function the screenshot fires
+    // before the mascot/website images render and we get a blank PNG.
+    await page.evaluate(() => new Promise(r => setTimeout(r, 250)));
     const buf = await page.screenshot({
       type: 'png',
       omitBackground: true,
       clip: { x: 0, y: 0, width: N, height: N },
     });
     await page.close();
+    if (!buf || buf.length < 1024) {
+      // A successful PNG screenshot at 1500x1500 should be tens-to-hundreds
+      // of KB. Anything under 1KB is almost certainly a blank/broken render.
+      throw new Error(`screenshot returned ${buf ? buf.length : 0} bytes (expected > 1024)`);
+    }
     return 'data:image/png;base64,' + buf.toString('base64');
   } finally {
     await browser.close();

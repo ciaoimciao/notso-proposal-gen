@@ -1628,16 +1628,19 @@ ${schema}`;
         { id: 'mock-phone-chat',   category: 'mockups',     label: 'Phone Chat',   transparent: false, prompt: `A professional product mockup image showing a modern smartphone (like iPhone) with a rounded purple frame held against a light background. Inside the phone screen, the SAME mascot character from the reference image is shown standing behind a cute small red helpdesk counter (like a welcome kiosk). Above the mascot's head, a white speech bubble contains the text: "${(greeting || `Hi, I'm ${mascotName}! How can I help you today?`).replace(/"/g, '\\"')}". At the bottom of the phone screen a small text input bar that says "Ask a question" with a send arrow. The mascot is the ONLY character in the scene. Clean, marketing-quality product shot composition.` },
       ];
 
-      if (hasSite) {
-        defaultTasks.push({
-          id: 'mock-website',
-          category: 'mockups',
-          label: 'Website Composite',
-          transparent: false,
-          needsSite: true,
-          prompt: `A marketing composite image: use the second reference image (the client's website screenshot) as the website background layout on the left 70% of the frame. On the right-bottom 30%, overlay the SAME mascot character from the first reference image, positioned as if it's a chat widget popping up from the corner of the website. Above the mascot, show a clean white rounded rectangle chat bubble containing the text: "${(greeting || `Hi, I'm ${mascotName}! How can I help?`).replace(/"/g, '\\"')}". The mascot should appear sized appropriately as a chat-widget character (not filling the whole screen). Keep the website's original colors and layout visible. The mascot is the only character. Professional product-page screenshot composition.`
-        });
-      }
+      // mock-website is ALWAYS added now. The Node compositor falls back
+      // to a bundled mockup-assets/website.png when the user didn't upload
+      // a customer site, so the laptop screen always has SOMETHING. The
+      // old `if (hasSite)` guard meant users without a site upload didn't
+      // see this task at all in the asset pack — confusing.
+      defaultTasks.push({
+        id: 'mock-website',
+        category: 'mockups',
+        label: 'Website Composite',
+        transparent: false,
+        needsSite: false,    // compositor handles the missing-site case
+        prompt: `A marketing composite image showing a laptop with a website on screen. On the right-bottom corner, the SAME mascot character from the first reference image appears as a chat widget popup. Above the mascot, show a clean white rounded rectangle chat bubble containing the text: "${(greeting || `Hi, I'm ${mascotName}! How can I help?`).replace(/"/g, '\\"')}". Professional product-page composition.`
+      });
 
       // Resolve task list
       let finalTasks = (Array.isArray(tasks) && tasks.length) ? tasks : defaultTasks;
@@ -1801,18 +1804,23 @@ ${schema}`;
                 websiteImageUrl: siteDataUrl,
               });
             }
-            // Write to disk + push to results
+            // Validate result before declaring success — empty/0-byte
+            // dataUrls were silently being pushed as "ok: true" which
+            // showed up in the UI as broken-image icons.
+            const m = /^data:image\/[^;]+;base64,(.+)$/.exec(composedDataUrl || '');
+            if (!m || m[1].length < 1024) {
+              throw new Error(`compositor returned empty/invalid dataUrl (base64 length: ${m ? m[1].length : 0})`);
+            }
             const fname = `${task.id}.png`;
             const fpath = path.join(outDir, task.category, fname);
-            const m = /^data:image\/[^;]+;base64,(.+)$/.exec(composedDataUrl);
-            if (m) fs.writeFileSync(fpath, Buffer.from(m[1], 'base64'));
+            fs.writeFileSync(fpath, Buffer.from(m[1], 'base64'));
             newResults.push({
               id: task.id, category: task.category, label: task.label,
               transparent: false, ok: true,
               file: `${task.category}/${fname}`,
               dataUrl: composedDataUrl,
             });
-            console.log(`    ✅ ${task.label} → ${fname} (Node compositor, no Gemini)`);
+            console.log(`    ✅ ${task.label} → ${fname} (Node compositor, ${(m[1].length/1024).toFixed(0)}KB)`);
             saved = true;
             continue;   // skip the Gemini fallback loop
           } catch (compErr) {
