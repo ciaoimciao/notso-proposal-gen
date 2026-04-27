@@ -7061,12 +7061,20 @@ function autoAssignAssetPackToSlides() {
     if (happy && happy.dataUrl) savedMascotPaths.cover = happy.dataUrl;
   }
 
-  // Auto-wire the two composed mockups into the slides that need them.
-  // These ALWAYS overwrite — mock-phone-chat IS the canonical phone
-  // mockup for cover_s9, mock-website IS the canonical laptop mockup
-  // for cover_s9_laptop / cover_s10. If a stale older assignment is in
-  // _assetSlideAssignments (e.g. from a previous session that pointed
-  // cover_s9 at a small mascot icon), it gets cleanly replaced.
+  // Auto-wire the two composed mockups to the user's expected default
+  // placement (per their UX spec):
+  //   • S9 Chat Experience: phone mockup LEFT + readable chat transcript RIGHT
+  //   • S10 Chatflow Design: 4 step cards on top + laptop mockup BOTTOM-RIGHT
+  //
+  // mock-phone-chat → cover_s9 only (left half of S9; right half stays as
+  //                   the auto-rendered chat transcript from s9.messages)
+  // mock-website   → cover_s10 only (bottom-right zone of S10; NOT S9)
+  //
+  // We deliberately do NOT pin mock-website to cover_s9_laptop anymore —
+  // doing so triggered the "phone + laptop side-by-side" branch in S9
+  // and overwrote the dialogue transcript the user wants on the right.
+  // cover_s9_laptop slot still exists in the dropdown for power users
+  // who want to manually opt into the side-by-side look.
   const phoneMock   = byId.get('mock-phone-chat');
   const websiteMock = byId.get('mock-website');
   if (phoneMock && phoneMock.dataUrl) {
@@ -7074,10 +7082,15 @@ function autoAssignAssetPackToSlides() {
     _assetSlideAssignments['cover_s9'] = { assetId: phoneMock.id, file: phoneMock.file };
   }
   if (websiteMock && websiteMock.dataUrl) {
-    savedMascotPaths['cover_s9_laptop'] = websiteMock.dataUrl;
-    savedMascotPaths['cover_s10']       = websiteMock.dataUrl;   // S10 also defaults to laptop
-    _assetSlideAssignments['cover_s9_laptop'] = { assetId: websiteMock.id, file: websiteMock.file };
-    _assetSlideAssignments['cover_s10']       = { assetId: websiteMock.id, file: websiteMock.file };
+    savedMascotPaths['cover_s10'] = websiteMock.dataUrl;
+    _assetSlideAssignments['cover_s10'] = { assetId: websiteMock.id, file: websiteMock.file };
+    // Clean up any stale cover_s9_laptop pin from previous sessions so
+    // S9 reverts to the phone+transcript layout the user wants.
+    if (_assetSlideAssignments['cover_s9_laptop'] &&
+        _assetSlideAssignments['cover_s9_laptop'].assetId === 'mock-website') {
+      delete savedMascotPaths['cover_s9_laptop'];
+      delete _assetSlideAssignments['cover_s9_laptop'];
+    }
   }
 
   // S3 — Apologetic mascot auto-pinned (cover_s3 falls back to expression_4
