@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<title>Pitch Brief — Quick Start Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Poppins', 'Noto Sans TC', sans-serif;
+    background: #f5f5f5; margin: 0; padding: 40px 20px;
+    color: #1a1a1a; line-height: 1.5;
+  }
+  .demo-wrap { max-width: 720px; margin: 0 auto; }
+  .demo-title { font-size: 22px; font-weight: 800; margin-bottom: 18px; }
+  .info-tip {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:16px; height:16px; border-radius:50%;
+    background:#E5E7EB; color:#6b7280; font-size:10px; font-weight:700;
+    cursor:help; margin-left:4px; vertical-align:middle;
+  }
+
+  /* ── Brief block (matches the production UI) ── */
+  .brief-block {
+    margin-top:24px; padding:18px 20px;
+    background:linear-gradient(135deg, #FFFCF0 0%, #FFF7E8 100%);
+    border:1.5px solid #E8A317; border-radius:12px;
+  }
+  .brief-block label {
+    display:flex; align-items:center; gap:8px;
+    font-size:15px; font-weight:700; color:#5A4500; margin-bottom:6px;
+  }
+  .brief-block .sub {
+    font-size:12px; color:#7A6A40; margin-bottom:10px;
+  }
+  .brief-block .sub a {
+    color:#7A6A40; text-decoration:underline; font-weight:600;
+    margin-left:6px; cursor:pointer;
+  }
+  .brief-block textarea {
+    width:100%; padding:12px 14px;
+    border:1.5px solid #E8A317; border-radius:8px;
+    font-size:14px; line-height:1.5; font-family:inherit;
+    resize:vertical; background:#fff; min-height: 100px;
+  }
+
+  /* ── Examples drawer ── */
+  .examples-drawer {
+    margin-bottom: 12px; padding: 14px 16px;
+    background:#fff; border-radius:8px; border:1px solid #F5C971;
+  }
+  .ex-section-title {
+    font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: #5A4500; margin-bottom: 8px; padding-top: 4px;
+  }
+  .ex-section-title:not(:first-child) {
+    margin-top: 14px; padding-top: 14px; border-top: 1px dashed #F5C971;
+  }
+
+  /* Quick-start chips: clickable inline buttons */
+  .quickstart-row {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
+  }
+  .quickstart-chip {
+    padding: 6px 12px; border-radius: 999px;
+    border: 1.5px solid #E8A317; background:#fff; color:#5A4500;
+    font-size: 12px; font-weight: 600; cursor:pointer;
+    font-family: inherit; transition: all .15s;
+  }
+  .quickstart-chip:hover {
+    background: #FFF3D6; transform: translateY(-1px);
+  }
+  .quickstart-hint {
+    font-size: 11px; color: #999; margin-bottom: 8px; line-height: 1.5;
+  }
+
+  /* Full case examples */
+  .case-row {
+    padding: 8px 0; border-top: 1px dashed #F5C971;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+  }
+  .case-row:first-of-type { border-top: 0; padding-top: 0; }
+  .case-row .case-title { font-weight: 700; color: #5A4500; font-size: 13px; }
+  .case-row .case-text { color: #666; line-height: 1.55; font-size: 12px; margin-top: 4px; }
+  .case-row button {
+    font-size: 11px; padding: 4px 10px;
+    border: 1px solid #E8A317; background:#fff; color:#5A4500;
+    border-radius: 4px; cursor: pointer; white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .case-row button:hover { background: #FFF3D6; }
+
+  .demo-note {
+    margin-top: 16px; padding: 12px 14px;
+    background: #f0f9ff; border-left: 4px solid #0ea5e9;
+    border-radius: 4px; font-size: 13px; color: #0c4a6e;
+    line-height: 1.55;
+  }
+  .demo-note b { color: #0c4a6e; }
+</style>
+</head>
+<body>
+
+<div class="demo-wrap">
+  <div class="demo-title">📝 Pitch Brief — 兩層展開 demo</div>
+
+  <div class="brief-block">
+    <label>
+      <span>📝 這次提案有什麼特別的?</span>
+      <span class="info-tip" title="AI 用這段決定 tone、scope、推薦哪幾張 slide。是表單上影響最大的欄位。">ⓘ</span>
+    </label>
+    <div class="sub">
+      選填,但寫個 1-2 行可以讓 AI 寫出來的內容相關度提升 10×。
+      <a id="toggle">看範例 ▾</a>
+    </div>
+
+    <div id="examples" class="examples-drawer" style="display:none;">
+      <!-- ── 上層: Quick-start chips ── -->
+      <div class="ex-section-title">🚀 快速啟動 — 點一下,填括號就好</div>
+      <div class="quickstart-hint">適合新手 / 趕時間。點 chip → textarea 預填模板 → 改括號裡面的詞。</div>
+      <div class="quickstart-row" id="quickstartRow"></div>
+
+      <!-- ── 下層: Full real cases ── -->
+      <div class="ex-section-title">📚 完整案例 — 老手參考</div>
+      <div class="quickstart-hint">如果你想看「實際 brief 長什麼樣」、想找一個情境最像的整段抄來改。</div>
+      <div id="caseList"></div>
+    </div>
+
+    <textarea id="brief" placeholder="例如:回頭客,本次升級 API 版本跨 web/watch/car。跳過市場機會與授權頁,強調技術整合順暢度、3 個月 rollout、以及既有 iOS 部署的 ROI。"></textarea>
+  </div>
+
+  <div class="demo-note">
+    <b>互動測試:</b><br>
+    1. 點「看範例 ▾」展開抽屜<br>
+    2. 上層「快速啟動」3 個 chips,點一下 → 模板帶 [括號] 預填到 textarea(適合新手)<br>
+    3. 下層「完整案例」5 條真實 brief,「Use this →」按鈕 → 整段預填(適合老手)<br>
+    4. 兩層共用同一個 textarea,使用者可以混搭
+  </div>
+</div>
+
+<script>
+// ── Quick-start templates (click → fill textarea with [brackets] ── //
+const QUICKSTARTS = [
+  {
+    chip: '🆕 新客戶 · 強調情緒',
+    template: '[新客戶 / 首次提案]. 客戶是 [產業] 的 [簡短描述]. 主要決策人是 [CMO / Head of Product / 創辦人]. 重點放在 [情緒留存 / 技術整合 / ROI 證據 / 品牌一致性]. 跳過 [市場機會頁 / 授權頁 / 詳細時程].'
+  },
+  {
+    chip: '🔁 回頭客 · 升級',
+    template: '回頭客. 上次合作做了 [前一個 project]. 這次要升級 [新 feature / 新 scope]. 跳過 [pain points / 市場機會 / 吉祥物選擇] 不需要重複教育. 強調 [新功能 ROI / 多平台 rollout / 升級路徑]. CTA 是 [簽約日期].'
+  },
+  {
+    chip: '⏱ 短期 pilot',
+    template: '[N 週] tactical pilot for [event / campaign]. 時限緊. 跳過 roadmap / licensing / 市場機會. 重點 [快速部署 / 事件後 metrics]. CTA 是 [兩週內交付 prototype].'
+  },
+  {
+    chip: '🏛 企業 / 受監管行業',
+    template: '[產業 — 例: EU 銀行 / 健保 / 政府]. 法務團隊會審. 強調 [GDPR / 資料駐留 / 審計日誌 / 第三方資料隔離]. Tone 要 [專業保守]. 跳過 [輕鬆 chat demo]. 對話流程聚焦在 [合規 routing 與真人 handoff].'
+  },
+];
+
+// ── Full real cases (click "Use this" → fill textarea full text) ── //
+const CASES = [
+  { title: '新客戶 / 全球健康 app',
+    text: 'First pitch to a global health app. They have millions of users but no personality on the AI side. Emphasize emotional retention, voice logging, and how a mascot makes their app stickier. Audience: CMO + Head of Product.' },
+  { title: '回頭客 / API 升級',
+    text: 'Returning client. Upselling API tier for multi-surface rollout (web + watch + car). Skip market opportunity and licensing — they already bought once. Emphasize technical ease, 3-month rollout, and ROI from existing iOS deployment.' },
+  { title: '慈善 / 非營利',
+    text: 'Pitch to a global children\'s charity. Focus on emergency-response donor engagement, trust at scale, and impact storytelling. Skip generic market sizing — they ARE the category. Keep licensing because their legal team needs data-privacy spelled out.' },
+  { title: '企業 / 受監管產業',
+    text: 'EU bank legal team. Emphasize GDPR, data residency, audit logs, no third-party data sharing. Tone: professional, conservative. Skip casual chat demo. Focus chatflow on compliance routing and human handoff.' },
+  { title: '短期 / 戰術型專案',
+    text: 'A 4-week pilot for an event. Skip licensing, skip roadmap. Emphasize fast deploy and post-event ROI metrics. CTA is a 2-week prototype delivery.' },
+];
+
+// ── Wire up the UI ── //
+const ta = document.getElementById('brief');
+const drawer = document.getElementById('examples');
+const toggle = document.getElementById('toggle');
+const qsRow = document.getElementById('quickstartRow');
+const caseList = document.getElementById('caseList');
+
+QUICKSTARTS.forEach((q, i) => {
+  const b = document.createElement('button');
+  b.className = 'quickstart-chip';
+  b.textContent = q.chip;
+  b.onclick = () => {
+    ta.value = q.template;
+    ta.focus();
+    // Find first [bracket] and select it so the cursor is ready to type-over
+    const m = q.template.match(/\[[^\]]+\]/);
+    if (m) {
+      ta.setSelectionRange(m.index, m.index + m[0].length);
+    }
+  };
+  qsRow.appendChild(b);
+});
+
+CASES.forEach((c, i) => {
+  const row = document.createElement('div');
+  row.className = 'case-row';
+  row.innerHTML = `
+    <div style="flex:1;">
+      <div class="case-title">${c.title}</div>
+      <div class="case-text">${c.text}</div>
+    </div>
+    <button>Use this →</button>
+  `;
+  row.querySelector('button').onclick = () => {
+    ta.value = c.text;
+    ta.focus();
+  };
+  caseList.appendChild(row);
+});
+
+toggle.onclick = (e) => {
+  e.preventDefault();
+  const open = drawer.style.display !== 'none';
+  drawer.style.display = open ? 'none' : 'block';
+  toggle.textContent = open ? '看範例 ▾' : '收起範例 ▴';
+};
+</script>
+</body>
+</html>

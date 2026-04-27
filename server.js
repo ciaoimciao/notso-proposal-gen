@@ -1949,7 +1949,10 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
       let _mockupCompose = null;
       const _hasMockupTask = finalTasks.some(t => t.id === 'mock-phone-chat' || t.id === 'mock-website');
       if (_hasMockupTask) {
-        try { _mockupCompose = require('./mockup_compose'); }
+        // v2 = pure Node port of mockup-assets/compose.py via @napi-rs/canvas.
+        // No Puppeteer, no Gemini, no chromium-min. Output matches the
+        // high-quality samples in mockup-assets/samples/{phone,laptop}-yazi.png.
+        try { _mockupCompose = require('./mockup_compose_v2'); }
         catch (e) { console.warn('  ⚠️ Could not load mockup_compose.js:', e.message); }
       }
       // Pull industry from client once for dialogue templating
@@ -1960,14 +1963,11 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
         let saved = false;
         let lastErr = '';
 
-        // ── INTERCEPT: phone + laptop mockups go through the Node compositor,
-        //    NOT Gemini. Faster, deterministic, brand-color & mascot-name aware.
-        // Node compositor (Puppeteer) is fragile on Vercel cold-start —
-        // chromium-min download + headless launch + screenshot timing race
-        // makes it produce 0-byte buffers ~50% of the time. We default to
-        // Gemini for ALL mockups now (proven 100% success rate in testing).
-        // To re-enable Node compositor, set USE_NODE_MOCKUP=1 in env.
-        if (process.env.USE_NODE_MOCKUP === '1' && _mockupCompose && (task.id === 'mock-phone-chat' || task.id === 'mock-website')) {
+        // ── INTERCEPT: phone + laptop mockups go through mockup_compose_v2
+        //    (the Node port of compose.py). Pure pixel composition via
+        //    @napi-rs/canvas — no Puppeteer, no Gemini, no chromium-min.
+        //    Output matches mockup-assets/samples/{phone,laptop}-yazi.png.
+        if (_mockupCompose && (task.id === 'mock-phone-chat' || task.id === 'mock-website')) {
           try {
             const mascotDataUrl = mascotImage.startsWith('data:')
               ? mascotImage
@@ -1978,36 +1978,37 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
               brandColor,
               industry: _industryHint,
             };
-            let composedDataUrl;
+            // v2 returns Buffer (PNG bytes) directly, not data URL.
+            let buf;
             if (task.id === 'mock-phone-chat') {
-              composedDataUrl = await _mockupCompose.composePhoneMockup(mockupArgs);
+              buf = await _mockupCompose.composePhoneMockup(mockupArgs);
             } else {
-              // mock-website needs the client's website screenshot
+              // mock-website needs the client's website screenshot (optional —
+              // compositor falls back to bundled mockup-assets/website.png).
               const siteDataUrl = clientSiteImage && clientSiteImage.startsWith('data:')
                 ? clientSiteImage
                 : (clientSiteImage ? `data:image/png;base64,${clientSiteImage}` : '');
-              composedDataUrl = await _mockupCompose.composeLaptopMockup({
+              buf = await _mockupCompose.composeLaptopMockup({
                 ...mockupArgs,
                 websiteImageUrl: siteDataUrl,
               });
             }
-            // Validate result before declaring success — empty/0-byte
-            // dataUrls were silently being pushed as "ok: true" which
-            // showed up in the UI as broken-image icons.
-            const m = /^data:image\/[^;]+;base64,(.+)$/.exec(composedDataUrl || '');
-            if (!m || m[1].length < 1024) {
-              throw new Error(`compositor returned empty/invalid dataUrl (base64 length: ${m ? m[1].length : 0})`);
+            // v2 returns a Buffer directly. Validate non-empty (0-byte
+            // means something went wrong silently — protect against that).
+            if (!buf || buf.length < 1024) {
+              throw new Error(`compositor returned empty/invalid buffer (${buf ? buf.length : 0} bytes)`);
             }
+            const composedDataUrl = `data:image/png;base64,${buf.toString('base64')}`;
             const fname = `${task.id}.png`;
             const fpath = path.join(outDir, task.category, fname);
-            fs.writeFileSync(fpath, Buffer.from(m[1], 'base64'));
+            fs.writeFileSync(fpath, buf);
             newResults.push({
               id: task.id, category: task.category, label: task.label,
               transparent: false, ok: true,
               file: `${task.category}/${fname}`,
               dataUrl: composedDataUrl,
             });
-            console.log(`    ✅ ${task.label} → ${fname} (Node compositor, ${(m[1].length/1024).toFixed(0)}KB)`);
+            console.log(`    ✅ ${task.label} → ${fname} (Node compositor v2, ${(buf.length/1024).toFixed(0)}KB)`);
             saved = true;
             continue;   // skip the Gemini fallback loop
           } catch (compErr) {
