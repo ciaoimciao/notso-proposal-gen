@@ -716,9 +716,12 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
 
     "s6":  {"headline":"Mascot Selection",                  // FIXED label
             "lead":"1-sentence framing the choice. No em-dash.",
-            "option_a":{"name":"","archetype":"The [Archetype]","traits":["","","",""],"desc":"2-3 sentences","why":"1 sentence fit","formal":40,"playful":70},
-            "option_b":{"name":"","archetype":"","traits":["","","",""],"desc":"","why":"","formal":70,"playful":30},
-            "option_c":{"name":"","archetype":"","traits":["","","",""],"desc":"","why":"","formal":55,"playful":55}},
+            // CRITICAL: each option's `desc` MUST be ≤2 short sentences.
+            // The renderer truncates to 3 sentences max but cards look best at 2.
+            // Keep it punchy: archetype + tone + 1 specific personality detail.
+            "option_a":{"name":"","archetype":"The [Archetype]","traits":["","","",""],"desc":"≤2 short sentences","why":"1 sentence fit","formal":40,"playful":70},
+            "option_b":{"name":"","archetype":"","traits":["","","",""],"desc":"≤2 short sentences","why":"1 sentence fit","formal":70,"playful":30},
+            "option_c":{"name":"","archetype":"","traits":["","","",""],"desc":"≤2 short sentences","why":"1 sentence fit","formal":55,"playful":55}},
 
     "s7":  {"name":"recommended mascot name", "rec_note":"which of s6 you recommend (1 sentence)",
             "lead":"so-what intro to this character. No em-dash.",
@@ -1842,7 +1845,12 @@ ${schema}`;
                 'Only the pose, gesture, and facial expression are allowed to vary. Everything else is LOCKED to the reference.',
               ].join('\n');
 
-              reqParts.push({ text: task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + consistencyLock + bgHint + retryHint });
+              // Same framing / no-lineup rules as Step 2.5 mascot generation —
+              // prevents cropped heads, off-frame bodies, and mini-character
+              // rows that Gemini sometimes draws as a "model sheet".
+              const framingRule =
+                '\n\n[FRAMING: Character must be FULLY VISIBLE — head fully shown, feet fully shown, both arms inside the frame. Leave 8-12% white margin on every side. Character takes 60-75% of frame height, CENTERED. Do NOT crop the head, feet, or any limb. Do NOT zoom in. NO model-sheet, NO turnaround, NO row of mini characters in the background. ONE single hero pose only.]';
+              reqParts.push({ text: task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + bgHint + retryHint });
 
               const geminiRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`,
