@@ -806,7 +806,19 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
             "lead":"so-what on omnichannel presence. No em-dash.",
             "materials":[{"type":"Poster & Media Kit","status":"Included","desc":""},
                          {"type":"Vinyl Toy","status":"Price on request","desc":""},
-                         {"type":"Banner & Digital Kit","status":"Price on request","desc":""}]},
+                         {"type":"Banner & Digital Kit","status":"Price on request","desc":""}],
+            // promo_context — drives the 3 industry-aware promo asset pack tasks.
+            // All fields ≤20 words, written in client.language. Be CONCRETE and
+            // INDUSTRY-SPECIFIC. Examples for nutrition: props='a small basket of
+            // fresh groceries with bread, fruit, and a milk carton'. For fitness:
+            // props='a 5kg dumbbell, a black water bottle, and a rolled gym towel'.
+            "promo_context":{
+              "props":"1 specific industry prop set, concrete items only (e.g. 'a basket of fresh groceries with avocado, bread, and yogurt')",
+              "scene":"1 indoor environment matching the brand (e.g. 'a sunny scandi-style kitchen with marble counter and a window plant')",
+              "person":"1 person + their activity for the banner shot (e.g. 'a young parent in a hoodie holding a meal-prep container, smiling at the banner')",
+              "greeting":"1-line speech-bubble text, ≤8 words, in client.language (e.g. 'Hi, I am Yazi! What did you eat today?')",
+              "tagline":"1-line bottom CTA, ≤4 words, in client.language (e.g. 'Track with me!')"
+            }},
 
     "s17": {"headline":"Licensing",                         // FIXED label
             "lead":"1 sentence following the pattern 'You own the character, the content, and the data.' No em-dash.",
@@ -1641,6 +1653,168 @@ ${schema}`;
         needsSite: false,    // compositor handles the missing-site case
         prompt: `A marketing composite image showing a laptop with a website on screen. On the right-bottom corner, the SAME mascot character from the first reference image appears as a chat widget popup. Above the mascot, show a clean white rounded rectangle chat bubble containing the text: "${(greeting || `Hi, I'm ${mascotName}! How can I help?`).replace(/"/g, '\\"')}". Professional product-page composition.`
       });
+
+      // ─────────────────────────────────────────────────────────────────
+      // PROMOTIONAL MATERIALS (3 industry-aware Gemini-generated tasks)
+      // ─────────────────────────────────────────────────────────────────
+      // Layer 1: built-in industry profile fallback (used if Claude didn't
+      // fill s16.promo_context). Keyword-matched against client.industry.
+      const INDUSTRY_PROFILES = {
+        nutrition: {
+          keywords: ['nutrition','food','diet','calorie','meal','recipe','health-eating','yazio'],
+          props: 'a small basket with fresh fruits, vegetables, bread, and a milk carton',
+          scene: 'a clean modern kitchen with bright window light and a wooden countertop',
+          person: 'a casually-dressed shopper in a hoodie holding a banana, smiling at the banner',
+          banner_location: 'supermarket fresh produce aisle',
+          greeting: `Hi, I'm ${mascotName}! What did you eat today?`,
+          tagline: 'Track with me!',
+        },
+        fitness: {
+          keywords: ['fitness','gym','workout','training','exercise','sport','muscle','crossfit'],
+          props: 'a 5kg dumbbell, a black water bottle, and a rolled gym towel',
+          scene: 'a modern home gym corner with rubber flooring and a yoga mat',
+          person: 'a fit person in a black tank top holding a water bottle, smiling at the banner',
+          banner_location: 'gym entrance lobby with cardio machines visible behind',
+          greeting: `Hey, I'm ${mascotName}! Ready to train?`,
+          tagline: 'Train with me!',
+        },
+        finance: {
+          keywords: ['finance','banking','bank','invest','saving','wealth','budget','money'],
+          props: 'a calculator, a tablet showing a chart, and a stack of paper documents',
+          scene: 'a clean professional office desk with a monitor in soft-focus background',
+          person: 'a professional in business-casual attire holding a phone, smiling at the banner',
+          banner_location: 'modern bank branch lobby with sleek interior',
+          greeting: `Hi, I'm ${mascotName}! Need help with your finances?`,
+          tagline: 'Bank smarter!',
+        },
+        retail: {
+          keywords: ['retail','shop','store','ecommerce','fashion','beauty','consumer'],
+          props: 'a small shopping bag, a wrapped gift box, and a price tag',
+          scene: 'a stylish retail counter with soft warm display lighting',
+          person: 'a young shopper holding a shopping bag, smiling at the banner',
+          banner_location: 'modern retail store interior with merchandise on shelves',
+          greeting: `Hi, I'm ${mascotName}! Looking for something today?`,
+          tagline: 'Shop with me!',
+        },
+        education: {
+          keywords: ['education','school','learn','student','course','tutor','academy'],
+          props: 'a stack of colorful books, a pencil, and a small globe',
+          scene: 'a tidy student desk with books and a soft-focus classroom',
+          person: 'a student in casual clothes holding a notebook, smiling at the banner',
+          banner_location: 'school hallway with lockers and soft daylight',
+          greeting: `Hi, I'm ${mascotName}! Ready to learn?`,
+          tagline: 'Learn with me!',
+        },
+        healthcare: {
+          keywords: ['health','medical','clinic','doctor','wellness','therapy','pharma'],
+          props: 'a clipboard, a stethoscope, and a small water bottle',
+          scene: 'a clean modern clinic reception with soft white lighting',
+          person: 'a person in casual clothes holding a phone, smiling at the banner',
+          banner_location: 'clinic waiting area with soft white walls',
+          greeting: `Hi, I'm ${mascotName}! How are you feeling today?`,
+          tagline: 'Care with me!',
+        },
+        charity: {
+          keywords: ['charity','ngo','non-profit','nonprofit','donation','volunteer','social'],
+          props: 'a small donation box, a heart-shaped pin, and a bouquet of fresh flowers',
+          scene: 'a warm community space with people gathering in soft focus',
+          person: 'a friendly volunteer holding a clipboard, smiling at the banner',
+          banner_location: 'a community event space with warm wooden floors',
+          greeting: `Hi, I'm ${mascotName}! Want to help today?`,
+          tagline: 'Give with me!',
+        },
+        generic: {
+          keywords: [],
+          props: 'a sleek laptop, a coffee mug, and a notebook',
+          scene: 'a clean modern office workspace with soft daylight',
+          person: 'a professional in casual attire holding a phone, smiling at the banner',
+          banner_location: 'a modern office lobby with brand colors',
+          greeting: `Hi, I'm ${mascotName}! How can I help?`,
+          tagline: 'Chat with me!',
+        },
+      };
+
+      function pickIndustryProfile(industryHint) {
+        const hay = String(industryHint || '').toLowerCase();
+        for (const [key, profile] of Object.entries(INDUSTRY_PROFILES)) {
+          if (key === 'generic') continue;
+          if (profile.keywords.some(kw => hay.includes(kw))) return profile;
+        }
+        return INDUSTRY_PROFILES.generic;
+      }
+
+      const industryHint = (body.industry || body.useCase || clientName || '').toString();
+      const profile = pickIndustryProfile(industryHint);
+
+      // Layer 2: Claude-written promo_context overrides Layer 1 per-field.
+      // body.promoContext is passed from the frontend (extracted from
+      // proposal.s16.promo_context).
+      const ctx = (body.promoContext && typeof body.promoContext === 'object') ? body.promoContext : {};
+      const PC = {
+        props:           ctx.props           || profile.props,
+        scene:           ctx.scene           || profile.scene,
+        person:          ctx.person          || profile.person,
+        greeting:        ctx.greeting        || profile.greeting,
+        tagline:         ctx.tagline         || profile.tagline,
+        banner_location: ctx.banner_location || profile.banner_location,
+      };
+      // Escape double quotes for safe inclusion in prompt strings.
+      const _esc = s => String(s || '').replace(/"/g, '\\"');
+      const _bc  = brandColor || '#1a5c4a';
+
+      defaultTasks.push(
+        {
+          id: 'promo-poster',
+          category: 'mockups',
+          label: 'Promo Poster',
+          transparent: false,
+          prompt: `A vertical promotional poster (portrait 3:4 ratio) in 2D flat marketing illustration style with a solid bright ${_bc} background.
+
+LAYOUT:
+- Top-left: bold sans-serif headline "DIGITAL BUDDY" in dark color (60% darker than the background), two lines stacked
+- Center-right: the SAME mascot character from the reference image, full body, friendly waving pose, with ${_esc(PC.props)} beside it
+- Above the mascot: a small white rounded rectangle speech bubble pointing at the mascot, containing "${_esc(PC.greeting)}"
+- Bottom-left: bold "${_esc(PC.tagline)}" in dark color, large 56pt
+- Bottom-right: a clear black-and-white QR code about 180×180
+
+[STRICT] Single mascot only, no duplicates, no model-sheet rows. Mascot must match reference EXACTLY at part level (eyes, face, body, colors, outline). All four text elements clear and readable. Modern flat marketing illustration style only — no gradients, no textures, no extra characters. Output a complete final poster.`
+        },
+        {
+          id: 'promo-vinyl-toy',
+          category: 'mockups',
+          label: 'Promo Vinyl Toy',
+          transparent: false,
+          prompt: `A photorealistic product photograph (square 1:1 ratio) of a collectible 3D vinyl toy figurine of the SAME mascot character from the reference image, sitting on a clean surface with ${_esc(PC.scene)} blurred behind.
+
+The figurine looks IDENTICAL to the reference mascot — same colors, same face, same proportions, same outline — but rendered in glossy vinyl material with subtle 3D shading and a soft drop shadow.
+
+NEXT TO the figurine, place a small white folded card stand (about 1/3 the figurine height) with a clearly visible black-and-white QR code on the upper half and bold text "CHAT WITH ME!" on the lower half.
+
+CAMERA: eye-level shot, shallow depth of field, soft directional lighting from the left. Lifestyle product photography style. No people in frame.
+
+[STRICT] Single figurine only, no duplicates. Figurine matches reference EXACTLY at part level — only the material rendering changes to glossy vinyl. QR sign card readable. No additional text or logos. Output a complete final product photograph.`
+        },
+        {
+          id: 'promo-banner',
+          category: 'mockups',
+          label: 'Promo Banner',
+          transparent: false,
+          prompt: `A photorealistic photograph (portrait 3:4 ratio) of a vertical roll-up banner standing on the floor inside ${_esc(PC.banner_location)}, with ${_esc(PC.person)}.
+
+THE BANNER (sharp, in focus, must be clearly readable):
+- Vertical 80cm × 200cm proportions, solid ${_bc} background
+- Top: bold sans-serif headline "DIGITAL BUDDY" in dark color, two lines stacked
+- Below headline: small white rounded speech bubble with text "${_esc(PC.greeting)}"
+- Center: the SAME mascot character from the reference image, full body, friendly waving pose, with ${_esc(PC.props)} beside it
+- Bottom-left: black-and-white QR code about 12cm square
+- Bottom-right: bold text "${_esc(PC.tagline)}"
+
+CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting, banner in sharp focus, person and surroundings in shallow depth of field.
+
+[STRICT] Mascot appears ONLY printed on the banner — NOT as a 3D character in the real scene. Mascot illustration matches reference EXACTLY at part level. All banner text readable. Output a complete final photograph.`
+        },
+      );
+      console.log(`  📣 Promo materials industry: ${profile === INDUSTRY_PROFILES.generic ? 'generic (no match)' : Object.keys(INDUSTRY_PROFILES).find(k => INDUSTRY_PROFILES[k] === profile)} | claude-override fields: ${Object.keys(ctx).filter(k => ctx[k]).join(',') || 'none'}`);
 
       // Resolve task list
       let finalTasks = (Array.isArray(tasks) && tasks.length) ? tasks : defaultTasks;

@@ -6946,6 +6946,9 @@ async function generateAssetPack(opts = {}) {
   try {
     const greeting = (proposal && proposal.s1 && proposal.s1.greeting) || '';
     const mascotName = (proposal && proposal.s1 && proposal.s1.mascot_name) || client.mascotName || 'Buddy';
+    // Pass Claude-written promo_context (and industry) so server-side
+    // INDUSTRY_PROFILES + per-field overrides can compose the 3 promo prompts.
+    const promoContext = (proposal && proposal.s16 && proposal.s16.promo_context) || {};
     const resp = await fetch('/api/assetpack/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -6957,6 +6960,8 @@ async function generateAssetPack(opts = {}) {
         greeting,
         mascotImage,
         clientSiteImage: client.clientSiteImage || '',
+        industry: client.industry || client.useCase || '',
+        promoContext,
         sessionId: _assetPackSession.sessionId || undefined,
         onlyIds: opts.onlyIds || undefined,
       })
@@ -7085,6 +7090,23 @@ function autoAssignAssetPackToSlides() {
   const curious = byId.get('expr-curious');
   if (curious && curious.dataUrl) {
     if (!savedMascotPaths['cover_s4']) savedMascotPaths['cover_s4'] = curious.dataUrl;
+  }
+
+  // S16 Promotional Materials — auto-pin the 3 industry-aware Gemini-
+  // generated promo images (poster / vinyl toy / banner) to material_0/1/2.
+  // Always overwrites: these are the canonical promo assets, the user
+  // can manually re-assign via the dropdown if they want a custom slot.
+  const promoMap = {
+    'promo-poster':    'material_0',
+    'promo-vinyl-toy': 'material_1',
+    'promo-banner':    'material_2',
+  };
+  for (const [assetId, slotKey] of Object.entries(promoMap)) {
+    const item = byId.get(assetId);
+    if (item && item.dataUrl) {
+      savedMascotPaths[slotKey] = item.dataUrl;
+      _assetSlideAssignments[slotKey] = { assetId: item.id, file: item.file };
+    }
   }
 }
 
