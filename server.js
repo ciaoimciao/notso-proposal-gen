@@ -761,7 +761,15 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
 
     "s11": {"headline":"Knowledge Base",                    // FIXED label
             "lead":"1 sentence following the pattern '[mascot] studies how [client's] users actually [verb1], [verb2], and [verb3].' No em-dash.",
-            "categories":[{"title":"","items":["","",""],"docs":["",""]}, "...3 items"]},
+            // Each category is rendered as a row: input_label → mascot → output_label.
+            // BOTH input_label AND output_label are REQUIRED. input_label = the
+            // user's question/situation; output_label = what the mascot delivers
+            // back. Both ≤6 words, concrete to THIS client's domain.
+            "categories":[
+              {"input_label":"≤6-word user question or situation","output_label":"≤6-word what the mascot delivers"},
+              {"input_label":"≤6 words","output_label":"≤6 words"},
+              {"input_label":"≤6 words","output_label":"≤6 words"}
+            ]},
 
     "s12": {"headline":"Real-Time Dashboard",               // FIXED label
             "lead":"1 sentence following the pattern '[Mascot]'s chat logs become your product roadmap.' Adapt to client's domain. No em-dash.",

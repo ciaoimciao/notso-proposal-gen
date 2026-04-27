@@ -1082,29 +1082,71 @@ function renderSlide_S8_PersonalityEmpathy(proposal, client, mascotImages) {
   `;
 }
 
+// Cache the phone frame as a data URL so we don't re-read the file every time
+// a slide is rendered. The frame is the pre-processed transparent PNG with
+// outside + screen both alpha=0; it gets layered ON TOP of the chat content
+// so the bezel masks anything that overflows the screen rect.
+let _PHONE_FRAME_DATA_URL = null;
+function _phoneFrameDataUrl() {
+  if (_PHONE_FRAME_DATA_URL) return _PHONE_FRAME_DATA_URL;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const buf = fs.readFileSync(path.join(__dirname, 'mockup-assets', 'phone-frame.png'));
+    _PHONE_FRAME_DATA_URL = 'data:image/png;base64,' + buf.toString('base64');
+  } catch (e) {
+    _PHONE_FRAME_DATA_URL = '';   // graceful fallback if file missing
+  }
+  return _PHONE_FRAME_DATA_URL;
+}
+
 function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   const d = proposal.s9 || {};
   const headline = stripEmoji(d.headline || 'Chat Experience');
   const lead = stripEmoji(d.lead || d.intro || '');
-  // Keep to 6 turns max (3 user ↔ 3 bot). Claude prompt caps bot turns at
-  // 3 full sentences each — we render those sentences in full; NO truncation.
-  const messages = (d.messages || d.chat || []).slice(0, 6);
-  // Per-slide cover key (cover_s9) — see note in S1.
+  const mascotName = stripEmoji(d.mascot_name || proposal?.s7?.name || client.mascotName || 'Buddy');
+  // Keep first 4 turns (2 mascot + 2 user) for the phone screen — anything
+  // longer overflows the bezel at typical slide-projector sizes.
+  const messages = (d.messages || d.chat || []).slice(0, 4);
   const coverImagePath = mascotImages?.cover_s9 || mascotImages?.cover;
+  const frameDataUrl = _phoneFrameDataUrl();
 
-  const chatBubbles = messages
+  // Phone-frame coords (in original 5000×5000 PNG). At a 380px-wide phone,
+  // scale = 380/5000 = 0.076 → screen rect maps to (123, 46, 258, 334).
+  // We render the phone at 380×380 inside a flex column on the left.
+  const PH_W = 380;
+  const SCALE = PH_W / 5000;
+  const SX = 1615 * SCALE;
+  const SY = 601 * SCALE;
+  const SW = (3391 - 1615) * SCALE;
+  const SH = (4398 - 601) * SCALE;
+
+  // Render up to first 2 message pairs as bubbles inside the phone screen.
+  // Truncate text per bubble so layout stays clean.
+  const phoneBubbles = messages.slice(0, 4).map(msg => {
+    const role = msg.sender || msg.role || msg.r || msg.who || '';
+    const isUser = role === 'user' || role === 'User' || role === 'u';
+    const text = stripEmoji(String(msg.text || msg.message || msg.m || msg.content || '')).trim();
+    return `
+      <div style="display:flex; justify-content:${isUser ? 'flex-end' : 'flex-start'}; margin-bottom:6px;">
+        <div style="background:${isUser ? 'var(--brand-c1, var(--accent))' : '#fff'}; color:${isUser ? '#fff' : '#1a1a1a'}; padding:8px 12px; border-radius:14px; max-width:78%; font-family:'Poppins',sans-serif; font-size:11px; line-height:1.4; box-shadow:0 2px 6px rgba(0,0,0,.06);">
+          ${text}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Right-side: the same transcript at full size (pretty for reading) but
+  // the visual hero on the left is the phone mockup itself.
+  const transcriptBubbles = messages
     .map(msg => {
       const role = msg.sender || msg.role || msg.r || msg.who || '';
       const isUser = role === 'user' || role === 'User' || role === 'u';
-      const text = msg.text || msg.message || msg.m || msg.content || '';
-      // NO truncation — the prompt already requires complete sentences and
-      // ≤3 sentences per bot bubble. Truncating here forced every bubble to
-      // end in "..." which the user explicitly called out.
-      const body = stripEmoji(String(text)).trim();
+      const text = stripEmoji(String(msg.text || msg.message || msg.m || msg.content || '')).trim();
       return `
-        <div style="display: flex; justify-content: ${isUser ? 'flex-end' : 'flex-start'}; margin-bottom: 10px;">
-          <div style="background: ${isUser ? 'var(--brand-main, var(--brand-c1))' : '#f3f4f6'}; color: ${isUser ? 'white' : '#1a1a1a'}; padding: 10px 14px; border-radius: 16px; max-width: 82%; font-family: 'Poppins', sans-serif; font-size: 17px; line-height: 1.5;">
-            ${body}
+        <div style="display:flex; justify-content:${isUser ? 'flex-end' : 'flex-start'}; margin-bottom:10px;">
+          <div style="background:${isUser ? 'var(--brand-c1, var(--accent))' : '#f3f4f6'}; color:${isUser ? '#fff' : '#1a1a1a'}; padding:10px 14px; border-radius:16px; max-width:82%; font-family:'Poppins',sans-serif; font-size:17px; line-height:1.5;">
+            ${text}
           </div>
         </div>
       `;
@@ -1114,21 +1156,45 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   return `
     <div class="slide" style="background: white; padding: 50px;">
       <!-- Header -->
-      <div style="margin-bottom: 40px; padding-bottom: 30px; border-bottom: 1px solid #f0f0f0;">
+      <div style="margin-bottom: 30px; padding-bottom: 24px; border-bottom: 1px solid #f0f0f0;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.55;">${lead}</div>` : ''}
       </div>
 
-      <!-- Content: Mascot + Chat -->
-      <div style="display: flex; gap: 40px;">
-        <!-- Left: Mascot -->
-        <div style="flex: 0.6; display: flex; align-items: center; justify-content: center;">
-          ${getImageHTML(coverImagePath, 'Mascot Chat', '', 'cover_s9')}
+      <!-- Body: phone mockup LEFT, full-size transcript RIGHT -->
+      <div style="display: flex; gap: 50px; align-items: stretch;">
+        <!-- Phone mockup (chat rendered inside the phone-frame.png hole) -->
+        <div style="flex-shrink: 0; width: ${PH_W}px; height: ${PH_W}px; position: relative;">
+          <!-- Screen content (under the frame) -->
+          <div style="position: absolute; left: ${SX}px; top: ${SY}px; width: ${SW}px; height: ${SH}px; border-radius: 16px; background: #f2f2f2; overflow: hidden; display: flex; flex-direction: column; padding: 12px 14px 10px; box-sizing: border-box;">
+            <!-- Top status bar -->
+            <div style="display: flex; justify-content: space-between; font-family: 'Poppins', sans-serif; font-size: 10px; color: #555; margin-bottom: 6px;">
+              <span>${mascotName} // online</span>
+              <span>online</span>
+            </div>
+            <!-- Bubbles -->
+            <div style="flex: 1; min-height: 0; overflow: hidden;">
+              ${phoneBubbles}
+            </div>
+            <!-- Mascot inside phone (small) -->
+            ${coverImagePath ? `
+              <div style="text-align: center; margin: 4px 0;">
+                <img src="${coverImagePath}" style="height: 80px; max-width: 75%; object-fit: contain;">
+              </div>
+            ` : ''}
+            <!-- Input bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #fff; border: 2px solid var(--brand-c1, var(--accent)); border-radius: 18px; padding: 6px 12px; font-family: 'Poppins', sans-serif; font-size: 11px; color: #999;">
+              <span>Ask a question</span>
+              <span style="color: var(--brand-c1, var(--accent)); font-weight: 700;">›</span>
+            </div>
+          </div>
+          <!-- Phone frame (transparent PNG, sits on top — bezel masks any overflow) -->
+          ${frameDataUrl ? `<img src="${frameDataUrl}" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none;">` : ''}
         </div>
 
-        <!-- Right: Chat Window -->
-        <div style="flex: 1.4; background: #F9F9F9; border-radius: 16px; padding: 24px; display: flex; flex-direction: column;">
-          ${chatBubbles}
+        <!-- Right: full transcript at large readable size -->
+        <div style="flex: 1; min-width: 0; background: #F9F9F9; border-radius: 16px; padding: 24px; display: flex; flex-direction: column;">
+          ${transcriptBubbles}
         </div>
       </div>
 
@@ -1463,7 +1529,10 @@ function renderSlide_S15_Pricing(proposal, client) {
 
   const d = proposal.s15 || {};
   const headline = stripEmoji(d.headline || 'Pricing');
-  const lead = stripEmoji(d.lead || d.reasoning || 'Flexible plans that scale with your needs');
+  // Pricing lead is the ONE sentence the buyer skims before reading the
+  // tier cards. Trim to first sentence so it doesn't wall-of-text.
+  const rawLead = stripEmoji(d.lead || d.reasoning || 'Flexible plans that scale with your needs');
+  const lead = (rawLead.split(/(?<=[。.!?！?])\s+/)[0] || rawLead).trim();
 
   const tierCards = FIXED_PRICING_TIERS.map((tier, i) => {
     const colors = ['var(--brand-c1)', 'var(--brand-c4)', 'var(--brand-c2)'];
@@ -1471,27 +1540,27 @@ function renderSlide_S15_Pricing(proposal, client) {
     // per-client reasoning in d.reasoning instead.
     const isHighlight = false;
     return `
-      <div style="background: white; padding: 18px; border-radius: 12px; border: 1px solid #f0f0f0; box-shadow: 0 2px 6px rgba(0,0,0,0.04); position: relative;">
+      <div style="background: white; padding: 22px 20px; border-radius: 12px; border: 1px solid #f0f0f0; box-shadow: 0 2px 6px rgba(0,0,0,0.04); position: relative;">
 
-        <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px;">${tier.name}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; color: ${colors[i]}; margin-bottom: 2px; line-height: 1;">${tier.price}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #6b7280; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 21px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px;">${tier.name}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 30px; font-weight: 800; color: ${colors[i]}; margin-bottom: 4px; line-height: 1;">${tier.price}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280; margin-bottom: 12px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px;">
           ${tier.users} · ${tier.journeys}
         </div>
-        <ul style="list-style: none; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; font-size: 12px; color: #6b7280; line-height: 1.6;">
-          ${tier.features.map(f => `<li style="margin-bottom: 3px;">✓ ${stripEmoji(f)}</li>`).join('')}
+        <ul style="list-style: none; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; font-size: 14px; color: #4b5563; line-height: 1.65;">
+          ${tier.features.map(f => `<li style="margin-bottom: 4px;">✓ ${stripEmoji(f)}</li>`).join('')}
         </ul>
       </div>
     `;
   }).join('');
 
   const addonCards = FIXED_PRICING_ADDONS.map(addon => `
-    <div style="display: flex; align-items: center; gap: 8px; background: white; padding: 8px 12px; border-radius: 8px; border: 1px solid #f0f0f0;">
+    <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px 14px; border-radius: 8px; border: 1px solid #f0f0f0;">
       <div style="flex: 1;">
-        <span style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: #1a1a1a;">${stripEmoji(addon.name)}</span>
-        <span style="font-family: 'Poppins', sans-serif; font-size: 12px; color: #6b7280;"> — ${stripEmoji(addon.desc)}</span>
+        <span style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: #1a1a1a;">${stripEmoji(addon.name)}</span>
+        <span style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280;"> — ${stripEmoji(addon.desc)}</span>
       </div>
-      <div style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: var(--brand-c1); white-space: nowrap;">${stripEmoji(addon.price)}</div>
+      <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-c1); white-space: nowrap;">${stripEmoji(addon.price)}</div>
     </div>
   `).join('');
 
@@ -1510,7 +1579,7 @@ function renderSlide_S15_Pricing(proposal, client) {
 
       <!-- Add-ons Section: compact list -->
       <div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px;">Add-ons</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 21px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px;">Add-ons</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
           ${addonCards}
         </div>
