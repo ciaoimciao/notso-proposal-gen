@@ -491,6 +491,22 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <label data-i18n="form.desc">Client Description <span class="hint" data-i18n="form.desc.hint">— what do they do, who are their customers?</span></label>
           <textarea id="clientDesc" data-i18n-placeholder="form.desc.ph" placeholder="e.g. Jumbo is one of the largest supermarket chains in the Netherlands with 700+ stores. Their HR team handles thousands of new employee onboarding cases per year and is overwhelmed with repetitive policy questions..."></textarea>
         </div>
+        <div class="form-group full">
+          <label data-i18n="form.outputLang">
+            Output Language
+            <span class="info-tip" title="All slide text will be written in this language.">ⓘ</span>
+          </label>
+          <select id="outputLang">
+            <option value="en">English</option>
+            <option value="zh-TW">繁體中文</option>
+            <option value="ja">日本語</option>
+            <option value="nl">Nederlands</option>
+            <option value="ko">한국어</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
         <div class="form-group">
           <label data-i18n="form.claudeKey">Claude API Key <span class="hint" data-i18n="form.claudeKey.hint">— from Anthropic Console</span></label>
           <input type="password" id="claudeKey" placeholder="sk-ant-..." />
@@ -501,32 +517,8 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         </div>
       </div>
 
-      <!-- ── MORE OPTIONS (collapsed) — language only; mascot name moved to Step 2.5 ── -->
-      <details id="moreOptionsDetails" style="margin-top:14px; border:1px solid var(--gray-200); border-radius:10px; padding:10px 14px;">
-        <summary style="cursor:pointer; font-weight:600; font-size:13px; color:#1a1a1a; padding:4px 0;" data-i18n="form.moreOptions">
-          ⚙️ More options <span style="color:var(--gray-400); font-weight:400;">(output language)</span>
-        </summary>
-        <div class="form-grid" style="margin-top:14px;">
-          <div class="form-group full">
-            <label data-i18n="form.outputLang">
-              Output Language
-              <span class="info-tip" title="All slide text will be written in this language.">ⓘ</span>
-            </label>
-            <select id="outputLang">
-              <option value="en">English</option>
-              <option value="zh-TW">繁體中文</option>
-              <option value="ja">日本語</option>
-              <option value="nl">Nederlands</option>
-              <option value="ko">한국어</option>
-              <option value="de">Deutsch</option>
-              <option value="fr">Français</option>
-              <option value="es">Español</option>
-            </select>
-          </div>
-        </div>
-      </details>
-
-      <!-- ── Hidden state holders (color pickers + uploads moved to Step 2.5/Asset Pack) ── -->
+      <!-- ── Hidden state holders (color pickers + uploads moved to Step 2.5/Asset Pack) ──
+           designStyle defaults to 'notso-signature'; user picks final style in Step 3 sidebar. -->
       <div style="display:none" aria-hidden="true">
         <input type="color" id="color1" value="#FFD700" />
         <input type="text"  id="color1hex" value="#FFD700" />
@@ -542,10 +534,8 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         <input type="file" id="clientSiteImage" accept="image/*" onchange="handleSiteUpload(this)" />
       </div>
 
-      <hr class="divider" />
-      <div class="section-label" data-i18n="form.designSection">Design Style</div>
-      <div style="font-size:12px;color:var(--gray-500);margin:-8px 0 10px" data-i18n="form.designHint">Pick the visual style of your proposal. You can change this anytime before export.</div>
-      <div id="designStylePicker" class="design-style-picker"></div>
+      <!-- Design Style picker removed from Step 1 — user picks style in Step 3 sidebar.
+           Hidden input keeps a default so existing JS / autosave don't break. -->
       <input type="hidden" id="designStyle" value="notso-signature" />
 
       <!-- ── PITCH BRIEF (prominent, just above Generate button) ── -->
