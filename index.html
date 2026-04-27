@@ -491,23 +491,23 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <label data-i18n="form.desc">Client Description <span class="hint" data-i18n="form.desc.hint">— what do they do, who are their customers?</span></label>
           <textarea id="clientDesc" data-i18n-placeholder="form.desc.ph" placeholder="e.g. Jumbo is one of the largest supermarket chains in the Netherlands with 700+ stores. Their HR team handles thousands of new employee onboarding cases per year and is overwhelmed with repetitive policy questions..."></textarea>
         </div>
-        <div class="form-group full">
-          <label data-i18n="form.claudeKey">Claude API Key <span class="hint" data-i18n="form.claudeKey.hint">— from Anthropic Console (console.anthropic.com)</span></label>
+        <div class="form-group">
+          <label data-i18n="form.claudeKey">Claude API Key <span class="hint" data-i18n="form.claudeKey.hint">— from Anthropic Console</span></label>
           <input type="password" id="claudeKey" placeholder="sk-ant-..." />
+        </div>
+        <div class="form-group">
+          <label data-i18n="form.geminiKey">Google Gemini API Key <span class="hint" data-i18n="form.geminiKey.hint">— optional, for AI mascot generation</span></label>
+          <input type="password" id="googleGeminiKey" placeholder="AIza..." />
         </div>
       </div>
 
-      <!-- ── MORE OPTIONS (collapsed by default) ── -->
+      <!-- ── MORE OPTIONS (collapsed) — language only; mascot name moved to Step 2.5 ── -->
       <details id="moreOptionsDetails" style="margin-top:14px; border:1px solid var(--gray-200); border-radius:10px; padding:10px 14px;">
         <summary style="cursor:pointer; font-weight:600; font-size:13px; color:#1a1a1a; padding:4px 0;" data-i18n="form.moreOptions">
-          ⚙️ More options <span style="color:var(--gray-400); font-weight:400;">(mascot name, output language, Gemini key)</span>
+          ⚙️ More options <span style="color:var(--gray-400); font-weight:400;">(output language)</span>
         </summary>
         <div class="form-grid" style="margin-top:14px;">
-          <div class="form-group">
-            <label data-i18n="form.mascotName">Suggested Mascot Name <span class="hint" data-i18n="form.optional">(optional)</span></label>
-            <input type="text" id="mascotName" data-i18n-placeholder="form.mascotName.ph" placeholder="e.g. Liza, Finn, Max, Biek..." />
-          </div>
-          <div class="form-group">
+          <div class="form-group full">
             <label data-i18n="form.outputLang">
               Output Language
               <span class="info-tip" title="All slide text will be written in this language.">ⓘ</span>
@@ -522,10 +522,6 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
               <option value="fr">Français</option>
               <option value="es">Español</option>
             </select>
-          </div>
-          <div class="form-group full">
-            <label data-i18n="form.geminiKey">Google Gemini API Key <span class="hint" data-i18n="form.geminiKey.hint">— optional, for AI mascot generation (aistudio.google.com)</span></label>
-            <input type="password" id="googleGeminiKey" placeholder="AIza..." />
           </div>
         </div>
       </details>
@@ -623,6 +619,18 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
             <option value="imagen4">Imagen 4</option>
           </select>
         </div>
+        <!-- Mascot Name (moved here from Step 1 — only relevant once we're generating) -->
+        <div style="margin-bottom:12px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">
+            <span data-i18n="mascot.name.label">Suggested Mascot Name</span>
+            <span class="hint" data-i18n="form.optional">(optional)</span>
+            <span class="info-tip" title="Used as the AI's recommended mascot name in the proposal copy. Leave blank to let the AI invent one.">ⓘ</span>
+          </label>
+          <input type="text" id="mascotName"
+                 placeholder="e.g. Liza, Finn, Max, Biek..."
+                 style="width:100%;padding:10px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:inherit" />
+        </div>
+
         <!-- Reference image upload (moved here from Step 1 — only relevant for mascot generation) -->
         <div style="margin-bottom:12px;padding:12px 14px;background:#F9FAFB;border:1px solid var(--gray-200);border-radius:10px">
           <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px" data-i18n="mascot.refImg.label">Reference images <span style="font-weight:400; text-transform:none; letter-spacing:0;">(optional)</span></div>

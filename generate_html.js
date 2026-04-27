@@ -143,7 +143,7 @@ function buildTextAndContrastLayerCSS(client) {
   const heading = tc.heading || tc.headline || '#1a1a1a';   // legacy fallback
   const stat    = tc.stat    || 'var(--brand-c1)';
   const body    = tc.body    || '#1a1a1a';
-  const caption = tc.caption || tc.metadata || '#9ca3af';
+  const caption = tc.caption || tc.metadata || '#6b7280';   // medium grey, not too washed out
   return `
     /* ── 5 text-role CSS vars (overridable per-client via picker) ── */
     :root {
@@ -1230,45 +1230,49 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
   const d = proposal.s12 || {};
   const headline = stripEmoji(d.headline || 'Real-Time Dashboard');
   const lead = stripEmoji(d.lead || d.intro || 'Monitor engagement, conversations, and user satisfaction in one centralized dashboard.');
+  // Metrics: bullet list on the right side. Each metric becomes a row with
+  // a bold label + a one-line description.
   const metrics = Array.isArray(d.metrics || d.badges) ? (d.metrics || d.badges).slice(0, 4) : [];
-  const dashboardImagePath = mascotImages?.dashboard;
-
-  // Static dashboard mockup PNG (replaces the previous CSS-drawn dashboard).
-  // Lives in mockup-assets/ and served as a static asset.
   const STATIC_DASHBOARD = '/mockup-assets/dashboard-mockup.png';
-  const dashboardMockup = `
-    <div style="text-align: center;">
-      <img src="${STATIC_DASHBOARD}" alt="Real-Time Dashboard"
-           style="max-width: 100%; height: auto; max-height: 480px; object-fit: contain; border-radius: 12px;">
-    </div>
-  `;
 
-  // Small metric badges below the mockup
-  const metricBadges = metrics.length > 0 ? metrics.map((m, i) => {
-    const colors = ['var(--brand-c1)', 'var(--brand-c4)', 'var(--brand-c2)', 'var(--brand-c1)'];
-    const val = typeof m === 'object' ? stripEmoji(String(m.value || m.v || '')) : stripEmoji(String(m));
-    const lbl = typeof m === 'object' ? stripEmoji(String(m.label || m.name || '')) : '';
-    return `<div style="text-align: center;">
-      <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 800; color: ${colors[i]};">${val}</div>
-      <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: #6b7280;">${lbl}</div>
-    </div>`;
-  }).join('') : '';
+  const bullets = metrics.map((m, i) => {
+    const lbl = typeof m === 'object' ? stripEmoji(String(m.label || m.name || m.value || '')) : stripEmoji(String(m));
+    const desc = typeof m === 'object' ? stripEmoji(String(m.desc || m.description || m.value || '')) : '';
+    // Don't repeat label as desc if both empty / equal
+    const showDesc = desc && desc !== lbl;
+    return `
+      <li style="margin-bottom: 18px; display: flex; gap: 12px; align-items: baseline;">
+        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--brand-c1); flex-shrink:0; transform: translateY(2px);"></span>
+        <div style="flex:1; line-height:1.55;">
+          <span style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 700; color: #1a1a1a;">${lbl}${showDesc ? ': ' : ''}</span>
+          ${showDesc ? `<span style="font-family: 'Poppins', sans-serif; font-size: 19px; color: #4b5563;">${desc}</span>` : ''}
+        </div>
+      </li>
+    `;
+  }).join('');
 
   return `
-    <div class="slide" style="background: #F4F4F3; padding: 50px; overflow: hidden;">
+    <div class="slide" style="background: #F4F4F3; padding: 50px; display: flex; flex-direction: column; overflow: hidden;">
       <!-- Header -->
-      <div style="margin-bottom: 24px;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 40px; font-weight: 800; color: #1a1a1a; margin-bottom: 8px;">${headline}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; max-width: 70%; line-height: 1.5;">${lead}</div>
+      <div style="margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid rgba(0,0,0,0.08);">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 10px;">${headline}</div>
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 90%; line-height: 1.5;">${lead}</div>` : ''}
       </div>
 
-      <!-- Dashboard Mockup -->
-      <div style="margin-bottom: 20px;">
-        ${dashboardMockup}
+      <!-- Body: image LEFT, bullet list RIGHT -->
+      <div style="flex: 1; display: flex; gap: 40px; align-items: stretch; min-height: 0;">
+        <!-- Left: dashboard mockup -->
+        <div style="flex: 1.1; display: flex; align-items: center; justify-content: center; min-width: 0;">
+          <img src="${STATIC_DASHBOARD}" alt="Real-Time Dashboard"
+               style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 12px;">
+        </div>
+        <!-- Right: bulleted metric list -->
+        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0;">
+          <ul style="list-style: none; margin: 0; padding: 0;">
+            ${bullets}
+          </ul>
+        </div>
       </div>
-
-      <!-- Metric Badges Row -->
-      ${metricBadges ? `<div style="display: flex; justify-content: space-around; padding: 12px 0;">${metricBadges}</div>` : ''}
 
       <!-- Footer -->
       <div style="position: absolute; bottom: 30px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
