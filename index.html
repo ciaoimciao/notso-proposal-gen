@@ -691,6 +691,14 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         <div style="font-size:48px;animation:spin 2s linear infinite">🎨</div>
         <div style="margin-top:12px;font-weight:600" id="mascotLoadText" data-i18n="mascot.loading">Generating mascot designs...</div>
         <div style="font-size:12px;color:var(--gray-400);margin-top:4px" data-i18n="mascot.loadingNote">This may take 30-60 seconds</div>
+        <!-- Continue-in-background button: lets the user start reviewing the
+             proposal at Step 3 while mascots cook. A toast pings them when
+             the 9 options are ready. -->
+        <button class="btn btn-secondary" onclick="continueWhileMascotsGenerate()"
+                style="margin-top:18px;font-size:13px"
+                data-i18n="mascot.continueBg">
+          → Continue to Preview while these generate
+        </button>
       </div>
 
       <div id="mascotOptions" class="hidden">
@@ -6384,6 +6392,9 @@ async function generateMascots() {
     renderMascotGrid();
     document.getElementById('mascotLoading').classList.add('hidden');
     document.getElementById('mascotOptions').classList.remove('hidden');
+    // If user had clicked "Continue while these generate", they're sitting
+    // on Step 3 right now — ping them so they know mascots are ready.
+    if (typeof _onMascotBgReady === 'function') _onMascotBgReady();
   } catch (err) {
     document.getElementById('mascotLoading').classList.add('hidden');
     document.getElementById('mascotGenArea').classList.remove('hidden');
@@ -6395,6 +6406,7 @@ async function generateMascots() {
       '🔄 Retry',
       generateMascots
     );
+    if (typeof _onMascotBgError === 'function') _onMascotBgError(err.message);
   }
 }
 
@@ -6527,6 +6539,113 @@ function skipMascot() {
   document.getElementById('resultTitle').textContent = 'Proposal for ' + client.name;
   document.getElementById('resultSub').textContent = client.industry + ' · slides ready';
   renderAllSlides(proposal, client);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Background mascot generation
+//
+// Lets the user move on to Step 3 (Preview & Edit) while the 9 mascot
+// options are still cooking. When generation finishes a toast appears
+// at the bottom of the screen with a "Pick mascots" button that brings
+// them back to Step 2.5. If they navigate away from the toast, the
+// completed mascots also show in the Step 3 sidebar's "Mascot" tab.
+// ─────────────────────────────────────────────────────────────────────
+let _mascotBgPromise = null;   // tracks an in-flight background generation
+let _mascotBgState = 'idle';   // 'idle' | 'running' | 'ready' | 'error'
+
+function continueWhileMascotsGenerate() {
+  // If user clicked Continue before pressing Generate, we generation has
+  // already started inside generateMascots(). Keep that promise alive in the
+  // background and route the user to Step 3 right now.
+  _mascotBgState = 'running';
+  setStep(3);
+  document.getElementById('resultTitle').textContent = 'Proposal for ' + client.name;
+  document.getElementById('resultSub').textContent =
+    client.industry + ' · slides ready · 🎨 mascots generating in background...';
+  renderAllSlides(proposal, client);
+  showMascotToast({
+    state: 'running',
+    text: '🎨 Generating 9 mascot options in the background... about 30-60 seconds.'
+  });
+}
+
+function showMascotToast(opts) {
+  let host = document.getElementById('mascotToast');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'mascotToast';
+    host.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+      'background:#1a1a1a;color:#fff;padding:14px 18px;border-radius:12px;' +
+      'box-shadow:0 8px 32px rgba(0,0,0,.18);font:14px/1.4 -apple-system,Inter,sans-serif;' +
+      'z-index:9999;display:flex;gap:14px;align-items:center;max-width:90vw;';
+    document.body.appendChild(host);
+  }
+  if (opts.state === 'running') {
+    host.innerHTML = `
+      <div style="font-size:20px;animation:spin 2s linear infinite">🎨</div>
+      <div style="flex:1">${opts.text}</div>
+    `;
+  } else if (opts.state === 'ready') {
+    host.innerHTML = `
+      <div style="font-size:22px">✨</div>
+      <div style="flex:1">${opts.text}</div>
+      <button onclick="returnToMascotPicker()"
+              style="background:var(--brand-c1,#44A8B3);color:#fff;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;font-family:inherit;font-size:13px;">
+        Pick mascots →
+      </button>
+      <button onclick="dismissMascotToast()"
+              style="background:transparent;color:#9ca3af;border:none;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1;font-family:inherit;">
+        ×
+      </button>
+    `;
+  } else if (opts.state === 'error') {
+    host.innerHTML = `
+      <div style="font-size:22px">⚠️</div>
+      <div style="flex:1">${opts.text}</div>
+      <button onclick="returnToMascotPicker()"
+              style="background:#fff;color:#1a1a1a;border:none;padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;font-family:inherit;font-size:13px;">
+        Open Step 2 →
+      </button>
+      <button onclick="dismissMascotToast()"
+              style="background:transparent;color:#9ca3af;border:none;padding:6px 8px;cursor:pointer;font-size:18px;line-height:1;font-family:inherit;">
+        ×
+      </button>
+    `;
+  }
+}
+function dismissMascotToast() {
+  const host = document.getElementById('mascotToast');
+  if (host) host.remove();
+}
+function returnToMascotPicker() {
+  dismissMascotToast();
+  setStep(2.5);
+  // Re-render the option grid with the (now-ready) mascotImages
+  if (typeof renderMascotOptions === 'function') renderMascotOptions();
+}
+// Hook called by generateMascots() when the background promise resolves
+function _onMascotBgReady() {
+  _mascotBgState = 'ready';
+  // Only show the "ready" toast if user is currently OUT of Step 2.5
+  const stepIndicator = document.querySelector('#si3.active, #si3.done');
+  if (stepIndicator) {
+    showMascotToast({
+      state: 'ready',
+      text: '9 mascot options are ready. Pick the ones you like.'
+    });
+    // Refresh the Mascot tab in Step 3 sidebar so the new options appear there too
+    if (typeof _unifiedRenderBackupMascots === 'function') _unifiedRenderBackupMascots();
+  }
+}
+function _onMascotBgError(msg) {
+  _mascotBgState = 'error';
+  const stepIndicator = document.querySelector('#si3.active, #si3.done');
+  if (stepIndicator) {
+    showMascotToast({
+      state: 'error',
+      text: 'Mascot generation failed: ' + (msg || 'unknown error')
+    });
+  }
 }
 
 /* Upload mascot from file */
