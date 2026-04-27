@@ -6315,6 +6315,15 @@ async function generateMascots() {
     }
   }
 
+  // Read reference images FRESH from current state (Step 2.5 may have just
+  // uploaded — the snapshot in `client` was taken at Step 1 before any upload).
+  // Also sync back into `client` so re-renders / history-save catch the refs.
+  const liveRefs = Array.isArray(_uploadedImages?.mascotRef) ? _uploadedImages.mascotRef.slice() : [];
+  const liveUseExisting = (document.getElementById('useExistingMascot') || {}).checked === true;
+  client.mascotRefImages = liveRefs;
+  client.mascotRefImage = liveRefs[0] || '';
+  client.useExistingMascot = liveUseExisting;
+
   try {
     const resp = await fetch('/api/mascot/generate', {
       method: 'POST',
@@ -6329,10 +6338,11 @@ async function generateMascots() {
         numOptions: 9,
         engine,
         customPrompt: customPrompt || undefined,
-        referenceImage: client.mascotRefImage || '', // legacy single-image compat
-        referenceImages: Array.isArray(client.mascotRefImages) ? client.mascotRefImages : [],
-        useExistingMascot: !!client.useExistingMascot,
+        referenceImage: liveRefs[0] || '',                 // legacy single-image compat
+        referenceImages: liveRefs,                          // current uploads at Step 2.5
+        useExistingMascot: liveUseExisting,
         faithfulMode: !!(document.getElementById('mascotFaithful') || {}).checked,
+        mimicMode: !!(document.getElementById('mascotMimicRef') || {}).checked,
         refPromptOverride: (document.getElementById('mascotRefPromptOverride') || {}).value || '',
         variations: customVariations || undefined,
       })
