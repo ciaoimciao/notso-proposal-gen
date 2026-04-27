@@ -719,9 +719,11 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
             // IMPORTANT: each option's "desc" must be ≤2 short sentences.
             // The renderer caps at 3 max but cards look best at 2.
             // Keep it punchy: archetype + tone + one specific personality detail.
-            "option_a":{"name":"","archetype":"The [Archetype]","traits":["","","",""],"desc":"≤2 short sentences","why":"1 sentence fit","formal":40,"playful":70},
-            "option_b":{"name":"","archetype":"","traits":["","","",""],"desc":"≤2 short sentences","why":"1 sentence fit","formal":70,"playful":30},
-            "option_c":{"name":"","archetype":"","traits":["","","",""],"desc":"≤2 short sentences","why":"1 sentence fit","formal":55,"playful":55}},
+            // traits MUST be exactly 3 items — renderer hard-truncates and
+            // cards layout breaks if a 4th tag wraps to the next line.
+            "option_a":{"name":"","archetype":"The [Archetype]","traits":["","",""],"desc":"≤2 short sentences","why":"1 sentence fit","formal":40,"playful":70},
+            "option_b":{"name":"","archetype":"","traits":["","",""],"desc":"≤2 short sentences","why":"1 sentence fit","formal":70,"playful":30},
+            "option_c":{"name":"","archetype":"","traits":["","",""],"desc":"≤2 short sentences","why":"1 sentence fit","formal":55,"playful":55}},
 
     "s7":  {"name":"recommended mascot name", "rec_note":"which of s6 you recommend (1 sentence)",
             "lead":"so-what intro to this character. No em-dash.",

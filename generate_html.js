@@ -943,10 +943,16 @@ function renderSlide_S6_MascotSelection(proposal, client, mascotImages) {
       const nameText = stripEmoji(opt.name || `Option ${String.fromCharCode(65 + idx)}`);
       const archetype = stripEmoji(opt.archetype || '');
       const whyText = stripEmoji(opt.why || '');
-      const traits = Array.isArray(opt.traits) ? opt.traits.slice(0, 4) : [];
+      // Cap at 3 traits — keep them on a SINGLE row (nowrap) so the card
+      // grid never breaks on a long fourth tag. AI prompt asks for 3 but we
+      // hard-truncate here just in case Claude returns extras.
+      const traits = Array.isArray(opt.traits) ? opt.traits.slice(0, 3) : [];
+      // Tags MUST be centered — the parent card is text-align: center, but
+      // we also lock flex centering at the container level so pill widths
+      // don't drag the row to one side.
       const traitPills = traits.length ? `
-        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:14px;">
-          ${traits.map(t => `<span style="background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:5px 14px;font-size:14px;color:#374151;">${stripEmoji(t)}</span>`).join('')}
+        <div style="display:flex;flex-wrap:nowrap;gap:6px;justify-content:center;align-items:center;width:100%;margin-bottom:14px;overflow:hidden;">
+          ${traits.map(t => `<span style="background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:5px 12px;font-size:13px;color:#374151;white-space:nowrap;">${stripEmoji(t)}</span>`).join('')}
         </div>` : '';
       // Font sizes bumped +3px from previous (16→19 name, 11→14 archetype/trait,
       //   12→15 desc, 11→14 why) so cards read at a glance from the back of a room.
@@ -1250,21 +1256,22 @@ function renderSlide_S11_KnowledgeBase(proposal, client, mascotImages) {
   const lead = stripEmoji(d.lead || d.intro || '');
   const categories = (d.categories || []).slice(0, 3);
 
+  // Per-slide cover key (cover_s11) — falls back to shared cover.
+  const mascotImagePath = mascotImages?.cover_s11 || mascotImages?.cover;
+
+  // Compact input → output rows. Mascot icon is GONE from the middle —
+  // it lives on the right side of the slide as a full-height hero now.
   const categoryRows = categories
     .map((cat, i) => `
-      <div style="display: flex; align-items: center; gap: 24px; padding: 28px; background: white; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        <div style="flex: 1;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Input</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 600; color: #1a1a1a;">${stripEmoji(cat.input_label || cat.title || '')}</div>
+      <div style="display: flex; align-items: center; gap: 18px; padding: 24px 26px; background: white; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Input</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 600; color: #1a1a1a; line-height: 1.35;">${stripEmoji(cat.input_label || cat.title || '')}</div>
         </div>
-        <div style="width: 40px; text-align: center; font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c1);">→</div>
-        <div style="width: 80px; height: 80px; flex-shrink: 0; background: #F4F4F3; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-          ${getImageHTML(mascotImages?.cover, 'Mascot Icon', '', 'cover')}
-        </div>
-        <div style="width: 40px; text-align: center; font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: var(--brand-c1);">→</div>
-        <div style="flex: 1;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Output</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 600; color: #1a1a1a;">${stripEmoji(cat.output_label || cat.output || '')}</div>
+        <div style="flex-shrink: 0; font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 700; color: var(--brand-c1);">→</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Output</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 600; color: #1a1a1a; line-height: 1.35;">${stripEmoji(cat.output_label || cat.output || '')}</div>
         </div>
       </div>
     `)
@@ -1273,14 +1280,21 @@ function renderSlide_S11_KnowledgeBase(proposal, client, mascotImages) {
   return `
     <div class="slide" style="background: #F4F4F3; padding: 50px;">
       <!-- Header -->
-      <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
+      <div style="margin-bottom: 30px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 24px;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 12px;">${headline}</div>
         ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
-      <!-- Process Flow -->
-      <div style="margin-bottom: 50px;">
-        ${categoryRows}
+      <!-- Body: input/output rows LEFT, mascot image RIGHT -->
+      <div style="display: flex; gap: 36px; align-items: stretch;">
+        <!-- Left: 3 input → output rows -->
+        <div style="flex: 1.4; min-width: 0;">
+          ${categoryRows}
+        </div>
+        <!-- Right: full-height mascot image area -->
+        <div style="flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center;">
+          ${getImageHTML(mascotImagePath, 'Mascot', 'max-width:100%; max-height:420px; object-fit:contain;', 'cover_s11')}
+        </div>
       </div>
 
       <!-- Footer -->
@@ -1429,12 +1443,17 @@ function renderSlide_S13_ROIEvidence(proposal, client) {
   `;
 }
 
-function renderSlide_S14_Roadmap(proposal, client) {
+function renderSlide_S14_Roadmap(proposal, client, mascotImages) {
   const d = proposal.s14 || {};
   const headline = stripEmoji(d.headline || 'Roadmap');
   const lead = stripEmoji(d.lead || d.intro || '');
   const rawMilestones = Array.isArray(d.milestones) ? d.milestones : Array.isArray(d.phases) ? d.phases : [];
   const milestones = rawMilestones.slice(0, 5);
+
+  // Per-slide mascot key (cover_s14) — falls back to shared cover. Renders
+  // bottom-right under the phase cards as a friendly accent so the lower
+  // half of the slide isn't dead space.
+  const mascotImagePath = mascotImages?.cover_s14 || mascotImages?.cover;
 
   const phaseColors = ['var(--brand-c1)', 'var(--brand-c3)', 'var(--brand-c1)', 'var(--brand-c2)', 'var(--brand-c5)'];
   const timelineItems = milestones
@@ -1465,11 +1484,18 @@ function renderSlide_S14_Roadmap(proposal, client) {
       </div>
 
       <!-- Timeline -->
-      <div style="display: flex; gap: 16px; margin-bottom: 50px; position: relative;">
+      <div style="display: flex; gap: 16px; margin-bottom: 30px; position: relative;">
         <div style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: var(--brand-c1); z-index: 0;"></div>
         <div style="display: flex; gap: 16px; width: 100%; position: relative; z-index: 1;">
           ${timelineItems}
         </div>
+      </div>
+
+      <!-- Mascot image area (bottom-right). Per-slide cover_s14 key, falls
+           back to the shared cover. Sits below the timeline so it doesn't
+           crowd the phase cards. -->
+      <div style="position: absolute; bottom: 90px; right: 50px; width: 320px; height: 280px; display: flex; align-items: flex-end; justify-content: flex-end; pointer-events: none;">
+        ${getImageHTML(mascotImagePath, 'Mascot', 'max-height:100%; max-width:100%; object-fit:contain;', 'cover_s14')}
       </div>
 
       <!-- Footer -->
@@ -1774,7 +1800,7 @@ function renderSlide(slideId, proposal, client, mascotImages) {
     s11: () => renderSlide_S11_KnowledgeBase(proposal, client, mascotImages),
     s12: () => renderSlide_S12_DataInsights(proposal, client, mascotImages),
     s13: () => renderSlide_S13_ROIEvidence(proposal, client),
-    s14: () => renderSlide_S14_Roadmap(proposal, client),
+    s14: () => renderSlide_S14_Roadmap(proposal, client, mascotImages),
     s15: () => renderSlide_S15_Pricing(proposal, client),
     s16: () => renderSlide_S16_PromoMaterials(proposal, client, mascotImages),
     s17: () => renderSlide_S17_Licensing(proposal, client),
