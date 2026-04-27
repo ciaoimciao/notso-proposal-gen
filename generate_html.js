@@ -1540,27 +1540,29 @@ function renderSlide_S15_Pricing(proposal, client) {
     // per-client reasoning in d.reasoning instead.
     const isHighlight = false;
     return `
-      <div style="background: white; padding: 22px 20px; border-radius: 12px; border: 1px solid #f0f0f0; box-shadow: 0 2px 6px rgba(0,0,0,0.04); position: relative;">
+      <div style="background: white; padding: 26px 24px; border-radius: 14px; border: 1px solid #f0f0f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative;">
 
-        <div style="font-family: 'Poppins', sans-serif; font-size: 21px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px;">${tier.name}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 30px; font-weight: 800; color: ${colors[i]}; margin-bottom: 4px; line-height: 1;">${tier.price}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280; margin-bottom: 12px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px;">${tier.name}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 34px; font-weight: 800; color: ${colors[i]}; margin-bottom: 6px; line-height: 1;">${tier.price}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px; line-height: 1.5;">
           ${tier.users} · ${tier.journeys}
         </div>
-        <ul style="list-style: none; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; font-size: 14px; color: #4b5563; line-height: 1.65;">
+        <ul style="list-style: none; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; font-size: 17px; color: #4b5563; line-height: 1.55;">
           ${tier.features.map(f => `<li style="margin-bottom: 4px;">✓ ${stripEmoji(f)}</li>`).join('')}
         </ul>
       </div>
     `;
   }).join('');
 
+  // Add-ons rendered as full-width single-column rows for breathing room
+  // (per user reference layout — 雙欄太擠).
   const addonCards = FIXED_PRICING_ADDONS.map(addon => `
-    <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px 14px; border-radius: 8px; border: 1px solid #f0f0f0;">
+    <div style="display: flex; align-items: center; gap: 16px; background: white; padding: 12px 20px; border-radius: 10px; border: 1px solid #f0f0f0;">
       <div style="flex: 1;">
-        <span style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: #1a1a1a;">${stripEmoji(addon.name)}</span>
-        <span style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280;"> — ${stripEmoji(addon.desc)}</span>
+        <span style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #1a1a1a;">${stripEmoji(addon.name)}</span>
+        <span style="font-family: 'Poppins', sans-serif; font-size: 15px; color: #6b7280;"> — ${stripEmoji(addon.desc)}</span>
       </div>
-      <div style="font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 700; color: var(--brand-c1); white-space: nowrap;">${stripEmoji(addon.price)}</div>
+      <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: var(--brand-c1); white-space: nowrap;">${stripEmoji(addon.price)}</div>
     </div>
   `).join('');
 
@@ -1577,10 +1579,10 @@ function renderSlide_S15_Pricing(proposal, client) {
         ${tierCards}
       </div>
 
-      <!-- Add-ons Section: compact list -->
+      <!-- Add-ons Section: full-width single-column rows -->
       <div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 21px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px;">Add-ons</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 26px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">Add-ons</div>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
           ${addonCards}
         </div>
       </div>
