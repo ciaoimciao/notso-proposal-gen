@@ -1005,11 +1005,8 @@ function renderSlide_S6_MascotSelection(proposal, client, mascotImages) {
       <div style="display: grid; grid-template-columns: ${colsClass}; gap: 24px; margin-bottom: 50px; max-width: ${count === 1 ? '600px' : count === 2 ? '900px' : 'none'}; margin-left: auto; margin-right: auto;">
         ${optionCards}
       </div>
-
-      <!-- Footer -->
-      <div style="position: absolute; bottom: 40px; left: 50px; font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af;">
-        Prepared for ${stripEmoji(client.name)} · by notso.ai
-      </div>
+      <!-- No footer on S6 — the option cards already crowd the slide and
+           "Prepared for X" felt redundant when the cover slide says it. -->
     </div>
   `;
 }
