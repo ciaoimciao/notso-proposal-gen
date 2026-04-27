@@ -3544,6 +3544,7 @@ async function exportPDFFromPreview() {
 const _UNIFIED_SLOTS = {
   s1:  [{ key: 'cover_s1', label: 'Cover image' }],
   s3:  [{ key: 'cover_s3', label: 'Mascot (bottom-right · Apologetic by default)' }],
+  s4:  [{ key: 'cover_s4', label: 'Mascot (bottom-right · Curious by default)' }],
   s6:  [
     { key: 'option_a', label: 'Option A' },
     { key: 'option_b', label: 'Option B' },
@@ -7055,19 +7056,35 @@ function autoAssignAssetPackToSlides() {
     if (happy && happy.dataUrl) savedMascotPaths.cover = happy.dataUrl;
   }
 
-  // Auto-wire the two composed mockups into S9 so the user doesn't have to
-  // hunt through the dropdown. mock-phone-chat goes to the left hero,
-  // mock-website goes to the right. Manual user picks (already in
-  // _assetSlideAssignments) win — we only fill if the slot is empty.
+  // Auto-wire the two composed mockups into the slides that need them.
+  // These ALWAYS overwrite — mock-phone-chat IS the canonical phone
+  // mockup for cover_s9, mock-website IS the canonical laptop mockup
+  // for cover_s9_laptop / cover_s10. If a stale older assignment is in
+  // _assetSlideAssignments (e.g. from a previous session that pointed
+  // cover_s9 at a small mascot icon), it gets cleanly replaced.
   const phoneMock   = byId.get('mock-phone-chat');
   const websiteMock = byId.get('mock-website');
-  if (phoneMock && phoneMock.dataUrl && !_assetSlideAssignments['cover_s9']) {
+  if (phoneMock && phoneMock.dataUrl) {
     savedMascotPaths['cover_s9'] = phoneMock.dataUrl;
     _assetSlideAssignments['cover_s9'] = { assetId: phoneMock.id, file: phoneMock.file };
   }
-  if (websiteMock && websiteMock.dataUrl && !_assetSlideAssignments['cover_s9_laptop']) {
+  if (websiteMock && websiteMock.dataUrl) {
     savedMascotPaths['cover_s9_laptop'] = websiteMock.dataUrl;
+    savedMascotPaths['cover_s10']       = websiteMock.dataUrl;   // S10 also defaults to laptop
     _assetSlideAssignments['cover_s9_laptop'] = { assetId: websiteMock.id, file: websiteMock.file };
+    _assetSlideAssignments['cover_s10']       = { assetId: websiteMock.id, file: websiteMock.file };
+  }
+
+  // S3 — Apologetic mascot auto-pinned (cover_s3 falls back to expression_4
+  // server-side, but pinning it here lets the dropdown reflect the auto pick).
+  const apologetic = byId.get('expr-apologetic');
+  if (apologetic && apologetic.dataUrl) {
+    if (!savedMascotPaths['cover_s3']) savedMascotPaths['cover_s3'] = apologetic.dataUrl;
+  }
+  // S4 — Curious mascot auto-pinned for the Market Opportunity slide.
+  const curious = byId.get('expr-curious');
+  if (curious && curious.dataUrl) {
+    if (!savedMascotPaths['cover_s4']) savedMascotPaths['cover_s4'] = curious.dataUrl;
   }
 }
 
@@ -7139,6 +7156,7 @@ function renderAssetPackResults() {
               <option value=""${sel('')}>— assign to slide —</option>
               <option value="cover_s1"${sel('cover_s1')}>S1 Cover</option>
               <option value="cover_s3"${sel('cover_s3')}>S3 Pain Points (bottom-right)</option>
+              <option value="cover_s4"${sel('cover_s4')}>S4 Market Opportunity (bottom-right)</option>
               <option value="option_a"${sel('option_a')}>S6 Option A</option>
               <option value="option_b"${sel('option_b')}>S6 Option B</option>
               <option value="option_c"${sel('option_c')}>S6 Option C</option>

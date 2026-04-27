@@ -170,7 +170,10 @@ async function composePhoneMockup({
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: N, height: N, deviceScaleFactor: outputSize / N });
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
+    // domcontentloaded — every image in the HTML is an inline data: URL,
+    // so there's nothing on the network to wait for. networkidle0 was
+    // timing out at 60s on Vercel and silently failing the asset task.
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
     const buf = await page.screenshot({
       type: 'png',
       omitBackground: true,
@@ -200,6 +203,21 @@ async function composeLaptopMockup({
   const finalMascotLine = mascotLine || m;
   const finalUserLine = userLine || u;
   const frameDataUrl = readFrameAsDataUrl(LAPTOP.framePath);
+
+  // Fallback website background: when the user didn't upload a site
+  // screenshot, we still need SOMETHING in the laptop screen — otherwise
+  // the slide looks half-broken (just chat widget floating on white).
+  // mockup-assets/website.png ships in the repo as a default sample.
+  let effectiveWebsite = websiteImageUrl;
+  if (!effectiveWebsite) {
+    try {
+      const buf = fs.readFileSync(path.join(__dirname, 'mockup-assets', 'website.png'));
+      effectiveWebsite = 'data:image/png;base64,' + buf.toString('base64');
+    } catch (e) {
+      console.warn('  ⚠️ default website.png missing, laptop screen will be blank:', e.message);
+      effectiveWebsite = '';
+    }
+  }
 
   const N = 1000;
   const k = N / LAPTOP.size;
@@ -303,7 +321,7 @@ async function composeLaptopMockup({
   <body>
     <div class="stage">
       <div class="screen">
-        ${websiteImageUrl ? `<img class="website" src="${websiteImageUrl}" alt="">` : ''}
+        ${effectiveWebsite ? `<img class="website" src="${effectiveWebsite}" alt="">` : ''}
       </div>
       <div class="widget">
         <div class="widget-header">
@@ -327,7 +345,10 @@ async function composeLaptopMockup({
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: N, height: N, deviceScaleFactor: outputSize / N });
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
+    // domcontentloaded — every image in the HTML is an inline data: URL,
+    // so there's nothing on the network to wait for. networkidle0 was
+    // timing out at 60s on Vercel and silently failing the asset task.
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
     const buf = await page.screenshot({
       type: 'png',
       omitBackground: true,

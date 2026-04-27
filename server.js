@@ -1817,8 +1817,11 @@ ${schema}`;
             continue;   // skip the Gemini fallback loop
           } catch (compErr) {
             console.error(`    ❌ Compositor failed for ${task.label}: ${compErr.message}`);
+            console.error(`       stack:`, compErr.stack);
             lastErr = `compositor: ${compErr.message}`;
-            // Fall through to Gemini path as a fallback
+            // Fall through to Gemini path as a fallback. The Gemini prompt
+            // for mock-phone-chat / mock-website is a generic phone/website
+            // mockup, so the user still gets *something* in that asset slot.
           }
         }
 

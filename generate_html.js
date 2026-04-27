@@ -807,7 +807,7 @@ function renderSlide_S3_PainPoints(proposal, client, mascotImages) {
       </div>
 
       <!-- Mascot image area (bottom-right). Defaults to Apologetic expression. -->
-      <div style="position: absolute; bottom: 80px; right: 50px; width: 280px; height: 240px; display: flex; align-items: flex-end; justify-content: flex-end; pointer-events: none;">
+      <div style="position: absolute; bottom: 80px; right: 50px; width: 280px; height: 240px; display: flex; align-items: flex-end; justify-content: flex-end;">
         ${getImageHTML(mascotImagePath, 'Apologetic Mascot', 'max-height:100%; max-width:100%; object-fit:contain;', 'cover_s3')}
       </div>
 
@@ -819,10 +819,14 @@ function renderSlide_S3_PainPoints(proposal, client, mascotImages) {
   `;
 }
 
-function renderSlide_S4_MarketOpportunity(proposal, client) {
+function renderSlide_S4_MarketOpportunity(proposal, client, mascotImages) {
   const d = proposal.s4 || {};
   const headline = stripEmoji(d.headline || 'Market Opportunity');
   const lead = stripEmoji(d.lead || d.intro || '');
+  // Per-slide mascot zone (cover_s4) — defaults to expression_2 (Curious)
+  // which matches the "exploring market opportunity" tone. User can
+  // override or resize via the transform panel like any other slot.
+  const mascotImagePath = mascotImages?.cover_s4 || mascotImages?.expression_2 || mascotImages?.cover;
   // These can be objects {value, label, source} or plain strings
   const getStatValue = (v, fallback) => {
     if (!v) return fallback;
@@ -863,11 +867,18 @@ function renderSlide_S4_MarketOpportunity(proposal, client) {
       </div>
 
       <!-- Insight Box -->
-      <div style="background: var(--brand-c1-wash); border-left: 4px solid var(--brand-c1); padding: 24px; border-radius: 8px;">
+      <div style="background: var(--brand-c1-wash); border-left: 4px solid var(--brand-c1); padding: 24px; border-radius: 8px; max-width: 780px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 600; color: var(--brand-c1); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Market Gap</div>
         <div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #1a1a1a; line-height: 1.6;">
           Notso fills a unique gap by providing AI companions that combine personality, empathy, and intelligence to create genuine user connections.
         </div>
+      </div>
+
+      <!-- Mascot image area (bottom-right · resizable via click). Defaults
+           to expression_2 (Curious) — fits the "looking at market data"
+           tone. User can swap or resize like any other slot. -->
+      <div style="position: absolute; bottom: 80px; right: 50px; width: 280px; height: 240px; display: flex; align-items: flex-end; justify-content: flex-end;">
+        ${getImageHTML(mascotImagePath, 'Mascot', 'max-height:100%; max-width:100%; object-fit:contain;', 'cover_s4')}
       </div>
 
       <!-- Footer -->
@@ -1262,7 +1273,7 @@ function renderSlide_S10_ChatflowDesign(proposal, client, mascotImages) {
       <!-- Laptop mockup area (bottom-right). Defaults to cover_s9_laptop (the
            composed laptop+chat-widget mockup from the asset pack). Wider
            aspect ratio than the mascot zones to fit the laptop frame. -->
-      <div style="position: absolute; bottom: 80px; right: 50px; width: 380px; height: 280px; display: flex; align-items: flex-end; justify-content: flex-end; pointer-events: none;">
+      <div style="position: absolute; bottom: 80px; right: 50px; width: 380px; height: 280px; display: flex; align-items: flex-end; justify-content: flex-end;">
         ${getImageHTML(laptopImagePath, 'Laptop Mockup', 'max-height:100%; max-width:100%; object-fit:contain;', 'cover_s10')}
       </div>
 
@@ -1518,7 +1529,7 @@ function renderSlide_S14_Roadmap(proposal, client, mascotImages) {
       <!-- Mascot image area (bottom-right). Per-slide cover_s14 key, falls
            back to the shared cover. Sits below the timeline so it doesn't
            crowd the phase cards. -->
-      <div style="position: absolute; bottom: 90px; right: 50px; width: 320px; height: 280px; display: flex; align-items: flex-end; justify-content: flex-end; pointer-events: none;">
+      <div style="position: absolute; bottom: 90px; right: 50px; width: 320px; height: 280px; display: flex; align-items: flex-end; justify-content: flex-end;">
         ${getImageHTML(mascotImagePath, 'Mascot', 'max-height:100%; max-width:100%; object-fit:contain;', 'cover_s14')}
       </div>
 
@@ -1576,49 +1587,50 @@ function renderSlide_S15_Pricing(proposal, client) {
     // per-client reasoning in d.reasoning instead.
     const isHighlight = false;
     return `
-      <div style="background: white; padding: 26px 24px; border-radius: 14px; border: 1px solid #f0f0f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative;">
+      <div style="background: white; padding: 22px 22px; border-radius: 12px; border: 1px solid #f0f0f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); position: relative;">
 
-        <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px;">${tier.name}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 34px; font-weight: 800; color: ${colors[i]}; margin-bottom: 6px; line-height: 1;">${tier.price}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #6b7280; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px; line-height: 1.5;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px;">${tier.name}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 30px; font-weight: 800; color: ${colors[i]}; margin-bottom: 4px; line-height: 1;">${tier.price}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; line-height: 1.45;">
           ${tier.users} · ${tier.journeys}
         </div>
-        <ul style="list-style: none; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; font-size: 17px; color: #4b5563; line-height: 1.55;">
-          ${tier.features.map(f => `<li style="margin-bottom: 4px;">✓ ${stripEmoji(f)}</li>`).join('')}
+        <ul style="list-style: none; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; font-size: 15px; color: #4b5563; line-height: 1.5;">
+          ${tier.features.map(f => `<li style="margin-bottom: 3px;">✓ ${stripEmoji(f)}</li>`).join('')}
         </ul>
       </div>
     `;
   }).join('');
 
-  // Add-ons rendered as full-width single-column rows for breathing room
-  // (per user reference layout — 雙欄太擠).
+  // Add-ons: ALWAYS single-column full-width rows (1fr, NOT 1fr 1fr).
+  // The 2-column layout on a 1440-wide slide pushes content past the
+  // page edge. Single column keeps every row inside the safe area.
   const addonCards = FIXED_PRICING_ADDONS.map(addon => `
-    <div style="display: flex; align-items: center; gap: 16px; background: white; padding: 12px 20px; border-radius: 10px; border: 1px solid #f0f0f0;">
-      <div style="flex: 1;">
-        <span style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: #1a1a1a;">${stripEmoji(addon.name)}</span>
-        <span style="font-family: 'Poppins', sans-serif; font-size: 15px; color: #6b7280;"> — ${stripEmoji(addon.desc)}</span>
+    <div style="display: flex; align-items: center; gap: 14px; background: white; padding: 9px 18px; border-radius: 10px; border: 1px solid #f0f0f0;">
+      <div style="flex: 1; min-width: 0;">
+        <span style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: #1a1a1a;">${stripEmoji(addon.name)}</span>
+        <span style="font-family: 'Poppins', sans-serif; font-size: 14px; color: #6b7280;"> — ${stripEmoji(addon.desc)}</span>
       </div>
-      <div style="font-family: 'Poppins', sans-serif; font-size: 16px; font-weight: 700; color: var(--brand-c1); white-space: nowrap;">${stripEmoji(addon.price)}</div>
+      <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: var(--brand-c1); white-space: nowrap;">${stripEmoji(addon.price)}</div>
     </div>
   `).join('');
 
   return `
-    <div class="slide" style="background: #F4F4F3; padding: 40px 50px; overflow: hidden;">
-      <!-- Header (48px headline + 20px lead — matches other section slides) -->
-      <div style="margin-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 16px;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 12px;">${headline}</div>
-        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.5;">${lead}</div>` : ''}
+    <div class="slide" style="background: #F4F4F3; padding: 36px 50px 40px; overflow: hidden;">
+      <!-- Header — slim version so the tier cards + add-ons fit in 810px. -->
+      <div style="margin-bottom: 16px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 12px;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 44px; font-weight: 800; color: #1a1a1a; margin-bottom: 8px;">${headline}</div>
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; max-width: 78%; line-height: 1.5;">${lead}</div>` : ''}
       </div>
 
       <!-- Pricing Tiers: 3 columns -->
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px;">
         ${tierCards}
       </div>
 
       <!-- Add-ons Section: full-width single-column rows -->
       <div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 26px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">Add-ons</div>
-        <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+        <div style="font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px;">Add-ons</div>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 6px;">
           ${addonCards}
         </div>
       </div>
@@ -1781,20 +1793,20 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
         <!-- Contact Grid: 2x2 -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Email</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: white; font-weight: 600;">${email}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Email</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: white; font-weight: 600;">${email}</div>
           </div>
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Phone</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: white; font-weight: 600;">${phone}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Phone</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: white; font-weight: 600;">${phone}</div>
           </div>
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Web</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: white; font-weight: 600;">${website}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Web</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: white; font-weight: 600;">${website}</div>
           </div>
           <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 13px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Office</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: white; font-weight: 600;">Amsterdam, NL</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: ${c2}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Office</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: white; font-weight: 600;">Amsterdam, NL</div>
           </div>
         </div>
       </div>
@@ -1814,7 +1826,7 @@ function renderSlide(slideId, proposal, client, mascotImages) {
     s1: () => renderSlide_S1_Cover(proposal, client, mascotImages),
     s2: (selected) => renderSlide_S2_TableOfContents(proposal, client, selected),
     s3: () => renderSlide_S3_PainPoints(proposal, client, mascotImages),
-    s4: () => renderSlide_S4_MarketOpportunity(proposal, client),
+    s4: () => renderSlide_S4_MarketOpportunity(proposal, client, mascotImages),
     s5: () => renderSlide_S5_CoreFeatures(proposal, client),
     s6: () => renderSlide_S6_MascotSelection(proposal, client, mascotImages),
     s7: () => renderSlide_S7_MascotDesign(proposal, client, mascotImages),
