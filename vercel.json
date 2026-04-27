@@ -7,7 +7,7 @@
       "src": "server.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": "{index.html,slides/**,fixtures/**,notso_style_prompt.js,post_process.py,generate.py,zip_assetpack.py,generate_html.js,notso_style_lock.md}",
+        "includeFiles": "{index.html,slides/**,fixtures/**,mockup-assets/**,notso_style_prompt.js,post_process.py,generate.py,zip_assetpack.py,generate_html.js,notso_style_lock.md}",
         "memory": 1024,
         "maxDuration": 60
       }

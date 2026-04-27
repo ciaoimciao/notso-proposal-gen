@@ -4865,18 +4865,23 @@ function _escHtml(s) {
 // vars into the rendered iframe live (no preview re-render needed for color
 // tweaks). On Save / Export the values are persisted server-side too.
 // ─────────────────────────────────────────────────────────────────────
+// 5-role text taxonomy (down from 6, per user feedback):
+//   display — giant cover/thank-you text (rarely changed)
+//   heading — page title + lead block (top of every section slide)
+//   stat    — large numbers (currency, %, market values)
+//   body    — text inside cards (titles, descriptions, bullets)
+//   caption — footers, page tags, "Prepared for X" line
 const _TEXT_ROLES = [
-  { key:'display',  label:'Display',  hint:'64-108px' },
-  { key:'headline', label:'Headline', hint:'48px' },
-  { key:'stat',     label:'Numbers',  hint:'28-40px' },
-  { key:'body',     label:'Body',     hint:'18-22px' },
-  { key:'caption',  label:'Caption',  hint:'16-17px' },
-  { key:'metadata', label:'Metadata', hint:'12-13px' },
+  { key:'display', label:'Display',          hint:'cover, thank-you (rare)' },
+  { key:'heading', label:'Heading + Lead',   hint:'page title + line below' },
+  { key:'stat',    label:'Numbers',          hint:'currency, %, large stats' },
+  { key:'body',    label:'Body',             hint:'card titles + description' },
+  { key:'caption', label:'Caption',          hint:'footer, page tags' },
 ];
 const _TEXT_PRESETS = {
-  default:    { display:'#1a1a1a', headline:'#1a1a1a', stat:'',         body:'#1a1a1a', caption:'#6b7280', metadata:'#9ca3af' },
-  'brand-led':{ display:'',         headline:'',         stat:'',         body:'#1a1a1a', caption:'#6b7280', metadata:'#9ca3af' }, // empty = use brand-c1
-  mono:       { display:'#1a1a1a', headline:'#1a1a1a', stat:'#1a1a1a', body:'#1a1a1a', caption:'#444444', metadata:'#888888' },
+  default:    { display:'#1a1a1a', heading:'#1a1a1a',     stat:'',        body:'#1a1a1a', caption:'#9ca3af' },
+  'brand-led':{ display:'',         heading:'',             stat:'',        body:'#1a1a1a', caption:'#9ca3af' }, // empty → brand-c1
+  mono:       { display:'#1a1a1a', heading:'#1a1a1a',     stat:'#1a1a1a', body:'#1a1a1a', caption:'#888888' },
 };
 
 function _getCanvasMode() {

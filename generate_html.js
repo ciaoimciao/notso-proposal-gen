@@ -133,52 +133,109 @@ function buildBrandCSS(client) {
 // ─────────────────────────────────────────────────────────────────────
 function buildTextAndContrastLayerCSS(client) {
   const tc = (client && client.textColors) || {};
-  const display  = tc.display  || '#1a1a1a';
-  const headline = tc.headline || '#1a1a1a';
-  const stat     = tc.stat     || 'var(--brand-c1)';
-  const body     = tc.body     || '#1a1a1a';
-  const caption  = tc.caption  || '#6b7280';
-  const metadata = tc.metadata || '#9ca3af';
+  // 5-role taxonomy (down from 6, per user feedback):
+  //   display  — giant cover/thank-you text (structural, rarely tweaked)
+  //   heading  — page title + lead block ("Pain Points" + the line below it)
+  //   stat     — large numbers (currency, %, counts in cards)
+  //   body     — text inside cards (titles, descriptions, bullet lists)
+  //   caption  — footers, page tags, "Prepared for X · by notso.ai"
+  const display = tc.display || '#1a1a1a';
+  const heading = tc.heading || tc.headline || '#1a1a1a';   // legacy fallback
+  const stat    = tc.stat    || 'var(--brand-c1)';
+  const body    = tc.body    || '#1a1a1a';
+  const caption = tc.caption || tc.metadata || '#9ca3af';
   return `
-    /* ── Text role variables (overridable per-client via picker) ── */
+    /* ── 5 text-role CSS vars (overridable per-client via picker) ── */
     :root {
-      --text-display:   ${display};
-      --text-headline:  ${headline};
-      --text-stat:      ${stat};
-      --text-body:      ${body};
-      --text-caption:   ${caption};
-      --text-metadata:  ${metadata};
-      /* These get overwritten by the auto-contrast script below */
+      --text-display:  ${display};
+      --text-heading:  ${heading};
+      --text-stat:     ${stat};
+      --text-body:     ${body};
+      --text-caption:  ${caption};
+      /* Auto-contrast (computed by inline script based on each brand color) */
       --text-on-c1: #1a1a1a;
       --text-on-c2: #ffffff;
       --text-on-c3: #1a1a1a;
       --text-on-c4: #1a1a1a;
     }
 
-    /* ── Map font-size to text role (overrides inline color) ── */
+    /* ── A. DISPLAY: 64-108px (cover / thank-you giants, mascot name) ── */
     .slide [style*="font-size: 64px"],
     .slide [style*="font-size: 72px"],
     .slide [style*="font-size: 90px"],
     .slide [style*="font-size: 96px"],
     .slide [style*="font-size: 108px"] { color: var(--text-display) !important; }
 
-    .slide [style*="font-size: 48px"]  { color: var(--text-headline) !important; }
+    /* ── B. HEADING: page title (48px) + lead/intro line (17-22px on slide bg) ──
+       The lead is structurally part of the heading block. We force lead to use
+       --text-heading by targeting common slide-bg locations (NOT inside cards). */
+    .slide [style*="font-size: 48px"] { color: var(--text-heading) !important; }
+    /* Lead text — sits directly on the slide bg, after the 48px headline.
+       It uses 17-22px. Keep it SAME color as the heading. */
+    .slide [style*="max-width: 70%"][style*="font-size: 22px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 20px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 19px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 18px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 17px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 16px"],
+    .slide [style*="max-width: 90%"][style*="font-size: 22px"],
+    .slide [style*="max-width: 90%"][style*="font-size: 20px"] {
+      color: var(--text-heading) !important;
+    }
 
+    /* ── C. STAT: 28-40px (currency, %, large numbers, market values) ── */
     .slide [style*="font-size: 28px"],
     .slide [style*="font-size: 32px"],
     .slide [style*="font-size: 36px"],
     .slide [style*="font-size: 40px"]  { color: var(--text-stat) !important; }
 
-    .slide [style*="font-size: 18px"],
-    .slide [style*="font-size: 19px"],
+    /* ── D. BODY: 16-22px inside cards (titles, descriptions, bullets) ──
+       After the lead carve-out above, remaining 16-22px is card content. */
+    .slide [style*="font-size: 22px"],
     .slide [style*="font-size: 20px"],
-    .slide [style*="font-size: 22px"]  { color: var(--text-body) !important; }
+    .slide [style*="font-size: 19px"],
+    .slide [style*="font-size: 18px"],
+    .slide [style*="font-size: 17px"],
+    .slide [style*="font-size: 16px"]  { color: var(--text-body) !important; }
+    /* Re-assert the heading override AFTER body so it wins (later rule wins on equal specificity). */
+    .slide [style*="max-width: 70%"][style*="font-size: 22px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 20px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 19px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 18px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 17px"],
+    .slide [style*="max-width: 70%"][style*="font-size: 16px"],
+    .slide [style*="max-width: 90%"][style*="font-size: 22px"],
+    .slide [style*="max-width: 90%"][style*="font-size: 20px"] {
+      color: var(--text-heading) !important;
+    }
 
-    .slide [style*="font-size: 16px"],
-    .slide [style*="font-size: 17px"]  { color: var(--text-caption) !important; }
-
+    /* ── E. CAPTION: 11-13px (footers, tags, "Prepared for X") ── */
+    .slide [style*="font-size: 11px"],
     .slide [style*="font-size: 12px"],
-    .slide [style*="font-size: 13px"]  { color: var(--text-metadata) !important; }
+    .slide [style*="font-size: 13px"],
+    .slide [style*="font-size: 14px"],
+    .slide [style*="font-size: 15px"]  { color: var(--text-caption) !important; }
+
+    /* ── CANVAS MODE = brand: auto-flip text roles to contrast against bg ── */
+    /* When the slide canvas is set to var(--brand-c1), text directly on the
+       canvas (heading + caption) must use the computed contrast partner so it
+       never disappears into the bg. Stat keeps brand-c1 because stats live on
+       white cards. Body keeps dark because body lives on white cards. */
+    html[data-canvas-mode="brand"] {
+      --text-heading: var(--text-on-c1);
+      --text-caption: var(--text-on-c1);
+      --text-display: var(--text-on-c1);
+    }
+    html[data-canvas-mode="hybrid"] .slide:first-of-type,
+    html[data-canvas-mode="hybrid"] .slide:last-of-type {
+      /* Same idea, scoped to the first/last slide only */
+    }
+    html[data-canvas-mode="hybrid"] .slide:first-of-type [style*="font-size: 48px"],
+    html[data-canvas-mode="hybrid"] .slide:last-of-type [style*="font-size: 48px"],
+    html[data-canvas-mode="hybrid"] .slide:first-of-type [style*="max-width: 70%"][style*="font-size: 20px"],
+    html[data-canvas-mode="hybrid"] .slide:last-of-type [style*="max-width: 70%"][style*="font-size: 20px"] {
+      color: var(--text-on-c1) !important;
+    }
 
     /* ── CONTRAST SAFEGUARDS (active for every canvas mode) ── */
     /* (1) brand-c3 used as text on a white card = invisible. Auto-replace. */
@@ -1423,10 +1480,10 @@ function renderSlide_S15_Pricing(proposal, client) {
 
   return `
     <div class="slide" style="background: #F4F4F3; padding: 40px 50px; overflow: hidden;">
-      <!-- Header -->
+      <!-- Header (48px headline + 20px lead — matches other section slides) -->
       <div style="margin-bottom: 20px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 16px;">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 36px; font-weight: 800; color: #1a1a1a; margin-bottom: 6px;">${headline}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; max-width: 70%; line-height: 1.4;">${lead}</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 12px;">${headline}</div>
+        ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.5;">${lead}</div>` : ''}
       </div>
 
       <!-- Pricing Tiers: 3 columns -->
@@ -1436,7 +1493,7 @@ function renderSlide_S15_Pricing(proposal, client) {
 
       <!-- Add-ons Section: compact list -->
       <div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px;">Add-ons</div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 700; color: #1a1a1a; margin-bottom: 8px;">Add-ons</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
           ${addonCards}
         </div>
@@ -1585,10 +1642,11 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
         <!-- notso.ai logo -->
         <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: white; margin-bottom: 40px;">notso.ai</div>
 
-        <!-- Title: "Thank you!" -->
+        <!-- Title: AI-written punchy CTA — no hardcoded "you!" tail.
+             The AI's closing_title IS the full punch line; appending "you!"
+             below it produced "Ready to bring Yaz to life?\nyou!" garbage. -->
         <div style="margin-bottom: 24px;">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 96px; font-weight: 800; line-height: 0.95; color: white; margin: 0;">${closingTitle}</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 96px; font-weight: 800; line-height: 0.95; color: ${c2}; margin: 0;">you!</div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 90px; font-weight: 800; line-height: 0.98; color: white; margin: 0;">${closingTitle}</div>
         </div>
 
         <!-- Message -->
