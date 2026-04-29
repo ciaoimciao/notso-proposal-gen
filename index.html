@@ -735,7 +735,10 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         <div class="page-title" id="resultTitle">Proposal Ready</div>
         <div class="page-sub" id="resultSub">18 slides generated — select the ones you want</div>
       </div>
-      <button class="btn btn-secondary" onclick="resetAll()">← New Proposal</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="setStep(2.5)" title="Go back to mascot step. Your generated proposal text + assigned assets stay intact.">← Back to Step 2</button>
+        <button class="btn btn-secondary" onclick="resetAll()">← New Proposal</button>
+      </div>
     </div>
 
     <div class="slides-list" id="slidesList"></div>
@@ -6850,6 +6853,42 @@ async function uploadMascotZip(input) {
     return;
   }
 
+  // Slot key → asset pack { category, idPrefix, label } so ZIP imports
+  // surface in the same sidebar that asset-pack-generated items use.
+  const SLOT_TO_PACK = {
+    cover:        { cat: 'expressions', label: 'Cover Mascot' },
+    cover_s1:     { cat: 'expressions', label: 'S1 Cover' },
+    cover_s3:     { cat: 'expressions', label: 'S3 Mascot' },
+    cover_s4:     { cat: 'expressions', label: 'S4 Mascot' },
+    cover_s7:     { cat: 'expressions', label: 'S7 Mascot' },
+    cover_s9:     { cat: 'mockups',     label: 'S9 Phone' },
+    cover_s9_laptop:{cat: 'mockups',    label: 'S9 Laptop' },
+    cover_s10:    { cat: 'mockups',     label: 'S10 Laptop' },
+    cover_s11:    { cat: 'expressions', label: 'S11 Mascot' },
+    cover_s14:    { cat: 'expressions', label: 'S14 Mascot' },
+    cover_s18:    { cat: 'expressions', label: 'S18 Cover' },
+    option_a:     { cat: 'expressions', label: 'Option A' },
+    option_b:     { cat: 'expressions', label: 'Option B' },
+    option_c:     { cat: 'expressions', label: 'Option C' },
+    expression_0: { cat: 'expressions', label: 'Happy' },
+    expression_1: { cat: 'expressions', label: 'Empathetic' },
+    expression_2: { cat: 'expressions', label: 'Curious' },
+    expression_3: { cat: 'expressions', label: 'Celebrating' },
+    expression_4: { cat: 'expressions', label: 'Apologetic' },
+    expression_5: { cat: 'expressions', label: 'Helpful' },
+    material_0:   { cat: 'mockups',     label: 'Promo Poster' },
+    material_1:   { cat: 'mockups',     label: 'Promo Vinyl' },
+    material_2:   { cat: 'mockups',     label: 'Promo Banner' },
+    dashboard:    { cat: 'mockups',     label: 'Dashboard' },
+  };
+
+  // Make sure _assetPackSession exists so ZIP imports show in the sidebar
+  // alongside any AI-generated assets the user already has.
+  if (!_assetPackSession || typeof _assetPackSession !== 'object') {
+    _assetPackSession = { sessionId: 'zip-' + Date.now(), results: [] };
+  }
+  if (!Array.isArray(_assetPackSession.results)) _assetPackSession.results = [];
+
   let assigned = 0, skipped = 0;
   const assignedList = [];
   for (const [name, entry] of imageFiles) {
@@ -6863,7 +6902,27 @@ async function uploadMascotZip(input) {
         fr.readAsDataURL(blob);
       });
       savedMascotPaths[slot] = dataUrl;
-      _assetSlideAssignments[slot] = { assetId: `zip:${slot}`, file: name };
+
+      // Build an asset-pack-shaped result so the unified sidebar renders it.
+      const meta = SLOT_TO_PACK[slot] || { cat: 'expressions', label: slot };
+      const assetId = `zip-${slot}`;
+      const fname = `imported/${slot}.png`;
+
+      // Replace any existing import for the same slot (re-upload overwrites).
+      const existingIdx = _assetPackSession.results.findIndex(r => r && r.id === assetId);
+      const result = {
+        id: assetId,
+        category: meta.cat,
+        label: `📦 ${meta.label} (uploaded)`,
+        transparent: true,
+        ok: true,
+        file: fname,
+        dataUrl,
+      };
+      if (existingIdx >= 0) _assetPackSession.results[existingIdx] = result;
+      else _assetPackSession.results.push(result);
+
+      _assetSlideAssignments[slot] = { assetId, file: fname };
       assignedList.push(`${slot} ← ${name.split('/').pop()}`);
       assigned++;
 
@@ -6886,6 +6945,11 @@ async function uploadMascotZip(input) {
     document.getElementById('mascotGenArea')?.classList.add('hidden');
     document.getElementById('mascotOptions')?.classList.remove('hidden');
     if (typeof renderMascotGrid === 'function') renderMascotGrid();
+  }
+
+  // If unified editor is open, refresh its sidebar so the new assets show up.
+  if (typeof _unifiedRenderAssetSidebar === 'function') {
+    try { _unifiedRenderAssetSidebar(); } catch (_) {}
   }
 
   const summary = `✅ 從 ZIP 匯入 ${assigned} 張圖${skipped ? `（${skipped} 張無法對應 slot 已跳過）` : ''}\n\n` + assignedList.join('\n');
