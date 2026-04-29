@@ -6807,35 +6807,64 @@ async function uploadMascotZip(input) {
     return;
   }
 
-  // Filename token → slot key mapping. Order matters: most-specific first.
-  const TOKEN_TO_SLOT = [
-    [/cover[_-]?s?(\d+)/, m => `cover_s${m[1]}`],   // cover_s1, cover-s7, covers9
-    [/option[_-]?a/, () => 'option_a'],
-    [/option[_-]?b/, () => 'option_b'],
-    [/option[_-]?c/, () => 'option_c'],
-    [/(expr|expression)[_-]?happy/, () => 'expression_0'],
-    [/(expr|expression)[_-]?empathetic/, () => 'expression_1'],
-    [/(expr|expression)[_-]?curious/, () => 'expression_2'],
-    [/(expr|expression)[_-]?celebrat/, () => 'expression_3'],
-    [/(expr|expression)[_-]?apolog/, () => 'expression_4'],
-    [/(expr|expression)[_-]?help/, () => 'expression_5'],
-    // Plain emotion words as fallback
-    [/^happy\b/, () => 'expression_0'],
-    [/^empathetic\b/, () => 'expression_1'],
-    [/^curious\b/, () => 'expression_2'],
-    [/^celebrat/, () => 'expression_3'],
-    [/^apolog/, () => 'expression_4'],
-    [/^helpful\b/, () => 'expression_5'],
-    [/material[_-]?0|promo[_-]?0|poster/, () => 'material_0'],
-    [/material[_-]?1|promo[_-]?1|vinyl/, () => 'material_1'],
-    [/material[_-]?2|promo[_-]?2|banner/, () => 'material_2'],
-    [/dashboard/, () => 'dashboard'],
-    [/cover|^mascot\b/, () => 'cover'],   // generic fallback last
+  // Filename → { assetId, category, slot } mapping. assetId is the asset
+  // pack canonical ID (matches what /api/assetpack/generate emits).
+  // category drives sidebar grouping. slot is the per-slide cover key
+  // that the asset auto-pins to (null = no auto-pin, lives in sidebar
+  // for the user to manually drag to slots).
+  // Patterns are tried in order — most specific first.
+  const FILENAME_PATTERNS = [
+    // Per-slide cover slots
+    [/cover[_-]?s9[_-]?laptop/, () => ({ assetId: 'zip-cover_s9_laptop', category: 'mockups',     slot: 'cover_s9_laptop',  label: 'S9 Laptop' })],
+    [/cover[_-]?s?(\d+)/,       m => ({ assetId: `zip-cover_s${m[1]}`,    category: 'expressions', slot: `cover_s${m[1]}`,   label: `S${m[1]} Cover` })],
+    // S6 mascot options
+    [/option[_-]?a/, () => ({ assetId: 'zip-option_a', category: 'expressions', slot: 'option_a', label: 'Option A' })],
+    [/option[_-]?b/, () => ({ assetId: 'zip-option_b', category: 'expressions', slot: 'option_b', label: 'Option B' })],
+    [/option[_-]?c/, () => ({ assetId: 'zip-option_c', category: 'expressions', slot: 'option_c', label: 'Option C' })],
+    // 6 expressions (asset pack canonical: expr-happy ... expr-helpful)
+    [/(expr|expression)[_-]?happy/,    () => ({ assetId: 'expr-happy',       category: 'expressions', slot: 'expression_0', label: 'Happy' })],
+    [/(expr|expression)[_-]?empathetic/,() => ({ assetId: 'expr-empathetic', category: 'expressions', slot: 'expression_1', label: 'Empathetic' })],
+    [/(expr|expression)[_-]?curious/,  () => ({ assetId: 'expr-curious',     category: 'expressions', slot: 'expression_2', label: 'Curious' })],
+    [/(expr|expression)[_-]?celebrat/, () => ({ assetId: 'expr-celebrating', category: 'expressions', slot: 'expression_3', label: 'Celebrating' })],
+    [/(expr|expression)[_-]?apolog/,   () => ({ assetId: 'expr-apologetic',  category: 'expressions', slot: 'expression_4', label: 'Apologetic' })],
+    [/(expr|expression)[_-]?help/,     () => ({ assetId: 'expr-helpful',     category: 'expressions', slot: 'expression_5', label: 'Helpful' })],
+    // 6 actions (act-*) — no default slot, surfaces in sidebar for manual pin.
+    // act-typing is special: used inside phone mockup as the inner mascot.
+    [/act[_-]?wav/,        () => ({ assetId: 'act-waving',     category: 'actions', slot: null, label: 'Waving' })],
+    [/act[_-]?thumbs/,     () => ({ assetId: 'act-thumbs-up',  category: 'actions', slot: null, label: 'Thumbs Up' })],
+    [/act[_-]?typ/,        () => ({ assetId: 'act-typing',     category: 'actions', slot: null, label: 'Typing Laptop' })],
+    [/act[_-]?point/,      () => ({ assetId: 'act-pointing',   category: 'actions', slot: null, label: 'Pointing' })],
+    [/act[_-]?present/,    () => ({ assetId: 'act-presenting', category: 'actions', slot: null, label: 'Presenting' })],
+    [/act[_-]?tablet/,     () => ({ assetId: 'act-tablet',     category: 'actions', slot: null, label: 'Holding Tablet' })],
+    // 3 festive (fest-*) — no default slot
+    [/fest[_-]?birthday/,  () => ({ assetId: 'fest-birthday',  category: 'festive', slot: null, label: 'Birthday' })],
+    [/fest[_-]?christmas/, () => ({ assetId: 'fest-christmas', category: 'festive', slot: null, label: 'Christmas' })],
+    [/fest[_-]?newyear/,   () => ({ assetId: 'fest-newyear',   category: 'festive', slot: null, label: 'New Year' })],
+    // Mockups (Phone Chat / Website Composite — auto-pin to S9 / S10)
+    [/mock[_-]?phone/,     () => ({ assetId: 'mock-phone-chat', category: 'mockups', slot: 'cover_s9',  label: 'Phone Chat' })],
+    [/mock[_-]?website/,   () => ({ assetId: 'mock-website',    category: 'mockups', slot: 'cover_s10', label: 'Website Composite' })],
+    // S16 Promo materials
+    [/promo[_-]?poster/,   () => ({ assetId: 'promo-poster',    category: 'mockups', slot: 'material_0', label: 'Promo Poster' })],
+    [/promo[_-]?vinyl/,    () => ({ assetId: 'promo-vinyl-toy', category: 'mockups', slot: 'material_1', label: 'Promo Vinyl Toy' })],
+    [/promo[_-]?banner/,   () => ({ assetId: 'promo-banner',    category: 'mockups', slot: 'material_2', label: 'Promo Banner' })],
+    [/material[_-]?0/,     () => ({ assetId: 'promo-poster',    category: 'mockups', slot: 'material_0', label: 'Promo Poster' })],
+    [/material[_-]?1/,     () => ({ assetId: 'promo-vinyl-toy', category: 'mockups', slot: 'material_1', label: 'Promo Vinyl Toy' })],
+    [/material[_-]?2/,     () => ({ assetId: 'promo-banner',    category: 'mockups', slot: 'material_2', label: 'Promo Banner' })],
+    // Plain emotion fallbacks
+    [/^happy\b/,        () => ({ assetId: 'expr-happy',       category: 'expressions', slot: 'expression_0', label: 'Happy' })],
+    [/^empathetic\b/,   () => ({ assetId: 'expr-empathetic',  category: 'expressions', slot: 'expression_1', label: 'Empathetic' })],
+    [/^curious\b/,      () => ({ assetId: 'expr-curious',     category: 'expressions', slot: 'expression_2', label: 'Curious' })],
+    [/^celebrat/,       () => ({ assetId: 'expr-celebrating', category: 'expressions', slot: 'expression_3', label: 'Celebrating' })],
+    [/^apolog/,         () => ({ assetId: 'expr-apologetic',  category: 'expressions', slot: 'expression_4', label: 'Apologetic' })],
+    [/^helpful\b/,      () => ({ assetId: 'expr-helpful',     category: 'expressions', slot: 'expression_5', label: 'Helpful' })],
+    [/dashboard/,       () => ({ assetId: 'zip-dashboard',    category: 'mockups',     slot: 'dashboard',    label: 'Dashboard' })],
+    // Generic fallback (cover.png, mascot.png) — generic mascot reference
+    [/cover|^mascot\b/, () => ({ assetId: 'zip-cover',        category: 'expressions', slot: 'cover',        label: 'Cover Mascot' })],
   ];
 
-  function inferSlot(filename) {
+  function inferAsset(filename) {
     const base = filename.toLowerCase().split('/').pop().replace(/\.(png|jpg|jpeg|webp|gif)$/, '');
-    for (const [regex, fn] of TOKEN_TO_SLOT) {
+    for (const [regex, fn] of FILENAME_PATTERNS) {
       const m = base.match(regex);
       if (m) return fn(m);
     }
@@ -6858,35 +6887,6 @@ async function uploadMascotZip(input) {
     return;
   }
 
-  // Slot key → asset pack { category, idPrefix, label } so ZIP imports
-  // surface in the same sidebar that asset-pack-generated items use.
-  const SLOT_TO_PACK = {
-    cover:        { cat: 'expressions', label: 'Cover Mascot' },
-    cover_s1:     { cat: 'expressions', label: 'S1 Cover' },
-    cover_s3:     { cat: 'expressions', label: 'S3 Mascot' },
-    cover_s4:     { cat: 'expressions', label: 'S4 Mascot' },
-    cover_s7:     { cat: 'expressions', label: 'S7 Mascot' },
-    cover_s9:     { cat: 'mockups',     label: 'S9 Phone' },
-    cover_s9_laptop:{cat: 'mockups',    label: 'S9 Laptop' },
-    cover_s10:    { cat: 'mockups',     label: 'S10 Laptop' },
-    cover_s11:    { cat: 'expressions', label: 'S11 Mascot' },
-    cover_s14:    { cat: 'expressions', label: 'S14 Mascot' },
-    cover_s18:    { cat: 'expressions', label: 'S18 Cover' },
-    option_a:     { cat: 'expressions', label: 'Option A' },
-    option_b:     { cat: 'expressions', label: 'Option B' },
-    option_c:     { cat: 'expressions', label: 'Option C' },
-    expression_0: { cat: 'expressions', label: 'Happy' },
-    expression_1: { cat: 'expressions', label: 'Empathetic' },
-    expression_2: { cat: 'expressions', label: 'Curious' },
-    expression_3: { cat: 'expressions', label: 'Celebrating' },
-    expression_4: { cat: 'expressions', label: 'Apologetic' },
-    expression_5: { cat: 'expressions', label: 'Helpful' },
-    material_0:   { cat: 'mockups',     label: 'Promo Poster' },
-    material_1:   { cat: 'mockups',     label: 'Promo Vinyl' },
-    material_2:   { cat: 'mockups',     label: 'Promo Banner' },
-    dashboard:    { cat: 'mockups',     label: 'Dashboard' },
-  };
-
   // Make sure _assetPackSession exists so ZIP imports show in the sidebar
   // alongside any AI-generated assets the user already has.
   if (!_assetPackSession || typeof _assetPackSession !== 'object') {
@@ -6897,8 +6897,8 @@ async function uploadMascotZip(input) {
   let assigned = 0, skipped = 0;
   const assignedList = [];
   for (const [name, entry] of imageFiles) {
-    const slot = inferSlot(name);
-    if (!slot) { skipped++; continue; }
+    const meta = inferAsset(name);
+    if (!meta) { skipped++; continue; }
     try {
       const blob = await entry.async('blob');
       const dataUrl = await new Promise(r => {
@@ -6906,20 +6906,16 @@ async function uploadMascotZip(input) {
         fr.onload = () => r(fr.result);
         fr.readAsDataURL(blob);
       });
-      savedMascotPaths[slot] = dataUrl;
+      const fname = `imported/${meta.assetId}.png`;
 
-      // Build an asset-pack-shaped result so the unified sidebar renders it.
-      const meta = SLOT_TO_PACK[slot] || { cat: 'expressions', label: slot };
-      const assetId = `zip-${slot}`;
-      const fname = `imported/${slot}.png`;
-
-      // Replace any existing import for the same slot (re-upload overwrites).
-      const existingIdx = _assetPackSession.results.findIndex(r => r && r.id === assetId);
+      // Push into _assetPackSession.results so the Assets sidebar shows it.
+      // Replace any existing entry with the same assetId (re-upload overwrites).
+      const existingIdx = _assetPackSession.results.findIndex(r => r && r.id === meta.assetId);
       const result = {
-        id: assetId,
-        category: meta.cat,
-        label: `📦 ${meta.label} (uploaded)`,
-        transparent: true,
+        id: meta.assetId,
+        category: meta.category,
+        label: `📦 ${meta.label}`,
+        transparent: meta.category !== 'mockups',   // mockups keep their bg, others are transparent PNG
         ok: true,
         file: fname,
         dataUrl,
@@ -6927,17 +6923,24 @@ async function uploadMascotZip(input) {
       if (existingIdx >= 0) _assetPackSession.results[existingIdx] = result;
       else _assetPackSession.results.push(result);
 
-      _assetSlideAssignments[slot] = { assetId, file: fname };
-      assignedList.push(`${slot} ← ${name.split('/').pop()}`);
+      // Auto-pin to the matching slide slot if this asset has one.
+      // Actions / festive don't have native slots — they live in the sidebar
+      // for the user to drag onto slides via the dropdown.
+      if (meta.slot) {
+        savedMascotPaths[meta.slot] = dataUrl;
+        _assetSlideAssignments[meta.slot] = { assetId: meta.assetId, file: fname };
+      }
+      const slotNote = meta.slot ? meta.slot : `(${meta.category} · sidebar)`;
+      assignedList.push(`${slotNote} ← ${name.split('/').pop()}`);
       assigned++;
 
       // For option_a/b/c, ALSO populate the mascotImages array so the
       // Step 2.5 grid can render them (matches the single-upload path).
-      if (slot === 'option_a' || slot === 'option_b' || slot === 'option_c') {
-        const idx = { option_a: 0, option_b: 1, option_c: 2 }[slot];
+      if (meta.slot === 'option_a' || meta.slot === 'option_b' || meta.slot === 'option_c') {
+        const idx = { option_a: 0, option_b: 1, option_c: 2 }[meta.slot];
         while (mascotImages.length <= idx) mascotImages.push({ id: `mascot_${mascotImages.length}`, data_url: '' });
         mascotImages[idx] = { id: `mascot_${idx}`, data_url: dataUrl };
-        mascotSelections[slot] = idx;
+        mascotSelections[meta.slot] = idx;
       }
     } catch (e) {
       console.warn(`Failed to read ${name}:`, e.message);
