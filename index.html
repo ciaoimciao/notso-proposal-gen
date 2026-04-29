@@ -3317,7 +3317,7 @@ async function previewAndEdit() {
     // stays well under Vercel's 4.5MB serverless limit. Without this,
     // 8+ full-res mascots (~8MB total) trigger a 413 and the gateway
     // returns an HTML error page that blows up JSON.parse.
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3601,7 +3601,7 @@ async function openUnifiedEditor() {
   // Fetch preview HTML — same call as legacy previewAndEdit.
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4395,7 +4395,7 @@ async function _unifiedPlaceBackupMascot(idx, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4466,7 +4466,7 @@ async function _unifiedSetDesignStyle(styleId) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -5090,7 +5090,7 @@ async function _unifiedPlaceAsset(assetId, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -6002,8 +6002,9 @@ async function _shrinkDataUrl(dataUrl, maxSide) {
       try {
         const w0 = img.naturalWidth, h0 = img.naturalHeight;
         if (!w0 || !h0) { resolve(dataUrl); return; }
-        if (w0 <= maxSide && h0 <= maxSide) { resolve(dataUrl); return; }
-        const scale = Math.min(maxSide / w0, maxSide / h0);
+        // ALWAYS re-encode (don't early-return on small images) — even if the
+        // image is already ≤maxSide, we want WebP encoding for transmission.
+        const scale = Math.min(1, Math.min(maxSide / w0, maxSide / h0));
         const w = Math.max(1, Math.round(w0 * scale));
         const h = Math.max(1, Math.round(h0 * scale));
         const canvas = document.createElement('canvas');
@@ -6012,7 +6013,18 @@ async function _shrinkDataUrl(dataUrl, maxSide) {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/png'));
+        // Prefer WebP at 95% quality — supports transparency, ~40-60% smaller
+        // than PNG at near-identical visual quality. Modern Chromium (used by
+        // every preview path AND Puppeteer PDF export on Vercel) decodes WebP
+        // natively. Falls back to PNG if browser somehow lacks WebP support.
+        let out = '';
+        try {
+          out = canvas.toDataURL('image/webp', 0.95);
+        } catch (_) { out = ''; }
+        if (!out || !out.startsWith('data:image/webp')) {
+          out = canvas.toDataURL('image/png');
+        }
+        resolve(out);
       } catch (_) { resolve(dataUrl); }
     };
     img.onerror = () => resolve(dataUrl);
