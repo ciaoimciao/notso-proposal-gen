@@ -584,7 +584,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
     <div class="card" style="max-width:900px;margin:0 auto">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <div class="page-title" style="margin:0" data-i18n="mascot.title">AI Mascot Generator</div>
-        <button class="btn btn-secondary" onclick="skipMascot()" style="margin-left:auto;font-size:12px" data-i18n="mascot.skip">Skip →</button>
+        <button class="btn btn-secondary" onclick="skipMascot()" style="margin-left:auto;font-size:12px" data-i18n="mascot.skip" title="Continue to Step 3. Any ZIP imports, per-slot uploads, or AI-generated mascots are preserved.">Continue →</button>
       </div>
       <div class="page-sub" style="margin-bottom:20px" data-i18n="mascot.sub">Generate 9 3D mascot options (PNG, transparent background) with Gemini AI, then pick up to 3 for your proposal</div>
 
@@ -6585,7 +6585,12 @@ async function confirmMascots() {
 }
 
 function skipMascot() {
-  savedMascotPaths = {};
+  // Skip used to do `savedMascotPaths = {}`, which DESTROYED any ZIP imports
+  // or per-slot uploads the user had already done. Preserve them — the user
+  // pressed Skip to bypass *AI generation*, not to wipe their work.
+  if (!savedMascotPaths || typeof savedMascotPaths !== 'object') {
+    savedMascotPaths = {};
+  }
   setStep(3);
   document.getElementById('resultTitle').textContent = 'Proposal for ' + client.name;
   document.getElementById('resultSub').textContent = client.industry + ' · slides ready';
