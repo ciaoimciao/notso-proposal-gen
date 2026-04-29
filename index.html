@@ -3317,7 +3317,7 @@ async function previewAndEdit() {
     // stays well under Vercel's 4.5MB serverless limit. Without this,
     // 8+ full-res mascots (~8MB total) trigger a 413 and the gateway
     // returns an HTML error page that blows up JSON.parse.
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3601,7 +3601,7 @@ async function openUnifiedEditor() {
   // Fetch preview HTML — same call as legacy previewAndEdit.
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4395,14 +4395,14 @@ async function _unifiedPlaceBackupMascot(idx, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
-    const data = JSON.parse(raw);
+    const data = _safeJsonParse(raw, resp.status);
     if (!resp.ok || !data.success) throw new Error(data.error || 'Preview refresh failed');
     _unifiedRawHtml = data.html;
     _unifiedRenderShell(data.html);
@@ -4466,14 +4466,14 @@ async function _unifiedSetDesignStyle(styleId) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
-    const data = JSON.parse(raw);
+    const data = _safeJsonParse(raw, resp.status);
     if (!resp.ok || !data.success) throw new Error(data.error || 'Preview refresh failed');
     _unifiedRawHtml = data.html;
     _unifiedRenderShell(data.html);
@@ -5090,14 +5090,14 @@ async function _unifiedPlaceAsset(assetId, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 384);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
-    const data = JSON.parse(raw);
+    const data = _safeJsonParse(raw, resp.status);
     if (!resp.ok || !data.success) throw new Error(data.error || 'Preview refresh failed');
     _unifiedRawHtml = data.html;
     _unifiedRenderShell(data.html);
@@ -6032,6 +6032,23 @@ async function _shrinkMascotMap(paths, maxSide) {
     out[role] = cache.get(url);
   }
   return out;
+}
+
+/* Safely parse a server response that's expected to be JSON. When the
+   response is too large Vercel returns plain-text "Request Entity Too
+   Large" — JSON.parse on that throws "Unexpected token 'R'". We catch
+   that case and raise a friendly error the UI can show. */
+function _safeJsonParse(raw, status) {
+  if (status === 413 || /^Request Entity Too Large/i.test(String(raw || '').trim())) {
+    throw new Error('資產太多 / 圖片太大 (HTTP 413)：請移除部分指派，或重新整理頁面後再試。');
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    // Some other non-JSON response (HTML error page, gateway timeout, etc.)
+    const preview = String(raw || '').slice(0, 80);
+    throw new Error(`伺服器回傳非 JSON 內容（status ${status}）：${preview}…`);
+  }
 }
 
 /* ═══════════════════════════════════════════════
