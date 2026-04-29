@@ -775,7 +775,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
       <span>🔍 Size</span>
       <span style="display:flex;align-items:center;gap:4px">
-        <input type="number" id="mxpScaleNum" min="30" max="200" step="1" value="100"
+        <input type="number" id="mxpScaleNum" min="20" max="500" step="1" value="100"
           oninput="_mxpSetFromNumber('scale',this.value)" onchange="_mxpSetFromNumber('scale',this.value)"
           class="mxp-num" />
         <span style="color:#6B7280">%</span>
@@ -783,7 +783,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
     </div>
     <div style="display:flex;gap:6px;align-items:center">
       <button onclick="_mxpNudge('scale',-0.05)" class="mxp-btn">−</button>
-      <input type="range" id="mxpScale" min="0.3" max="2.0" step="0.01" value="1" oninput="_mxpSet('scale',this.value)" style="flex:1">
+      <input type="range" id="mxpScale" min="0.2" max="5.0" step="0.01" value="1" oninput="_mxpSet('scale',this.value)" style="flex:1">
       <button onclick="_mxpNudge('scale',+0.05)" class="mxp-btn">+</button>
     </div>
   </div>
