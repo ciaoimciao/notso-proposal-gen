@@ -7000,8 +7000,13 @@ function openAssetPackModal() {
   const modal = document.getElementById('assetPackModalBg');
   if (!modal) return;
 
-  // Show/hide website composite line based on whether user uploaded one
-  const hasSite = !!(client && client.clientSiteImage);
+  // Show/hide website composite line based on whether user uploaded one.
+  // Read from the LIVE _uploadedImages.clientSite first (it picks up
+  // re-uploads after Step 1) and fall back to the Step-1 snapshot.
+  const liveClientSite = (_uploadedImages && _uploadedImages.clientSite) || (client && client.clientSiteImage) || '';
+  const hasSite = !!liveClientSite;
+  // Keep client.clientSiteImage in sync so other code paths see the latest upload.
+  if (client) client.clientSiteImage = liveClientSite;
   const siteItem = document.getElementById('assetPackWebsiteItem');
   if (siteItem) siteItem.style.display = hasSite ? 'list-item' : 'none';
 
@@ -7191,7 +7196,11 @@ async function generateAssetPack(opts = {}) {
         brandColor: client.color1,
         greeting,
         mascotImage,
-        clientSiteImage: client.clientSiteImage || '',
+        // Prefer the latest client-site upload (_uploadedImages.clientSite is
+        // mutated whenever the user picks a new file). client.clientSiteImage
+        // is a Step-1 snapshot and goes STALE after subsequent re-uploads —
+        // hence the laptop-mockup-uses-old-screenshot bug. Sync both before sending.
+        clientSiteImage: (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '',
         industry: client.industry || client.useCase || '',
         promoContext,
         sessionId: _assetPackSession.sessionId || undefined,
@@ -7561,7 +7570,10 @@ async function regenerateAssetPackItem(id) {
         brandColor: client.color1,
         greeting,
         mascotImage,
-        clientSiteImage: client.clientSiteImage || '',
+        // Live re-upload wins over the Step-1 snapshot — same fix as the
+        // primary generateAssetPack() POST. Otherwise re-running the
+        // pack with a freshly uploaded site keeps using the old screenshot.
+        clientSiteImage: (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '',
         sessionId: _assetPackSession.sessionId,
         onlyIds: [id],
       })

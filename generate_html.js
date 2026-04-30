@@ -1347,7 +1347,15 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
   // Metrics: bullet list on the right side. Each metric becomes a row with
   // a bold label + a one-line description.
   const metrics = Array.isArray(d.metrics || d.badges) ? (d.metrics || d.badges).slice(0, 4) : [];
-  const STATIC_DASHBOARD = '/mockup-assets/dashboard-mockup.png';
+  // PDF export goes through Puppeteer.setContent() which has no base URL —
+  // server-relative paths like "/mockup-assets/dashboard-mockup.png" fail
+  // to resolve and the image renders broken in the PDF. Embed it as a
+  // data URI so the bytes travel inside the HTML itself. Falls back to the
+  // server-relative path if the file isn't found at render time (won't
+  // help PDF, but at least live preview keeps working).
+  const dashboardSrc = mascotImages?.dashboard ||
+    readImageAsDataURI(path.join(__dirname, 'mockup-assets', 'dashboard-mockup.png')) ||
+    '/mockup-assets/dashboard-mockup.png';
 
   const bullets = metrics.map((m, i) => {
     const lbl = typeof m === 'object' ? stripEmoji(String(m.label || m.name || m.value || '')) : stripEmoji(String(m));
@@ -1377,8 +1385,8 @@ function renderSlide_S12_DataInsights(proposal, client, mascotImages) {
       <div style="flex: 1; display: flex; gap: 40px; align-items: stretch; min-height: 0;">
         <!-- Left: dashboard mockup -->
         <div style="flex: 1.1; display: flex; align-items: center; justify-content: center; min-width: 0;">
-          <img src="${STATIC_DASHBOARD}" alt="Real-Time Dashboard"
-               style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 12px;">
+          <img src="${dashboardSrc}" alt="Real-Time Dashboard" data-slot-key="dashboard"
+               style="max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 12px; transform-origin: center center;">
         </div>
         <!-- Right: bulleted metric list -->
         <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0;">
