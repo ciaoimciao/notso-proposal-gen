@@ -3557,7 +3557,11 @@ async function exportPDFFromPreview() {
 // Map slide id → ordered list of slot definitions. Slides not in this
 // map have no mascot/asset slots and the right pane will say so.
 const _UNIFIED_SLOTS = {
-  s1:  [{ key: 'cover_s1', label: 'Cover image' }],
+  s1:  [
+    { key: 'cover_s1_phone',  label: 'Phone mockup (left)' },
+    { key: 'cover_s1_laptop', label: 'Laptop mockup (right)' },
+    { key: 'cover_s1',        label: 'Fallback mascot (when no mockup)' },
+  ],
   s3:  [{ key: 'cover_s3', label: 'Mascot (bottom-right · Apologetic by default)' }],
   s4:  [{ key: 'cover_s4', label: 'Mascot (bottom-right · Curious by default)' }],
   s6:  [
@@ -7430,7 +7434,9 @@ function renderAssetPackResults() {
               return `
             <select onchange="assignAssetToSlide('${r.id}','${encodeURIComponent(r.file)}',this.value)" style="width:100%;font-size:10px;padding:2px 4px;border:1px solid #e5e7eb;border-radius:4px;color:#6b7280;background:#f9fafb;cursor:pointer">
               <option value=""${sel('')}>— assign to slide —</option>
-              <option value="cover_s1"${sel('cover_s1')}>S1 Cover</option>
+              <option value="cover_s1_phone"${sel('cover_s1_phone')}>S1 Phone Mockup (left)</option>
+              <option value="cover_s1_laptop"${sel('cover_s1_laptop')}>S1 Laptop Mockup (right)</option>
+              <option value="cover_s1"${sel('cover_s1')}>S1 Fallback Mascot</option>
               <option value="cover_s3"${sel('cover_s3')}>S3 Pain Points (bottom-right)</option>
               <option value="cover_s4"${sel('cover_s4')}>S4 Market Opportunity (bottom-right)</option>
               <option value="option_a"${sel('option_a')}>S6 Option A</option>

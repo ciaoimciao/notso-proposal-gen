@@ -617,65 +617,83 @@ function getImageHTML(imagePath, alt = 'Image', classes = '', slotKey = '') {
 function renderSlide_S1_Cover(proposal, client, mascotImages) {
   const d = proposal.s1 || {};
   const clientName = client.name || '';
-  const mascotName = stripEmoji(d.mascot_name || proposal.mascot_name || '');
+  const mascotName = stripEmoji(d.mascot_name || proposal.mascot_name || client.mascotName || 'Buddy');
+  // S1 lead: keep short — tagline-style. Defaults to industry-flavoured copy.
   const tagline = stripEmoji(d.lead || d.greeting || d.tagline || `The AI coach for ${clientName}`);
+  const industry = stripEmoji(client.industry || client.useCase || 'business');
 
-  // Per-slide cover key (cover_s1) takes precedence so the user can assign a
-  // different asset-pack image to each "cover-style" slide; falls back to the
-  // legacy shared `cover` key (which is what auto-assign + mascot-pick set).
-  const coverImagePath = mascotImages?.cover_s1 || mascotImages?.cover;
+  // Hero card mockups: phone-left + laptop-right. Read from the canonical
+  // asset-pack slots first; fall back to per-slide overrides for power users.
+  const phoneMock  = mascotImages?.cover_s1_phone  || mascotImages?.cover_s9;
+  const laptopMock = mascotImages?.cover_s1_laptop || mascotImages?.cover_s9_laptop;
+  // Mascot fallback (when no asset-pack mockups have been generated yet):
+  // show the cover mascot in a centered placeholder card so the slide isn't
+  // blank pre-asset-pack.
+  const coverMascot = mascotImages?.cover_s1 || mascotImages?.cover;
+
+  // Today's date for the right-side slot (matches Finsport reference)
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  // Build the hero card body. If both mockups exist → show them side-by-side
+  // (Finsport-style). If neither exists, fall back to a centered cover mascot
+  // so the slide still looks finished before the asset pack runs.
+  let heroBody;
+  if (phoneMock || laptopMock) {
+    heroBody = `
+      <div style="display: flex; align-items: center; justify-content: center; gap: 50px; height: 100%; padding: 40px 60px;">
+        ${phoneMock ? `
+          <div style="flex: 0 0 27%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img src="${phoneMock}" alt="Phone Mockup" data-slot-key="cover_s1_phone"
+                 style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;">
+          </div>` : ''}
+        ${laptopMock ? `
+          <div style="flex: 0 0 60%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img src="${laptopMock}" alt="Laptop Mockup" data-slot-key="cover_s1_laptop"
+                 style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;">
+          </div>` : ''}
+      </div>
+    `;
+  } else {
+    heroBody = `
+      <div style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 40px;">
+        ${getImageHTML(coverMascot, 'Cover Mascot', 'max-height:90%; max-width:60%; object-fit:contain;', 'cover_s1')}
+      </div>
+    `;
+  }
 
   return `
-    <div class="slide" style="background: #F4F4F3; position: relative; display: flex; flex-direction: column;">
-      <!-- Header: Logo + Date -->
-      <div style="padding: 40px 50px; display: flex; justify-content: space-between; align-items: flex-start;">
-        <div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px;">notso.ai</div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #9ca3af; font-weight: 500;">presents:</div>
-        </div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 13px; letter-spacing: 2px; color: #9ca3af; font-weight: 600; text-transform: uppercase;">Proposal · 2026</div>
+    <div class="slide" style="background: #FFFFFF; position: relative; display: flex; flex-direction: column; padding: 32px 40px;">
+      <!-- Hero card: large rounded light-grey rectangle holding the mockups -->
+      <div style="flex: 0 0 auto; height: 540px; background: #F1EFE8; border-radius: 32px; overflow: hidden;">
+        ${heroBody}
       </div>
 
-      <!-- Main Content -->
-      <div style="flex: 1; display: flex; padding: 0 50px; gap: 60px;">
-        <!-- Left: Title & Info -->
-        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-          <!-- Badge -->
-          <div style="display: inline-block; background: #1a1a1a; color: white; padding: 8px 18px; border-radius: 20px; width: fit-content; margin-bottom: 40px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">AI Mascot Proposal</div>
-
-          <!-- Title: "Meet your [name] buddy." -->
-          <div style="margin-bottom: 40px;">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 90px; font-weight: 800; line-height: 0.95; color: #1a1a1a; margin: 0;">Meet your</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 90px; font-weight: 800; line-height: 0.95; color: var(--brand-c1); margin: 0;">${mascotName}</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 90px; font-weight: 800; line-height: 0.95; color: #1a1a1a; margin: 0;">buddy.</div>
-          </div>
-
-          <!-- Tagline -->
-          <div style="font-family: 'Poppins', sans-serif; font-size: 22px; color: #6b7280; line-height: 1.5; margin-bottom: 50px; max-width: 90%;">
-            ${tagline}
-          </div>
-
-          <!-- Client Pill -->
-          <div style="display: inline-flex; align-items: center; gap: 12px; width: fit-content;">
-            <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; font-weight: 500;">for</div>
-            <div style="background: #F0F0F0; padding: 10px 16px; border-radius: 20px; font-family: 'Poppins', sans-serif; font-size: 17px; font-weight: 600; color: #1a1a1a;">
-              ${stripEmoji(clientName)} — AI companion
-            </div>
-          </div>
+      <!-- Footer 3-column grid: left tagline · middle value-prop · right brand+date -->
+      <div style="flex: 1; display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 40px; padding: 32px 16px 0;">
+        <!-- Left: client tagline (the headline of the deck) -->
+        <div style="font-family: 'Poppins', sans-serif;">
+          <div style="font-size: 36px; font-weight: 800; color: #1a1a1a; line-height: 1.15;">${stripEmoji(mascotName)} —</div>
+          <div style="font-size: 36px; font-weight: 800; color: #1a1a1a; line-height: 1.15;">The visual AI agent</div>
+          <div style="font-size: 22px; font-weight: 600; color: #1a1a1a; line-height: 1.3; margin-top: 4px;">for ${stripEmoji(clientName)}</div>
         </div>
 
-        <!-- Right: Mascot Image -->
-        <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
-          <!-- Subtle radial glow background -->
-          <div style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, var(--brand-c1-wash) 0%, transparent 70%); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0;"></div>
-          <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-            ${getImageHTML(coverImagePath, 'Mascot Cover', '', 'cover_s1')}
+        <!-- Middle: value-prop / service blurb -->
+        <div style="font-family: 'Poppins', sans-serif; align-self: center;">
+          <div style="font-size: 18px; color: #1a1a1a; line-height: 1.5;">Service, Sales &amp; Support</div>
+          <div style="font-size: 18px; color: #1a1a1a; line-height: 1.5;">for every</div>
+          <div style="font-size: 18px; font-style: italic; font-weight: 700; color: var(--brand-c1, #1a1a1a); line-height: 1.5;">${industry}</div>
+        </div>
+
+        <!-- Right: notso.ai logo + date (matches Finsport "Geldig t/m..." slot) -->
+        <div style="font-family: 'Poppins', sans-serif; align-self: center; text-align: right;">
+          <div style="display: inline-flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: #1a1a1a; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;">N</div>
+            <div style="font-size: 20px; font-weight: 800; color: #1a1a1a;">notso.ai</div>
           </div>
+          <div style="font-size: 13px; color: #6b7280;">Generated ${dateStr}</div>
         </div>
       </div>
-
-      <!-- Bottom color strip (solid brand color) -->
-      <div style="height: 24px; background: var(--brand-c1); margin-top: auto;"></div>
     </div>
   `;
 }
