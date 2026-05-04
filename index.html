@@ -511,9 +511,26 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <label data-i18n="form.claudeKey">Claude API Key <span class="hint" data-i18n="form.claudeKey.hint">— from Anthropic Console</span></label>
           <input type="password" id="claudeKey" placeholder="sk-ant-..." />
         </div>
+
+        <!-- Image engine picker — switches the key field below between Gemini and OpenAI -->
         <div class="form-group">
-          <label data-i18n="form.geminiKey">Google Gemini API Key <span class="hint" data-i18n="form.geminiKey.hint">— optional, for AI mascot generation</span></label>
+          <label data-i18n="form.imageEngine">Image Generation Engine <span class="hint" data-i18n="form.imageEngine.hint">— pick one; only that key needs to be filled</span></label>
+          <select id="imageEngine" onchange="_onImageEngineChange()">
+            <option value="gemini">🎨 Google Gemini (cheaper, ~$0.02 / image, faster)</option>
+            <option value="openai">🖼️ OpenAI GPT Image (better text + transparency, ~$0.04-0.17)</option>
+          </select>
+        </div>
+
+        <!-- Gemini key field — visible by default -->
+        <div class="form-group" id="geminiKeyGroup">
+          <label data-i18n="form.geminiKey">Google Gemini API Key <span class="hint" data-i18n="form.geminiKey.hint">— from aistudio.google.com</span></label>
           <input type="password" id="googleGeminiKey" placeholder="AIza..." />
+        </div>
+
+        <!-- OpenAI key field — hidden until user selects OpenAI -->
+        <div class="form-group" id="openaiKeyGroup" style="display:none">
+          <label data-i18n="form.openaiKey">OpenAI API Key <span class="hint" data-i18n="form.openaiKey.hint">— from platform.openai.com</span></label>
+          <input type="password" id="openaiKey" placeholder="sk-..." />
         </div>
       </div>
 
@@ -1752,6 +1769,40 @@ function _getUploadThumbnails() {
   ).then(thumbs => thumbs.filter(Boolean));
 }
 
+/**
+ * Toggles which API-key field is shown based on the imageEngine select.
+ * Called both on page load (to restore saved choice) and on user change.
+ * Also unsets `required` on the hidden field so form validation only blocks
+ * on the visible one.
+ */
+function _onImageEngineChange() {
+  const sel = document.getElementById('imageEngine');
+  const geminiGroup = document.getElementById('geminiKeyGroup');
+  const openaiGroup = document.getElementById('openaiKeyGroup');
+  const geminiInput = document.getElementById('googleGeminiKey');
+  const openaiInput = document.getElementById('openaiKey');
+  if (!sel || !geminiGroup || !openaiGroup) return;
+  const engine = sel.value;
+  geminiGroup.style.display = engine === 'gemini' ? '' : 'none';
+  openaiGroup.style.display = engine === 'openai' ? '' : 'none';
+  // Drop required from the hidden input so HTML5 validation doesn't block submit
+  if (geminiInput) geminiInput.required = false;
+  if (openaiInput) openaiInput.required = false;
+}
+
+/**
+ * Returns { engine, key } for image generation. Reads engine from the
+ * selector and the corresponding key field. Used by /api/mascot/generate
+ * and /api/assetpack/generate POST builders.
+ */
+function _getImageProviderConfig() {
+  const engine = (document.getElementById('imageEngine')?.value) || 'gemini';
+  const key = engine === 'openai'
+    ? (document.getElementById('openaiKey')?.value || '').trim()
+    : (document.getElementById('googleGeminiKey')?.value || '').trim();
+  return { engine, key };
+}
+
 function _readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -1866,6 +1917,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const _keyFields = [
     { id: 'claudeKey',       storageKey: 'notso_claude_api_key' },
     { id: 'googleGeminiKey', storageKey: 'notso_gemini_api_key' },
+    { id: 'openaiKey',       storageKey: 'notso_openai_api_key' },
   ];
   _keyFields.forEach(({ id, storageKey }) => {
     const el = document.getElementById(id);
@@ -1883,6 +1935,20 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('change', persist);
     el.addEventListener('blur', persist);
   });
+
+  // ── Image-engine picker (gemini / openai) — persists to localStorage and
+  //    toggles which key field is visible. Default = gemini for back-compat.
+  (function setupImageEnginePicker() {
+    const sel = document.getElementById('imageEngine');
+    if (!sel) return;
+    const saved = localStorage.getItem('notso_image_engine');
+    if (saved === 'openai' || saved === 'gemini') sel.value = saved;
+    sel.addEventListener('change', () => {
+      localStorage.setItem('notso_image_engine', sel.value);
+      _onImageEngineChange();
+    });
+    _onImageEngineChange();   // apply visibility on page load
+  })();
 
   // ── Step-1 form auto-save (excludes API keys + file uploads) ──
   // Persists the client info panel between refreshes. API keys are saved
@@ -6325,11 +6391,17 @@ let mascotSelections = {};  // { option_a: data_url, option_b: data_url }
 let savedMascotPaths = {};  // { cover: '/tmp/...', option_a: '/tmp/...', option_b: '/tmp/...' }
 
 async function generateMascots() {
-  const geminiKey = document.getElementById('googleGeminiKey').value.trim();
-  if (!geminiKey) {
-    alert('Please enter your Google Gemini API key first.');
+  // Read engine + key from the unified provider config (Gemini OR OpenAI).
+  // Either one works — server.js routes to the right API based on `engine`.
+  const provider = _getImageProviderConfig();
+  if (!provider.key) {
+    const engineLabel = provider.engine === 'openai' ? 'OpenAI' : 'Google Gemini';
+    alert(`Please enter your ${engineLabel} API key first.`);
     return;
   }
+  // Keep the legacy `geminiKey` variable name so existing references below
+  // (server.js still calls it `geminiKey` in body params for back-compat).
+  const geminiKey = provider.key;
 
   const btn = document.getElementById('mascotGenBtn');
   document.getElementById('mascotGenArea').classList.add('hidden');
@@ -6392,7 +6464,9 @@ async function generateMascots() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        geminiKey,
+        geminiKey,                       // legacy field (still used when imageEngine='gemini')
+        imageEngine: provider.engine,    // NEW: 'gemini' | 'openai'
+        openaiKey: provider.engine === 'openai' ? provider.key : undefined,
         clientName: client.name,
         industry: client.industry,
         mascotName,
@@ -7141,12 +7215,16 @@ function _pickedMascotDataUrl() {
 }
 
 async function generateAssetPack(opts = {}) {
-  const geminiKey = document.getElementById('googleGeminiKey').value.trim();
-  if (!geminiKey) {
+  // Engine-aware key fetch: pick whichever provider the user selected on
+  // Step 1. server.js routes to Gemini or OpenAI based on imageEngine.
+  const provider = _getImageProviderConfig();
+  if (!provider.key) {
+    const engineLabel = provider.engine === 'openai' ? 'OpenAI' : 'Google Gemini';
     document.getElementById('assetPackError').style.display = 'block';
-    document.getElementById('assetPackErrorMsg').textContent = 'Missing Google Gemini API key. Please enter it on Step 1 and regenerate.';
+    document.getElementById('assetPackErrorMsg').textContent = `Missing ${engineLabel} API key. Please enter it on Step 1 and try again.`;
     return;
   }
+  const geminiKey = provider.key;   // legacy alias used by the POST body below
 
   // ALWAYS send mascotImage — on Vercel serverless the previous session's
   // in-memory reference may have been dropped during a cold start. Cheap
@@ -7194,7 +7272,9 @@ async function generateAssetPack(opts = {}) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        geminiKey,
+        geminiKey,                       // legacy field (kept for back-compat — server.js still reads it when imageEngine='gemini')
+        imageEngine: provider.engine,    // NEW: 'gemini' | 'openai'
+        openaiKey: provider.engine === 'openai' ? provider.key : undefined,
         clientName: client.name,
         mascotName,
         brandColor: client.color1,
@@ -7542,8 +7622,14 @@ async function _chromaKeyAssetPackItems(items, byId) {
 // Regenerate one specific item — shows inline loading on the card
 async function regenerateAssetPackItem(id) {
   if (!id || !_assetPackSession.sessionId) return;
-  const geminiKey = document.getElementById('googleGeminiKey').value.trim();
-  if (!geminiKey) { alert('Missing Gemini API key'); return; }
+  // Same engine the original generation used — read live from the picker.
+  const provider = _getImageProviderConfig();
+  if (!provider.key) {
+    const engineLabel = provider.engine === 'openai' ? 'OpenAI' : 'Gemini';
+    alert(`Missing ${engineLabel} API key`);
+    return;
+  }
+  const geminiKey = provider.key;   // legacy alias for the POST body
 
   // Find and overlay the card with a loading spinner
   const cards = document.querySelectorAll('#assetPackDoneContent [data-asset-id]');
@@ -7570,7 +7656,9 @@ async function regenerateAssetPackItem(id) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        geminiKey,
+        geminiKey,                       // legacy field (kept for back-compat — server.js still reads it when imageEngine='gemini')
+        imageEngine: provider.engine,    // NEW: 'gemini' | 'openai'
+        openaiKey: provider.engine === 'openai' ? provider.key : undefined,
         clientName: client.name,
         mascotName,
         brandColor: client.color1,

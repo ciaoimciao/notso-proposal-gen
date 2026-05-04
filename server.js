@@ -29,6 +29,47 @@ const { execFile } = require('child_process');
 // bypass it. See notso_style_prompt.js for the canonical implementation.
 const { buildStylePrompt, STYLE_VERSION, NEGATIVE_SUFFIX, STYLE_TRANSFER_MODIFIER, FAITHFUL_TRANSFER_MODIFIER } = require('./notso_style_prompt');
 
+// ─── IMAGE PROVIDER ABSTRACTION ───
+// User picks Gemini OR OpenAI on Step 1. Each provider has very different
+// request/response shapes. callImageProvider() is the single entry point —
+// it inspects body.imageEngine and routes to the right API. Both return a
+// raw base64 PNG string (no data: URL prefix) so the asset-pack loop can
+// treat them identically downstream (write to /tmp, embed, etc.).
+//
+// Why this lives in server.js (not its own module): every call site sits
+// inside the asset-pack / mascot loops with prompt assembly that's
+// tightly coupled to the surrounding Gemini logic. Inlining keeps diff
+// surface small and avoids passing 8+ parameters to a sub-module.
+
+async function callOpenAIImageEdits({ apiKey, prompt, referenceImageBase64, transparent }) {
+  // Uses /v1/images/edits when we have a reference (asset-pack mascots).
+  // Native transparency support — no chroma-key needed when transparent=true.
+  // Returns the base64 PNG string from data[0].b64_json.
+  const buf = Buffer.from(referenceImageBase64, 'base64');
+  const blob = new Blob([buf], { type: 'image/png' });
+  const form = new FormData();
+  form.append('model', 'gpt-image-1');
+  form.append('prompt', prompt);
+  form.append('image[]', blob, 'reference.png');
+  form.append('size', '1024x1024');
+  // background:'transparent' tells gpt-image-1 to alpha-out the negative space.
+  // Cleaner than Gemini's "pure white background → chroma-key" workaround.
+  if (transparent) form.append('background', 'transparent');
+
+  const resp = await fetch('https://api.openai.com/v1/images/edits', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+    body: form,
+  });
+  const text = await resp.text();
+  let json;
+  try { json = JSON.parse(text); } catch { throw new Error(`OpenAI returned non-JSON (${resp.status}): ${text.slice(0,200)}`); }
+  if (!resp.ok) throw new Error(`OpenAI ${resp.status}: ${json?.error?.message || JSON.stringify(json).slice(0,200)}`);
+  const b64 = json?.data?.[0]?.b64_json;
+  if (!b64) throw new Error('OpenAI response missing data[0].b64_json');
+  return b64;
+}
+
 // ─── CONFIG ───
 const PORT              = 8080;
 
@@ -1593,10 +1634,19 @@ ${schema}`;
         tasks = null,
         sessionId: incomingSessionId = null,
         onlyIds = null,
+        // NEW: image-engine fields. Default to gemini for back-compat.
+        imageEngine = 'gemini',
+        openaiKey = '',
       } = body;
 
-      if (!geminiKey) return json(res, 400, { error: 'Missing Gemini API key' });
+      // Validate the right key for the picked engine.
+      if (imageEngine === 'openai') {
+        if (!openaiKey) return json(res, 400, { error: 'Missing OpenAI API key' });
+      } else {
+        if (!geminiKey) return json(res, 400, { error: 'Missing Gemini API key' });
+      }
       if (!mascotImage && !incomingSessionId) return json(res, 400, { error: 'Missing mascot image (select one first)' });
+      console.log(`  🎨 Asset pack image engine: ${imageEngine}`);
 
       // Parse mascot image for vision input
       const parseDataUrl = (s) => {
@@ -2083,7 +2133,41 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
               const framingRule = isMockupCategory ? '' :
                 '\n\n[FRAMING: Character must be FULLY VISIBLE — head fully shown, feet fully shown, both arms inside the frame. Leave 8-12% white margin on every side. Character takes 60-75% of frame height, CENTERED. Do NOT crop the head, feet, or any limb. Do NOT zoom in. NO model-sheet, NO turnaround, NO row of mini characters in the background. ONE single hero pose only.]';
               const effectiveBgHint = isMockupCategory ? '' : bgHint;
-              reqParts.push({ text: task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + effectiveBgHint + retryHint });
+              const fullPrompt = task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + effectiveBgHint + retryHint;
+              reqParts.push({ text: fullPrompt });
+
+              // ── OpenAI branch (when imageEngine='openai') ──
+              // Skip Gemini entirely. Native transparency support means we can
+              // hand the task.transparent flag straight to gpt-image-1 and the
+              // response is already alpha-clean — no chroma-key needed for
+              // those assets. Mockup-category tasks pass transparent=false so
+              // the laptop/phone scene background renders.
+              if (imageEngine === 'openai') {
+                try {
+                  const b64 = await callOpenAIImageEdits({
+                    apiKey: openaiKey,
+                    prompt: fullPrompt,
+                    referenceImageBase64: effectiveMascotPart.inline_data.data,
+                    transparent: !!task.transparent,
+                  });
+                  const fname = `${task.id}.png`;
+                  const fpath = path.join(outDir, task.category, fname);
+                  fs.writeFileSync(fpath, Buffer.from(b64, 'base64'));
+                  newResults.push({
+                    id: task.id, category: task.category, label: task.label,
+                    transparent: !!task.transparent, ok: true,
+                    file: `${task.category}/${fname}`,
+                    dataUrl: `data:image/png;base64,${b64}`,
+                  });
+                  console.log(`    ✅ ${task.label} → ${fname} (OpenAI gpt-image-1)`);
+                  saved = true;
+                  break;   // out of attempt loop; the for-of model loop will exit via `if (saved) break`
+                } catch (oaErr) {
+                  lastErr = `OpenAI: ${oaErr.message}`;
+                  console.log(`    ⚠️ ${task.label} OpenAI attempt ${attempt} failed: ${oaErr.message}`);
+                  continue;   // retry (up to 2 attempts)
+                }
+              }
 
               const geminiRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${geminiKey}`,
