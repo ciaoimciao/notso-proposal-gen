@@ -1703,11 +1703,28 @@ function renderSlide_S16_PromoMaterials(proposal, client, mascotImages) {
     .map((mat, i) => {
       const matKey = `material_${i}`;
       const imagePath = mascotImages?.[matKey];
+      // Slot is 16:9 landscape so the new generated promo images fill it
+      // edge-to-edge with no white side-margins. When no image is available
+      // yet, the slot shows a subtle dashed placeholder; once an image is
+      // pinned, the dashed border + flex-centring are removed and the image
+      // fills the box (object-fit: cover) so any aspect drift is cropped
+      // rather than letter-boxed.
+      //
+      // We build the <img> tag directly here instead of going through
+      // getImageHTML — that helper hard-codes object-fit:contain which
+      // would re-introduce the white side-margins we're trying to remove.
+      const dataURI = imagePath ? readImageAsDataURI(imagePath) : null;
+      const slotStyle = dataURI
+        ? 'width:100%; aspect-ratio:16/9; background:#F4F4F3; border-radius:8px; margin-bottom:16px; overflow:hidden;'
+        : 'width:100%; aspect-ratio:16/9; background:#F4F4F3; border-radius:8px; margin-bottom:16px; display:flex; align-items:center; justify-content:center; border:2px dashed #d1d5db; overflow:hidden;';
+      const slotInner = dataURI
+        ? `<img src="${dataURI}" alt="Promo Material ${i + 1}" data-slot-key="${matKey}" style="width:100%; height:100%; object-fit:cover; display:block; transform-origin:center center;" />`
+        : `<div class="image-placeholder" data-slot-key="${matKey}"><div style="text-align:center; color:#d1d5db; font-size:17px; padding:20px;">[Image placeholder]</div></div>`;
       return `
         <div style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
           <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px;">${stripEmoji(mat.name || `Material ${i + 1}`)}</div>
-          <div style="width: 100%; height: 200px; background: #F4F4F3; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; border: 2px dashed #d1d5db; overflow: hidden;">
-            ${getImageHTML(imagePath, `Promo Material ${i + 1}`, '', matKey)}
+          <div style="${slotStyle}">
+            ${slotInner}
           </div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; line-height: 1.6;">${stripEmoji(mat.description || '')}</div>
         </div>
