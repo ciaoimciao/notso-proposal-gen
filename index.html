@@ -3657,7 +3657,11 @@ const _UNIFIED_SLOTS = {
     { key: 'material_1', label: 'Slot 2' },
     { key: 'material_2', label: 'Slot 3' },
   ],
-  s18: [{ key: 'cover_s18', label: 'Cover image' }],
+  s18: [
+    { key: 'cover_s18_phone',  label: 'Phone mockup (overlapping)' },
+    { key: 'cover_s18_laptop', label: 'Laptop mockup (back)' },
+    { key: 'cover_s18',        label: 'Fallback cover image (legacy single slot)' },
+  ],
 };
 
 let _unifiedSlideIds = [];          // ['s1','s2',…] in display order
@@ -7561,7 +7565,9 @@ function renderAssetPackResults() {
                 <option value="material_1"${sel('material_1')}>S16 Slot 2</option>
                 <option value="material_2"${sel('material_2')}>S16 Slot 3</option>
               </optgroup>
-              <option value="cover_s18"${sel('cover_s18')}>S18 Thank You</option>
+              <option value="cover_s18_phone"${sel('cover_s18_phone')}>S18 Phone Mockup (overlapping)</option>
+              <option value="cover_s18_laptop"${sel('cover_s18_laptop')}>S18 Laptop Mockup (back)</option>
+              <option value="cover_s18"${sel('cover_s18')}>S18 Fallback Cover</option>
             </select>`;
             })()}
           </div>

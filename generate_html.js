@@ -635,32 +635,33 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
   const today = new Date();
   const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  // Build the hero card body. If both mockups exist → show them side-by-side
-  // (Finsport-style). If neither exists, fall back to a centered cover mascot
-  // so the slide still looks finished before the asset pack runs.
-  let heroBody;
-  if (phoneMock || laptopMock) {
-    heroBody = `
-      <div style="display: flex; align-items: center; justify-content: center; gap: 50px; height: 100%; padding: 40px 60px;">
-        ${phoneMock ? `
-          <div style="flex: 0 0 27%; height: 100%; display: flex; align-items: center; justify-content: center;">
-            <img src="${phoneMock}" alt="Phone Mockup" data-slot-key="cover_s1_phone"
-                 style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;">
-          </div>` : ''}
-        ${laptopMock ? `
-          <div style="flex: 0 0 60%; height: 100%; display: flex; align-items: center; justify-content: center;">
-            <img src="${laptopMock}" alt="Laptop Mockup" data-slot-key="cover_s1_laptop"
-                 style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;">
-          </div>` : ''}
+  // Build the hero card body. ALWAYS show two distinct placement zones:
+  // a portrait phone-shape on the LEFT and a landscape laptop-shape on the
+  // RIGHT. Each zone shows its image if pinned, otherwise a labeled
+  // placeholder so the user can clearly see where to drop each asset.
+  // (Previous version collapsed to one big mascot when neither was pinned —
+  // that hid the two-zone layout from users who hadn't run the asset pack
+  // yet, which is the exact bug screenshotted.)
+  const phoneZoneInner = phoneMock
+    ? `<img src="${phoneMock}" alt="Phone Mockup" data-slot-key="cover_s1_phone"
+            style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;">`
+    : `<div data-slot-key="cover_s1_phone"
+            style="width: 100%; height: 100%; max-width: 240px; max-height: 480px; aspect-ratio: 9/19; border: 3px dashed #cbc8b8; border-radius: 28px; background: rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; color: #9b9788; font-family: 'Poppins',sans-serif; font-size: 15px; font-weight: 600;">Phone mockup</div>`;
+  const laptopZoneInner = laptopMock
+    ? `<img src="${laptopMock}" alt="Laptop Mockup" data-slot-key="cover_s1_laptop"
+            style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;">`
+    : `<div data-slot-key="cover_s1_laptop"
+            style="width: 100%; height: 100%; max-width: 600px; max-height: 380px; aspect-ratio: 16/10; border: 3px dashed #cbc8b8; border-radius: 16px; background: rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; color: #9b9788; font-family: 'Poppins',sans-serif; font-size: 15px; font-weight: 600;">Laptop mockup</div>`;
+  const heroBody = `
+    <div style="display: flex; align-items: center; justify-content: center; gap: 50px; height: 100%; padding: 40px 60px;">
+      <div style="flex: 0 0 27%; height: 100%; display: flex; align-items: center; justify-content: center;">
+        ${phoneZoneInner}
       </div>
-    `;
-  } else {
-    heroBody = `
-      <div style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 40px;">
-        ${getImageHTML(coverMascot, 'Cover Mascot', 'max-height:90%; max-width:60%; object-fit:contain;', 'cover_s1')}
+      <div style="flex: 0 0 60%; height: 100%; display: flex; align-items: center; justify-content: center;">
+        ${laptopZoneInner}
       </div>
-    `;
-  }
+    </div>
+  `;
 
   return `
     <div class="slide" style="background: #FFFFFF; position: relative; display: flex; flex-direction: column; padding: 32px 40px;">
@@ -1813,7 +1814,14 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
   const email = stripEmoji(d.email || 'hello@notso.ai');
   const website = stripEmoji(d.website || 'www.notso.ai');
 
-  // Per-slide cover key (cover_s18) — see note in S1.
+  // S18 Thank You: two overlapping mockup zones on the LEFT — a landscape
+  // laptop sitting behind and a portrait phone overlapping its lower-left
+  // corner (matches the demo earlier in the conversation). Each zone has
+  // its own slot key so the user can pin two distinct images.
+  // cover_s18 (the legacy single-image slot) still works as a fallback for
+  // power users who explicitly pin to it.
+  const phoneMockS18  = mascotImages?.cover_s18_phone  || mascotImages?.cover_s9;
+  const laptopMockS18 = mascotImages?.cover_s18_laptop || mascotImages?.cover_s9_laptop;
   const coverImagePath = mascotImages?.cover_s18 || mascotImages?.cover;
 
   // Brand color wiring — color1 drives the gradient, color2 is the accent.
@@ -1832,11 +1840,27 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
 
   return `
     <div class="slide" style="background: linear-gradient(135deg, ${c1} 0%, ${deeperC1} 100%); position: relative; display: flex; gap: 60px; align-items: stretch;">
-      <!-- Left: Mascot Image -->
-      <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative;">
+      <!-- Left: Two overlapping mockup zones (laptop behind, phone overlapping) -->
+      <div style="flex: 1; display: flex; align-items: center; justify-content: center; position: relative; padding: 40px;">
         <div style="position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); border-radius: 50%; z-index: 0;"></div>
-        <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 40px;">
-          ${getImageHTML(coverImagePath, 'Thank You Mascot', '', 'cover_s18')}
+        <!-- Stage box gives both zones a stable coordinate system to overlap inside -->
+        <div style="position: relative; z-index: 1; width: 100%; height: 100%; max-width: 560px; max-height: 460px;">
+          <!-- Laptop zone — landscape, fills upper-right of the stage -->
+          <div style="position: absolute; right: 0; top: 8%; width: 78%; height: 60%; display: flex; align-items: center; justify-content: center;">
+            ${laptopMockS18
+              ? `<img src="${laptopMockS18}" alt="Laptop Mockup" data-slot-key="cover_s18_laptop"
+                       style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;">`
+              : `<div data-slot-key="cover_s18_laptop"
+                      style="width: 100%; height: 100%; border: 3px dashed rgba(255,255,255,0.55); border-radius: 14px; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.75); font-family: 'Poppins',sans-serif; font-size: 14px; font-weight: 600;">Laptop mockup</div>`}
+          </div>
+          <!-- Phone zone — portrait, overlaps the lower-left of the laptop -->
+          <div style="position: absolute; left: 0; bottom: 0; width: 32%; height: 80%; display: flex; align-items: center; justify-content: center; z-index: 2;">
+            ${phoneMockS18
+              ? `<img src="${phoneMockS18}" alt="Phone Mockup" data-slot-key="cover_s18_phone"
+                       style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center; filter: drop-shadow(0 12px 24px rgba(0,0,0,0.3));">`
+              : `<div data-slot-key="cover_s18_phone"
+                      style="width: 100%; height: 100%; border: 3px dashed rgba(255,255,255,0.55); border-radius: 24px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.75); font-family: 'Poppins',sans-serif; font-size: 14px; font-weight: 600;">Phone mockup</div>`}
+          </div>
         </div>
       </div>
 
