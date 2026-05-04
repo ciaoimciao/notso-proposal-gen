@@ -1157,16 +1157,38 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   const phoneMockup  = mascotImages?.cover_s9        || null;
   const laptopMockup = mascotImages?.cover_s9_laptop || null;
 
-  // Fallback transcript — used only when NEITHER mockup is available
-  // (e.g. before the asset pack runs).
+  // Halo-Support-style chat transcript: each mascot bubble is preceded by a
+  // small circular brand-color avatar (with simple eyes + smile), each user
+  // bubble has no avatar and is right-aligned. Bubbles use light grey for
+  // mascot replies and brand-color for user messages.
+  const mascotAvatar = `
+    <div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:var(--brand-c1, var(--accent)); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.12);">
+      <svg viewBox="0 0 36 36" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="13" cy="15" r="2" fill="#fff"/>
+        <circle cx="23" cy="15" r="2" fill="#fff"/>
+        <path d="M12 22 Q18 27 24 22" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+  `;
+
   const transcriptBubbles = messages
     .map(msg => {
       const role = msg.sender || msg.role || msg.r || msg.who || '';
       const isUser = role === 'user' || role === 'User' || role === 'u';
       const text = stripEmoji(String(msg.text || msg.message || msg.m || msg.content || '')).trim();
+      if (isUser) {
+        return `
+          <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+            <div style="background:var(--brand-c1, var(--accent)); color:#fff; padding:11px 16px; border-radius:18px 18px 4px 18px; max-width:78%; font-family:'Poppins',sans-serif; font-size:17px; line-height:1.5;">
+              ${text}
+            </div>
+          </div>
+        `;
+      }
       return `
-        <div style="display:flex; justify-content:${isUser ? 'flex-end' : 'flex-start'}; margin-bottom:10px;">
-          <div style="background:${isUser ? 'var(--brand-c1, var(--accent))' : '#f3f4f6'}; color:${isUser ? '#fff' : '#1a1a1a'}; padding:10px 14px; border-radius:16px; max-width:82%; font-family:'Poppins',sans-serif; font-size:17px; line-height:1.5;">
+        <div style="display:flex; justify-content:flex-start; align-items:flex-end; gap:10px; margin-bottom:12px;">
+          ${mascotAvatar}
+          <div style="background:#F1EFE8; color:#1a1a1a; padding:11px 16px; border-radius:18px 18px 18px 4px; max-width:78%; font-family:'Poppins',sans-serif; font-size:17px; line-height:1.5;">
             ${text}
           </div>
         </div>
@@ -1195,12 +1217,14 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
     `;
   } else if (phoneMockup) {
     // Phone-only with chat transcript on right (the user's preferred default).
+    // The transcript card is centred vertically next to the phone but only as
+    // tall as its content (no stretching to 540px → no oversized white block).
     bodyHtml = `
-      <div style="display: flex; gap: 40px; align-items: stretch; height: 540px;">
-        <div style="flex-shrink: 0; width: 360px; display: flex; align-items: center; justify-content: center;">
+      <div style="display: flex; gap: 40px; align-items: center; height: 540px;">
+        <div style="flex-shrink: 0; width: 360px; height: 100%; display: flex; align-items: center; justify-content: center;">
           <img src="${phoneMockup}" data-slot-key="cover_s9" style="max-height: 100%; max-width: 100%; object-fit: contain; transform-origin: center center;">
         </div>
-        <div style="flex: 1; min-width: 0; background: #F9F9F9; border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: center;">
+        <div style="flex: 1; min-width: 0; background: #F9F9F9; border-radius: 16px; padding: 24px 26px; display: flex; flex-direction: column; gap: 0;">
           ${transcriptBubbles}
         </div>
       </div>

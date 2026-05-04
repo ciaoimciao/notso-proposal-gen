@@ -32,28 +32,78 @@ const PHONE_SCREEN_RADIUS  = 220;
 const LAPTOP_SCREEN_RADIUS = 20;
 
 // ── compose.py industry → dialogue table ──
+// 3 lines now: mascot intro / user / mascot follow-up (short, 1-2 sentences)
 const DIALOGUES = {
-  nutrition: ["Hi! I'm {name}. What did you eat today?",                  "A big salad and coffee"],
-  health:    ["Hi! I'm {name}. How can I support your health today?",     "What should I eat for dinner?"],
-  fitness:   ["Hi! I'm {name}. Ready for today's workout?",               "Give me a quick 20-min routine"],
-  finance:   ["Hi! I'm {name}. Let's talk about your finances.",          "How do I save more this month?"],
-  sport:     ["Hi! I'm {name}. Where's your club running into trouble?",  "Our finances need help"],
-  education: ["Hi! I'm {name}. Ready to learn something new?",            "Teach me about photosynthesis"],
-  retail:    ["Hi! I'm {name}. Looking for anything in particular?",      "A red shirt in size M"],
-  charity:   ["Hi! I'm {name}. Want to hear about our mission?",          "How can I help donate today?"],
-  default:   ["Hi! I'm {name}. What can I help you with?",                "Tell me more about what you do"],
+  nutrition: ["Hi! I'm {name}. What did you eat today?",                  "A big salad and coffee",          "Nice — solid choice! Want a snack idea? 🥗"],
+  health:    ["Hi! I'm {name}. How can I support your health today?",     "What should I eat for dinner?",   "Try grilled salmon with veggies."],
+  fitness:   ["Hi! I'm {name}. Ready for today's workout?",               "Give me a quick 20-min routine", "Got it — let's start with squats."],
+  finance:   ["Hi! I'm {name}. Let's talk about your finances.",          "How do I save more this month?",  "Start with auto-transfers — easy win."],
+  sport:     ["Hi! I'm {name}. Where's your club running into trouble?",  "Our finances need help",          "I'll pull up the budget tools."],
+  education: ["Hi! I'm {name}. Ready to learn something new?",            "Teach me about photosynthesis",   "Sure! Plants turn sunlight into food."],
+  retail:    ["Hi! I'm {name}. Looking for anything in particular?",      "A red shirt in size M",           "Found 12 options — want to see them?"],
+  charity:   ["Hi! I'm {name}. Want to hear about our mission?",          "How can I help donate today?",    "Even $5 makes a difference. 💚"],
+  default:   ["Hi! I'm {name}. What can I help you with?",                "Tell me more about what you do",  "Happy to walk you through it!"],
 };
 
 function pickDialogue(industry, mascotName) {
   const key = String(industry || 'default').toLowerCase();
   for (const k of Object.keys(DIALOGUES)) {
     if (k !== 'default' && key.includes(k)) {
-      const [m, u] = DIALOGUES[k];
-      return [m.replace('{name}', mascotName), u];
+      const [m, u, m2] = DIALOGUES[k];
+      return [m.replace('{name}', mascotName), u, m2];
     }
   }
-  const [m, u] = DIALOGUES.default;
-  return [m.replace('{name}', mascotName), u];
+  const [m, u, m2] = DIALOGUES.default;
+  return [m.replace('{name}', mascotName), u, m2];
+}
+
+// ── Chroma-key: knock out near-white background pixels (alpha = 0) ──
+// Uses edge-flood: only pixels reachable from the image border get knocked
+// out. This preserves bright-white highlights inside the mascot body.
+function knockOutWhiteBackground(img, threshold = 235) {
+  const w = img.width, h = img.height;
+  const tmp = createCanvas(w, h);
+  const tctx = tmp.getContext('2d');
+  tctx.drawImage(img, 0, 0);
+  let imgData;
+  try { imgData = tctx.getImageData(0, 0, w, h); }
+  catch (e) { return tmp; } // CORS / tainted — give up gracefully
+  const data = imgData.data;
+  const visited = new Uint8Array(w * h);
+  const queue = [];
+  // Seed with all border pixels that are "near white"
+  function isNearWhite(i) {
+    return data[i] >= threshold && data[i+1] >= threshold && data[i+2] >= threshold;
+  }
+  for (let x = 0; x < w; x++) {
+    for (const y of [0, h - 1]) {
+      const i = (y * w + x) * 4;
+      if (isNearWhite(i)) { queue.push(x + y * w); visited[x + y * w] = 1; }
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (const x of [0, w - 1]) {
+      const i = (y * w + x) * 4;
+      if (isNearWhite(i)) { queue.push(x + y * w); visited[x + y * w] = 1; }
+    }
+  }
+  // BFS flood
+  while (queue.length) {
+    const p = queue.shift();
+    const x = p % w, y = (p - x) / w;
+    const i = p * 4;
+    data[i+3] = 0; // alpha 0
+    const neighbours = [[x-1,y],[x+1,y],[x,y-1],[x,y+1]];
+    for (const [nx, ny] of neighbours) {
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      const np = ny * w + nx;
+      if (visited[np]) continue;
+      const ni = np * 4;
+      if (isNearWhite(ni)) { visited[np] = 1; queue.push(np); }
+    }
+  }
+  tctx.putImageData(imgData, 0, 0);
+  return tmp;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -121,11 +171,12 @@ function applyRoundedMask(ctx, x, y, w, h, r) {
 // ── Build the phone screen content (chat UI) ────────────────────────
 
 function buildPhoneScreenContent({ sw, sh, mascot, mascotName, brandRgb,
-                                   mascotLine, userLine, industry }) {
-  if (!mascotLine || !userLine) {
-    const [m, u] = pickDialogue(industry, mascotName);
-    mascotLine = mascotLine || m;
-    userLine   = userLine   || u;
+                                   mascotLine, userLine, mascotLine2, industry }) {
+  if (!mascotLine || !userLine || !mascotLine2) {
+    const [m, u, m2] = pickDialogue(industry, mascotName);
+    mascotLine  = mascotLine  || m;
+    userLine    = userLine    || u;
+    mascotLine2 = mascotLine2 || m2;
   }
 
   const canvas = createCanvas(sw, sh);
@@ -194,25 +245,28 @@ function buildPhoneScreenContent({ sw, sh, mascot, mascotName, brandRgb,
     return y2;
   }
 
-  // Mascot bubble (left), user bubble (right)
+  // 3 bubbles: mascot intro (L) → user (R) → mascot follow-up (L, short)
   const firstY  = labelY + Math.floor(sh * 0.05);
-  const bub1End = drawBubble(mascotLine, 'left',  firstY, false);
-  const bub2End = drawBubble(userLine,   'right', bub1End + Math.floor(sh * 0.018), true);
+  const bub1End = drawBubble(mascotLine,  'left',  firstY,                              false);
+  const bub2End = drawBubble(userLine,    'right', bub1End + Math.floor(sh * 0.018),    true);
+  const bub3End = drawBubble(mascotLine2, 'left',  bub2End + Math.floor(sh * 0.018),    false);
 
-  // ── Mascot image ──
+  // ── Mascot image (smaller — 70% of available area, centred) ──
   const bottomBarH   = Math.floor(sh * 0.10);
   const bottomBarPad = Math.floor(sh * 0.035);
-  const mascotTop    = bub2End + Math.floor(sh * 0.015);
+  const mascotTop    = bub3End + Math.floor(sh * 0.015);
   const mascotBottom = sh - bottomBarH - bottomBarPad - Math.floor(sh * 0.01);
-  const mascotAreaH  = mascotBottom - mascotTop;
-  const mascotAreaW  = Math.floor(sw * 0.92);
+  const mascotAreaH  = (mascotBottom - mascotTop) * 0.78;   // shrink vertical area
+  const mascotAreaW  = Math.floor(sw * 0.70);              // shrink horizontal area
   if (mascot && mascotAreaH > 0) {
-    const scale = Math.min(mascotAreaW / mascot.width, mascotAreaH / mascot.height);
-    const newW = Math.floor(mascot.width * scale);
-    const newH = Math.floor(mascot.height * scale);
+    // Knock out white background so the figure floats on the chat bg
+    const masked = knockOutWhiteBackground(mascot, 235);
+    const scale = Math.min(mascotAreaW / masked.width, mascotAreaH / masked.height);
+    const newW = Math.floor(masked.width * scale);
+    const newH = Math.floor(masked.height * scale);
     const mx = Math.floor((sw - newW) / 2);
-    const my = mascotTop + Math.floor((mascotAreaH - newH) / 2);
-    ctx.drawImage(mascot, mx, my, newW, newH);
+    const my = mascotTop + Math.floor(((mascotBottom - mascotTop) - newH) / 2);
+    ctx.drawImage(masked, mx, my, newW, newH);
   }
 
   // ── Bottom input bar ──
@@ -349,12 +403,13 @@ function buildChatWindow({ w, h, mascot, mascotName, brandRgb,
   const mascotAreaH  = Math.max(0, mascotBottom - mascotTop);
   const mascotAreaW  = Math.floor(w * 0.80);
   if (mascot && mascotAreaH > 20) {
-    const scale = Math.min(mascotAreaW / mascot.width, mascotAreaH / mascot.height);
-    const nw = Math.floor(mascot.width * scale);
-    const nh = Math.floor(mascot.height * scale);
+    const masked = knockOutWhiteBackground(mascot, 235);
+    const scale = Math.min(mascotAreaW / masked.width, mascotAreaH / masked.height);
+    const nw = Math.floor(masked.width * scale);
+    const nh = Math.floor(masked.height * scale);
     const mx = Math.floor((w - nw) / 2);
     const my = mascotTop + Math.floor((mascotAreaH - nh) / 2);
-    ctx.drawImage(mascot, mx, my, nw, nh);
+    ctx.drawImage(masked, mx, my, nw, nh);
   }
 
   // Input bar
@@ -395,7 +450,7 @@ function buildChatWindow({ w, h, mascot, mascotName, brandRgb,
 async function composePhoneMockup({
   mascotDataUrl, mascotPath, phoneFramePath,
   mascotName = 'Notso', brandColor = '#DC2626',
-  industry = '', mascotLine = null, userLine = null,
+  industry = '', mascotLine = null, userLine = null, mascotLine2 = null,
 }) {
   const framePath = phoneFramePath ||
                     path.join(__dirname, 'mockup-assets', 'phone-frame.png');
@@ -412,7 +467,7 @@ async function composePhoneMockup({
 
   // 1) Build screen content
   const content = buildPhoneScreenContent({
-    sw, sh, mascot, mascotName, brandRgb, mascotLine, userLine, industry,
+    sw, sh, mascot, mascotName, brandRgb, mascotLine, userLine, mascotLine2, industry,
   });
 
   // 2) Mask to rounded rect (matches bezel interior)

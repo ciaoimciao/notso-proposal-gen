@@ -7405,10 +7405,29 @@ function autoAssignAssetPackToSlides() {
   if (phoneMock && phoneMock.dataUrl) {
     savedMascotPaths['cover_s9'] = phoneMock.dataUrl;
     _assetSlideAssignments['cover_s9'] = { assetId: phoneMock.id, file: phoneMock.file };
+    // Also pin the same phone mockup to S1 cover hero card (left zone).
+    if (!savedMascotPaths['cover_s1_phone']) {
+      savedMascotPaths['cover_s1_phone'] = phoneMock.dataUrl;
+      _assetSlideAssignments['cover_s1_phone'] = { assetId: phoneMock.id, file: phoneMock.file };
+    }
+    // S18 Thank You uses the same phone mockup
+    if (!savedMascotPaths['cover_s18_phone']) {
+      savedMascotPaths['cover_s18_phone'] = phoneMock.dataUrl;
+      _assetSlideAssignments['cover_s18_phone'] = { assetId: phoneMock.id, file: phoneMock.file };
+    }
   }
   if (websiteMock && websiteMock.dataUrl) {
     savedMascotPaths['cover_s10'] = websiteMock.dataUrl;
     _assetSlideAssignments['cover_s10'] = { assetId: websiteMock.id, file: websiteMock.file };
+    // Pin laptop mockup to S1 cover (right zone) and S18 Thank You.
+    if (!savedMascotPaths['cover_s1_laptop']) {
+      savedMascotPaths['cover_s1_laptop'] = websiteMock.dataUrl;
+      _assetSlideAssignments['cover_s1_laptop'] = { assetId: websiteMock.id, file: websiteMock.file };
+    }
+    if (!savedMascotPaths['cover_s18_laptop']) {
+      savedMascotPaths['cover_s18_laptop'] = websiteMock.dataUrl;
+      _assetSlideAssignments['cover_s18_laptop'] = { assetId: websiteMock.id, file: websiteMock.file };
+    }
     // Clean up any stale cover_s9_laptop pin from previous sessions so
     // S9 reverts to the phone+transcript layout the user wants.
     if (_assetSlideAssignments['cover_s9_laptop'] &&
