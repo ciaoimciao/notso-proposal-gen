@@ -171,7 +171,8 @@ function applyRoundedMask(ctx, x, y, w, h, r) {
 // ── Build the phone screen content (chat UI) ────────────────────────
 
 function buildPhoneScreenContent({ sw, sh, mascot, mascotName, brandRgb,
-                                   mascotLine, userLine, mascotLine2, industry }) {
+                                   mascotLine, userLine, mascotLine2, industry,
+                                   mascotSizeRatio = 0.55 }) {
   if (!mascotLine || !userLine || !mascotLine2) {
     const [m, u, m2] = pickDialogue(industry, mascotName);
     mascotLine  = mascotLine  || m;
@@ -251,21 +252,34 @@ function buildPhoneScreenContent({ sw, sh, mascot, mascotName, brandRgb,
   const bub2End = drawBubble(userLine,    'right', bub1End + Math.floor(sh * 0.018),    true);
   const bub3End = drawBubble(mascotLine2, 'left',  bub2End + Math.floor(sh * 0.018),    false);
 
-  // ── Mascot image (smaller — 70% of available area, centred) ──
+  // ── Mascot image — fill the gap between the last bubble and the input
+  // bar. User feedback was that the mascot looked too small; we now use
+  // ~92% of the screen width and the FULL available vertical space, with
+  // a minimum-area floor so the mascot stays large even when the 3rd
+  // bubble pushed the available area down.
   const bottomBarH   = Math.floor(sh * 0.10);
   const bottomBarPad = Math.floor(sh * 0.035);
   const mascotTop    = bub3End + Math.floor(sh * 0.015);
   const mascotBottom = sh - bottomBarH - bottomBarPad - Math.floor(sh * 0.01);
-  const mascotAreaH  = (mascotBottom - mascotTop) * 0.78;   // shrink vertical area
-  const mascotAreaW  = Math.floor(sw * 0.70);              // shrink horizontal area
+  const mascotAreaH  = mascotBottom - mascotTop;            // full vertical area
+  const mascotAreaW  = Math.floor(sw * 0.92);              // ~full width minus gutter
+  // Floor: never let the mascot render smaller than 50% of the screen
+  // width even if available height is tight (matches the user's red-box
+  // reference). We achieve this by using max() of an aspect-fit scale and
+  // a width-driven minimum, then crop with a center-anchored clip if the
+  // result overflows the available height.
   if (mascot && mascotAreaH > 0) {
-    // Knock out white background so the figure floats on the chat bg
     const masked = knockOutWhiteBackground(mascot, 235);
-    const scale = Math.min(mascotAreaW / masked.width, mascotAreaH / masked.height);
-    const newW = Math.floor(masked.width * scale);
-    const newH = Math.floor(masked.height * scale);
+    // The ratio drives the mascot's WIDTH directly (0.30 = 30% of screen,
+    // 0.95 = 95% of screen). Height scales proportionally. Vertical overflow
+    // is allowed — the user has explicitly asked for this size, so we trust
+    // them. Earlier max(fit, floor) approach was a no-op because fitScale
+    // already produced a ~92%-wide mascot, leaving only a 3% slider range.
+    const ratio = Math.max(0.30, Math.min(0.95, Number(mascotSizeRatio) || 0.55));
+    const newW = Math.floor(sw * ratio);
+    const newH = Math.floor(masked.height * (newW / masked.width));
     const mx = Math.floor((sw - newW) / 2);
-    const my = mascotTop + Math.floor(((mascotBottom - mascotTop) - newH) / 2);
+    const my = mascotTop + Math.floor((mascotAreaH - newH) / 2);
     ctx.drawImage(masked, mx, my, newW, newH);
   }
 
@@ -300,7 +314,8 @@ function buildPhoneScreenContent({ sw, sh, mascot, mascotName, brandRgb,
 // ── Build the chat-popup widget for laptop overlay ──────────────────
 
 function buildChatWindow({ w, h, mascot, mascotName, brandRgb,
-                           mascotLine, userLine, industry, cornerRadius = 32 }) {
+                           mascotLine, userLine, industry, cornerRadius = 32,
+                           mascotSizeRatio = 0.55 }) {
   if (!mascotLine || !userLine) {
     const [m, u] = pickDialogue(industry, mascotName);
     mascotLine = mascotLine || m;
@@ -404,9 +419,11 @@ function buildChatWindow({ w, h, mascot, mascotName, brandRgb,
   const mascotAreaW  = Math.floor(w * 0.80);
   if (mascot && mascotAreaH > 20) {
     const masked = knockOutWhiteBackground(mascot, 235);
-    const scale = Math.min(mascotAreaW / masked.width, mascotAreaH / masked.height);
-    const nw = Math.floor(masked.width * scale);
-    const nh = Math.floor(masked.height * scale);
+    // Same direct-width approach as the phone screen — slider drives the
+    // width as a fraction of the chat-widget width, height scales with it.
+    const ratio = Math.max(0.30, Math.min(0.95, Number(mascotSizeRatio) || 0.55));
+    const nw = Math.floor(w * ratio);
+    const nh = Math.floor(masked.height * (nw / masked.width));
     const mx = Math.floor((w - nw) / 2);
     const my = mascotTop + Math.floor((mascotAreaH - nh) / 2);
     ctx.drawImage(masked, mx, my, nw, nh);
@@ -451,6 +468,7 @@ async function composePhoneMockup({
   mascotDataUrl, mascotPath, phoneFramePath,
   mascotName = 'Notso', brandColor = '#DC2626',
   industry = '', mascotLine = null, userLine = null, mascotLine2 = null,
+  mascotSizeRatio = 0.55,
 }) {
   const framePath = phoneFramePath ||
                     path.join(__dirname, 'mockup-assets', 'phone-frame.png');
@@ -468,6 +486,7 @@ async function composePhoneMockup({
   // 1) Build screen content
   const content = buildPhoneScreenContent({
     sw, sh, mascot, mascotName, brandRgb, mascotLine, userLine, mascotLine2, industry,
+    mascotSizeRatio,
   });
 
   // 2) Mask to rounded rect (matches bezel interior)
@@ -495,6 +514,7 @@ async function composeLaptopMockup({
   mascotName = 'Notso', brandColor = '#DC2626',
   industry = '', mascotLine = null, userLine = null,
   windowScale = 0.72, outputMaxW = 2000,
+  mascotSizeRatio = 0.55,
 }) {
   const framePath = laptopFramePath ||
                     path.join(__dirname, 'mockup-assets', 'laptop-frame.png');
@@ -551,6 +571,7 @@ async function composeLaptopMockup({
   const chat = buildChatWindow({
     w: winW, h: winH, mascot, mascotName, brandRgb,
     mascotLine, userLine, industry, cornerRadius: cornerR,
+    mascotSizeRatio,
   });
 
   // Position widget bottom-right of screen with shadow

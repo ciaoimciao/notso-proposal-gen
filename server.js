@@ -1637,6 +1637,11 @@ ${schema}`;
         // NEW: image-engine fields. Default to gemini for back-compat.
         imageEngine = 'gemini',
         openaiKey = '',
+        // Mascot size inside the phone/laptop chat-widget mockups (0.30–0.95).
+        // Drives the minScale floor in mockup_compose_v2 — bigger ratio means
+        // the mascot fills more of the screen. Default 0.55 matches the
+        // "red-box" reference the user gave.
+        mascotSizeRatio = 0.55,
       } = body;
 
       // Validate the right key for the picked engine.
@@ -1826,58 +1831,50 @@ ${schema}`;
           category: 'mockups',
           label: 'Promo Poster',
           transparent: false,
-          prompt: `A horizontal promotional poster banner (LANDSCAPE 16:9 ratio, wider than tall) in 2D flat marketing illustration style with a solid bright ${_bc} background. The composition MUST fill the entire wide canvas edge-to-edge — no white margins, no letterboxing, no empty side bars.
+          prompt: `A square (1:1) promotional poster in 2D flat marketing illustration style with a solid bright ${_bc} background that fills the entire square canvas edge-to-edge.
 
-LAYOUT (split into LEFT half and RIGHT half):
-- LEFT half (text zone, vertically centred):
-  · "DIGITAL BUDDY" — bold sans-serif headline, two lines stacked, dark color (60% darker than the background)
-  · just below the headline: a small white rounded rectangle speech bubble containing "${_esc(PC.greeting)}"
-  · at the bottom of the left half: bold "${_esc(PC.tagline)}" in dark color, ~48pt
-- RIGHT half (mascot zone, vertically centred):
-  · the SAME mascot character from the reference image, full body, friendly waving pose, with ${_esc(PC.props)} beside it
-  · bottom-right corner of the canvas: a clear black-and-white QR code about 14% of the canvas width
+LAYOUT:
+- Top-left: bold sans-serif headline "DIGITAL BUDDY" in dark color (60% darker than the background), two lines stacked
+- Center-right: the SAME mascot character from the reference image, full body, friendly waving pose, with ${_esc(PC.props)} beside it
+- Above the mascot: a small white rounded rectangle speech bubble pointing at the mascot, containing "${_esc(PC.greeting)}"
+- Bottom-left: bold "${_esc(PC.tagline)}" in dark color, large 56pt
+- Bottom-right: a clear black-and-white QR code about 14% of the canvas
 
-[STRICT] LANDSCAPE 16:9 — the output must be wider than tall, content fills the full width. Single mascot only, no duplicates, no model-sheet rows. Mascot must match reference EXACTLY at part level (eyes, face, body, colors, outline). All four text elements clear and readable. Modern flat marketing illustration style only — no gradients, no textures, no extra characters. Output a complete final poster filling the entire 16:9 canvas.`
+[STRICT] Square 1:1 canvas filled edge-to-edge. Single mascot only, no duplicates, no model-sheet rows. Mascot must match reference EXACTLY at part level (eyes, face, body, colors, outline). All four text elements clear and readable. Modern flat marketing illustration style only — no gradients, no textures, no extra characters. Output a complete final poster.`
         },
         {
           id: 'promo-vinyl-toy',
           category: 'mockups',
           label: 'Promo Vinyl Toy',
           transparent: false,
-          prompt: `A photorealistic product photograph (LANDSCAPE 16:9 ratio, wider than tall) of a collectible 3D vinyl toy figurine of the SAME mascot character from the reference image, sitting on a clean surface with ${_esc(PC.scene)} blurred behind. The composition MUST fill the entire wide canvas edge-to-edge — no white margins, no letterboxing.
-
-LAYOUT:
-- LEFT third of the canvas: the figurine, eye-level, with a small white folded card stand (about 1/3 the figurine height) right next to it. The card has a clearly visible black-and-white QR code on the upper half and bold text "CHAT WITH ME!" on the lower half.
-- RIGHT two-thirds of the canvas: ${_esc(PC.scene)} as a softly blurred lifestyle background (bokeh, shallow depth of field).
+          prompt: `A square (1:1) photorealistic product photograph of a collectible 3D vinyl toy figurine of the SAME mascot character from the reference image, sitting on a clean surface with ${_esc(PC.scene)} blurred behind.
 
 The figurine looks IDENTICAL to the reference mascot — same colors, same face, same proportions, same outline — but rendered in glossy vinyl material with subtle 3D shading and a soft drop shadow.
 
-CAMERA: eye-level shot, shallow depth of field, soft directional lighting from the left. Wide lifestyle product photography composition. No people in frame.
+NEXT TO the figurine, place a small white folded card stand (about 1/3 the figurine height) with a clearly visible black-and-white QR code on the upper half and bold text "CHAT WITH ME!" on the lower half.
 
-[STRICT] LANDSCAPE 16:9 — the output must be wider than tall, content fills the full width. Single figurine only, no duplicates. Figurine matches reference EXACTLY at part level — only the material rendering changes to glossy vinyl. QR sign card readable. No additional text or logos. Output a complete final product photograph filling the entire 16:9 canvas.`
+CAMERA: eye-level shot, shallow depth of field, soft directional lighting from the left. Lifestyle product photography style. No people in frame. Subject centered in the square frame.
+
+[STRICT] Square 1:1 canvas filled edge-to-edge. Single figurine only, no duplicates. Figurine matches reference EXACTLY at part level — only the material rendering changes to glossy vinyl. QR sign card readable. No additional text or logos. Output a complete final product photograph.`
         },
         {
           id: 'promo-banner',
           category: 'mockups',
           label: 'Promo Banner',
           transparent: false,
-          prompt: `A photorealistic photograph (LANDSCAPE 16:9 ratio, wider than tall) of a vertical roll-up banner standing on the floor inside ${_esc(PC.banner_location)}, with ${_esc(PC.person)} visible in frame. The composition MUST fill the entire wide canvas edge-to-edge — no white margins, no letterboxing.
+          prompt: `A square (1:1) photorealistic photograph of a vertical roll-up banner standing on the floor inside ${_esc(PC.banner_location)}, with ${_esc(PC.person)}.
 
-LAYOUT:
-- The vertical roll-up banner stands in the LEFT third of the canvas, sharp and in focus, fully visible top to bottom.
-- The RIGHT two-thirds of the canvas show ${_esc(PC.person)} and ${_esc(PC.banner_location)} surroundings in soft focus (shallow depth of field).
-
-THE BANNER ITSELF (must be clearly readable):
+THE BANNER (sharp, in focus, must be clearly readable):
 - Vertical 80cm × 200cm proportions, solid ${_bc} background
 - Top: bold sans-serif headline "DIGITAL BUDDY" in dark color, two lines stacked
 - Below headline: small white rounded speech bubble with text "${_esc(PC.greeting)}"
 - Center: the SAME mascot character from the reference image, full body, friendly waving pose, with ${_esc(PC.props)} beside it
-- Bottom-left of the banner: black-and-white QR code about 12cm square
-- Bottom-right of the banner: bold text "${_esc(PC.tagline)}"
+- Bottom-left: black-and-white QR code about 12cm square
+- Bottom-right: bold text "${_esc(PC.tagline)}"
 
-CAMERA: eye-level wide shot from about 3 meters, slight angle, soft natural lighting, banner in sharp focus, person and surroundings in shallow depth of field.
+CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting, banner in sharp focus, person and surroundings in shallow depth of field. Banner centered in the square frame with the location visible around it.
 
-[STRICT] LANDSCAPE 16:9 — the output must be wider than tall, content fills the full width. Mascot appears ONLY printed on the banner — NOT as a 3D character in the real scene. Mascot illustration matches reference EXACTLY at part level. All banner text readable. Output a complete final photograph filling the entire 16:9 canvas.`
+[STRICT] Square 1:1 canvas filled edge-to-edge. Mascot appears ONLY printed on the banner — NOT as a 3D character in the real scene. Mascot illustration matches reference EXACTLY at part level. All banner text readable. Output a complete final photograph.`
         },
       );
       console.log(`  📣 Promo materials industry: ${profile === INDUSTRY_PROFILES.generic ? 'generic (no match)' : Object.keys(INDUSTRY_PROFILES).find(k => INDUSTRY_PROFILES[k] === profile)} | claude-override fields: ${Object.keys(ctx).filter(k => ctx[k]).join(',') || 'none'}`);
@@ -2044,6 +2041,7 @@ CAMERA: eye-level wide shot from about 3 meters, slight angle, soft natural ligh
               mascotName,
               brandColor,
               industry: _industryHint,
+              mascotSizeRatio,
             };
             // v2 returns Buffer (PNG bytes) directly, not data URL.
             let buf;

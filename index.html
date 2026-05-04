@@ -4215,15 +4215,18 @@ function _mxpSyncUI(t) {
 }
 
 // Clamp helper matching each prop's allowed range.
+// Scale max is 5.0 (500%) to match the slider's max attribute. Note: previous
+// version clamped at 2.0 here — silently undermining the slider's 0.2–5.0
+// range, which is why the user couldn't drag past 200%.
 function _mxpClamp(prop, raw) {
   const n = parseFloat(raw);
   if (isNaN(n)) return (prop === 'scale') ? 1 : 0;
-  if (prop === 'scale') return Math.max(0.3, Math.min(2.0, n));
+  if (prop === 'scale') return Math.max(0.2, Math.min(5.0, n));
   if (prop === 'rot')   return Math.max(-180, Math.min(180, n));
   return Math.max(-300, Math.min(300, n));
 }
 
-// Slider emits raw value (scale: 0.3–2.0; others: number).
+// Slider emits raw value (scale: 0.2–5.0; others: number).
 function _mxpSet(prop, val) {
   if (!_mxpActiveSlot) return;
   const t = _mxpGet(_mxpActiveSlot);
@@ -4232,7 +4235,7 @@ function _mxpSet(prop, val) {
   _mxpApply(_mxpActiveSlot);
 }
 
-// Number input emits percent for scale (30–200); raw number for others.
+// Number input emits percent for scale (20–500); raw number for others.
 // Accepts free-form user input — clamps silently.
 function _mxpSetFromNumber(prop, val) {
   if (!_mxpActiveSlot) return;
@@ -4240,7 +4243,7 @@ function _mxpSetFromNumber(prop, val) {
   const n = parseFloat(val);
   if (isNaN(n)) return;  // user mid-typing — ignore, will re-clamp on blur
   if (prop === 'scale') {
-    t.scale = Math.max(0.3, Math.min(2.0, n / 100));
+    t.scale = Math.max(0.2, Math.min(5.0, n / 100));
   } else if (prop === 'rot') {
     t.rot = Math.max(-180, Math.min(180, n));
   } else {
@@ -7164,6 +7167,41 @@ function closeAssetPackModal() {
 
 // Asset Pack session state (persists across regenerations within one modal session)
 let _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
+
+// Mascot size inside the phone/laptop chat-widget mockups (0.30–0.95). The
+// slider in the Asset Pack modal mutates this; both /api/assetpack/generate
+// (full pack) and the regen-one button send it in their request body.
+// Default 0.55 matches the "red-box" reference the user gave.
+let _mascotSizeRatio = 0.55;
+
+// Setter — keeps slider + number input in sync without triggering an
+// infinite oninput loop (the side that was touched is identified via the
+// `source` arg so we only update the OTHER one).
+function _setMascotSizeRatio(val, source) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return;
+  const clamped = Math.max(0.30, Math.min(0.95, n));
+  _mascotSizeRatio = clamped;
+  const pct = Math.round(clamped * 100);
+  const slider = document.getElementById('msrSlider');
+  const num    = document.getElementById('msrNum');
+  if (slider && source !== 'slider') slider.value = pct;
+  if (num    && source !== 'num')    num.value    = pct;
+}
+
+// Re-runs the mock-phone-chat and mock-website tasks at the current
+// _mascotSizeRatio. The two regen calls run sequentially because the
+// regenerate flow already manages spinners + chroma-key + result-merging
+// per task — no need to parallelise (each task is just a local canvas
+// composition, ~200 ms).
+async function _applyMascotSizeRatio() {
+  if (!_assetPackSession.sessionId) {
+    alert('Generate the asset pack first, then adjust mascot size.');
+    return;
+  }
+  await regenerateAssetPackItem('mock-phone-chat');
+  await regenerateAssetPackItem('mock-website');
+}
 // Tracks which asset images are assigned to which slides: { slideKey: { assetId, file } }
 let _assetSlideAssignments = {};
 
@@ -7293,6 +7331,9 @@ async function generateAssetPack(opts = {}) {
         promoContext,
         sessionId: _assetPackSession.sessionId || undefined,
         onlyIds: opts.onlyIds || undefined,
+        // Per-session mascot size inside phone/laptop mockup screens (0.30–0.95).
+        // Read from the in-modal slider; falls back to 0.55 (default).
+        mascotSizeRatio: (typeof _mascotSizeRatio === 'number' ? _mascotSizeRatio : 0.55),
       })
     });
 
@@ -7498,6 +7539,36 @@ function renderAssetPackResults() {
     <div style="font-size:11px;color:var(--gray-500)">Hover over an image to regenerate it. Use bulk actions below to retry all failed or download.</div>
   </div>`;
 
+  // ── Mockup mascot-size slider ──
+  // Lives at the top of the results panel. Affects the next render of
+  // mock-phone-chat / mock-website only. Drag → Apply (regen those 2).
+  // Range 30–95% maps to mascotSizeRatio 0.30–0.95 (clamped server-side
+  // and in mockup_compose_v2.js).
+  html += `<div style="background:#FAFAF7;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#1a1a1a">Mascot size in mockups</div>
+        <div style="font-size:10px;color:#6b7280">Affects the phone &amp; laptop chat-widget mockups only</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input id="msrNum" type="number" min="30" max="95" step="1" value="${Math.round(_mascotSizeRatio*100)}"
+               oninput="_setMascotSizeRatio(this.value/100, 'num')"
+               style="width:54px;padding:3px 6px;border:1px solid #e5e7eb;border-radius:4px;font-size:11px;text-align:right">
+        <span style="font-size:11px;color:#6b7280">% of screen</span>
+      </div>
+    </div>
+    <input id="msrSlider" type="range" min="30" max="95" step="1" value="${Math.round(_mascotSizeRatio*100)}"
+           oninput="_setMascotSizeRatio(this.value/100, 'slider')"
+           style="width:100%;accent-color:var(--brand-c1, #3CC2A6)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+      <div style="font-size:10px;color:#9ca3af">30% &nbsp;·&nbsp; <span style="color:#6b7280">55% default</span> &nbsp;·&nbsp; 95%</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="_setMascotSizeRatio(0.55,'reset')" style="padding:4px 8px;background:#fff;color:#6b7280;border:1px solid #e5e7eb;border-radius:4px;font-size:10px;cursor:pointer">Reset</button>
+        <button onclick="_applyMascotSizeRatio()" style="padding:4px 10px;background:var(--brand-c1, #3CC2A6);color:#fff;border:0;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer">↻ Apply &amp; regen mockups</button>
+      </div>
+    </div>
+  </div>`;
+
   for (const cat of catOrder) {
     const items = byCat[cat] || [];
     if (!items.length) continue;
@@ -7695,6 +7766,7 @@ async function regenerateAssetPackItem(id) {
         clientSiteImage: (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '',
         sessionId: _assetPackSession.sessionId,
         onlyIds: [id],
+        mascotSizeRatio: (typeof _mascotSizeRatio === 'number' ? _mascotSizeRatio : 0.55),
       })
     });
     const data = await resp.json().catch(() => null);

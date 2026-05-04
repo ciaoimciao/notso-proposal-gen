@@ -1704,20 +1704,19 @@ function renderSlide_S16_PromoMaterials(proposal, client, mascotImages) {
     .map((mat, i) => {
       const matKey = `material_${i}`;
       const imagePath = mascotImages?.[matKey];
-      // Slot is 16:9 landscape so the new generated promo images fill it
-      // edge-to-edge with no white side-margins. When no image is available
-      // yet, the slot shows a subtle dashed placeholder; once an image is
-      // pinned, the dashed border + flex-centring are removed and the image
-      // fills the box (object-fit: cover) so any aspect drift is cropped
-      // rather than letter-boxed.
+      // Slot is SQUARE (1:1) — Gemini natively returns square images so we
+      // match that aspect to avoid any cropping or letter-boxing. When no
+      // image is available yet, the slot shows a dashed placeholder; once
+      // the image is pinned, the dashed border + flex-centring are removed
+      // and the square image fills the slot edge-to-edge.
       //
       // We build the <img> tag directly here instead of going through
       // getImageHTML — that helper hard-codes object-fit:contain which
-      // would re-introduce the white side-margins we're trying to remove.
+      // would re-introduce white margins inside the square slot.
       const dataURI = imagePath ? readImageAsDataURI(imagePath) : null;
       const slotStyle = dataURI
-        ? 'width:100%; aspect-ratio:16/9; background:#F4F4F3; border-radius:8px; margin-bottom:16px; overflow:hidden;'
-        : 'width:100%; aspect-ratio:16/9; background:#F4F4F3; border-radius:8px; margin-bottom:16px; display:flex; align-items:center; justify-content:center; border:2px dashed #d1d5db; overflow:hidden;';
+        ? 'width:100%; aspect-ratio:1/1; background:#F4F4F3; border-radius:8px; margin-bottom:14px; overflow:hidden;'
+        : 'width:100%; aspect-ratio:1/1; background:#F4F4F3; border-radius:8px; margin-bottom:14px; display:flex; align-items:center; justify-content:center; border:2px dashed #d1d5db; overflow:hidden;';
       const slotInner = dataURI
         ? `<img src="${dataURI}" alt="Promo Material ${i + 1}" data-slot-key="${matKey}" style="width:100%; height:100%; object-fit:cover; display:block; transform-origin:center center;" />`
         : `<div class="image-placeholder" data-slot-key="${matKey}"><div style="text-align:center; color:#d1d5db; font-size:17px; padding:20px;">[Image placeholder]</div></div>`;
