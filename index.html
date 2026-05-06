@@ -614,9 +614,17 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
             <input type="password" id="mascotInlineKey" placeholder="AIza..." style="width:100%;padding:8px 10px;border:1px solid #E6D4A0;border-radius:6px;font-size:12px;font-family:inherit;background:#fff" oninput="document.getElementById('googleGeminiKey').value=this.value;if(this.value.startsWith('AIza'))document.getElementById('mascotKeyHint').style.display='none'" />
           </div>
         </div>
-        <!-- Engine Selector -->
-        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
-          <label style="font-size:13px;font-weight:600;white-space:nowrap" data-i18n="mascot.engine.label">Engine:</label>
+        <!-- Engine Selector — Gemini sub-models only.
+             ────────────────────────────────────────────────────────────────
+             Step 2 inherits the high-level engine choice from Step 1's
+             "Image Generation Engine" picker. If the user picked OpenAI in
+             Step 1, this whole block hides (OpenAI has only one model).
+             If they picked Gemini, this picker lets power-users override
+             which Gemini sub-model to use; "Auto" is fine for everyone else.
+             #mascotEngineRow visibility is toggled by _onImageEngineChange().
+        -->
+        <div id="mascotEngineRow" style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+          <label style="font-size:13px;font-weight:600;white-space:nowrap" data-i18n="mascot.engine.label">Gemini sub-model:</label>
           <select id="mascotEngine" style="flex:1;padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;background:#fff">
             <option value="auto">Auto (try all)</option>
             <option value="nano-banana">Nano Banana (Gemini 2.5 Flash Image)</option>
@@ -625,6 +633,12 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
             <option value="imagen4-fast">Imagen 4 Fast</option>
             <option value="imagen4">Imagen 4</option>
           </select>
+        </div>
+        <!-- Read-only banner shown when Step 1 picked OpenAI — explains
+             which engine will run without offering a choice that wouldn't
+             work (the 5 Gemini sub-models above all need a Gemini key). -->
+        <div id="mascotEngineLockedOpenAI" style="display:none; margin-bottom:12px; padding:8px 12px; background:#FEF9E7; border:1px solid #F0D470; border-radius:8px; font-size:12px; color:#7C5800;">
+          🖼️ Using <strong>OpenAI gpt-image-1</strong> (chosen in Step 1).
         </div>
         <!-- Mascot Name (moved here from Step 1 — only relevant once we're generating) -->
         <div style="margin-bottom:12px">
@@ -1788,6 +1802,15 @@ function _onImageEngineChange() {
   // Drop required from the hidden input so HTML5 validation doesn't block submit
   if (geminiInput) geminiInput.required = false;
   if (openaiInput) openaiInput.required = false;
+
+  // Step 2 mascot generator inherits the engine choice — show only the
+  // sub-model picker that's relevant. The 5 Gemini sub-model options
+  // (nano-banana etc.) are useless if the user picked OpenAI in Step 1,
+  // so we hide that whole row and surface a small banner instead.
+  const mascotEngineRow = document.getElementById('mascotEngineRow');
+  const lockedBanner    = document.getElementById('mascotEngineLockedOpenAI');
+  if (mascotEngineRow) mascotEngineRow.style.display = engine === 'openai' ? 'none' : '';
+  if (lockedBanner)    lockedBanner.style.display    = engine === 'openai' ? '' : 'none';
 }
 
 /**
@@ -6492,7 +6515,22 @@ async function generateMascots() {
       })
     });
 
-    const data = await resp.json();
+    // Read text first, then parse — protects against Vercel timeout pages
+    // ("An error occurred with your deployment / FUNCTION_INVOCATION_FAILED")
+    // and other non-JSON gateway errors. Without this, JSON.parse chokes on
+    // the first letter and the user sees "Unexpected token 'A'" — useless.
+    const raw = await resp.text();
+    let data;
+    try {
+      data = _safeJsonParse(raw, resp.status);
+    } catch (parseErr) {
+      // Surface a helpful explanation when Vercel killed the function
+      // (most common cause: 9 mascots × multi-engine retries > 60s limit).
+      if (/An error occurred|FUNCTION_INVOCATION|gateway timeout|504/i.test(raw)) {
+        throw new Error('Server timed out (Vercel 60s limit). Try fewer engines (pick "Gemini" instead of "Auto") or click Retry.');
+      }
+      throw parseErr;
+    }
     if (!resp.ok) throw new Error(data.error || 'Generation failed');
 
     mascotImages = data.images || [];

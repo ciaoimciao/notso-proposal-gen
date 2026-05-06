@@ -70,6 +70,33 @@ async function callOpenAIImageEdits({ apiKey, prompt, referenceImageBase64, tran
   return b64;
 }
 
+// Text-only counterpart — used when the mascot generator has NO reference
+// image (Step 2 "generate from scratch" flow). gpt-image-1 supports the
+// /generations endpoint which is JSON-only (no FormData).
+async function callOpenAIImageGenerations({ apiKey, prompt, transparent }) {
+  const resp = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-image-1',
+      prompt,
+      size: '1024x1024',
+      n: 1,
+      ...(transparent ? { background: 'transparent' } : {}),
+    }),
+  });
+  const text = await resp.text();
+  let json;
+  try { json = JSON.parse(text); } catch { throw new Error(`OpenAI returned non-JSON (${resp.status}): ${text.slice(0,200)}`); }
+  if (!resp.ok) throw new Error(`OpenAI ${resp.status}: ${json?.error?.message || JSON.stringify(json).slice(0,200)}`);
+  const b64 = json?.data?.[0]?.b64_json;
+  if (!b64) throw new Error('OpenAI response missing data[0].b64_json');
+  return b64;
+}
+
 // ─── CONFIG ───
 const PORT              = 8080;
 
@@ -988,9 +1015,21 @@ ${schema}`;
         useExistingMascot = false,    // style-transfer mode (preserve client's existing mascot identity)
         faithfulMode = false,         // 100% faithful reproduction (no Notso eyes/brows)
         refPromptOverride = '',       // user-editable override for reference-image suffix
+        // NEW: which engine the user picked at Step 1 — drives the entire
+        // dispatch below. 'openai' bypasses Gemini and uses gpt-image-1 in
+        // parallel; anything else (gemini / unset) goes through the
+        // existing Gemini model fallback chain.
+        imageEngine = 'gemini',
+        openaiKey = '',
       } = body;
 
-      if (!geminiKey) return json(res, 400, { error: 'Missing Gemini API key' });
+      // Validate the right key for the picked engine.
+      if (imageEngine === 'openai') {
+        if (!openaiKey) return json(res, 400, { error: 'Missing OpenAI API key' });
+      } else {
+        if (!geminiKey) return json(res, 400, { error: 'Missing Gemini API key' });
+      }
+      console.log(`  🎨 Mascot engine: ${imageEngine}`);
 
       // ── Parse reference images (data URLs → base64 + mime type) for vision input.
       // Support both the new array and the legacy single-image field.
@@ -1151,8 +1190,14 @@ ${schema}`;
       // Custom prompt override
       const customPrompt = body.customPrompt || null;
 
-      const images = [];
-      for (let i = 0; i < Math.min(numOptions, 9); i++) {
+      // ── PARALLEL slot generation ──────────────────────────────
+      // Each slot (i = 0..8) runs as its own async task. We Promise.all
+      // them so 9 calls finish in ~max-of-individual time instead of
+      // sum-of-individual time — critical to stay under Vercel's 60 s
+      // function limit. Previous sequential loop was the root cause of
+      // the "Unexpected token 'A'" timeout the user reported.
+      const slotCount = Math.min(numOptions, 9);
+      const slotTask = async (i) => {
         const variationPrompt = variations[i] || `Variation ${i + 1}, unique design.`;
 
         // ── Derive species from the variation text so the style lock picks the
@@ -1184,7 +1229,7 @@ ${schema}`;
           });
         } catch (lockErr) {
           console.error(`  ❌ Style lock rejected variation ${i + 1}: ${lockErr.message}`);
-          continue;
+          return null;
         }
 
         // ── Reference-image suffix.
@@ -1216,11 +1261,36 @@ ${schema}`;
         //    Negative prompt is also carried via `locked.negative` for models that accept it.
         const fullPrompt = locked.positive + SINGLE_SUBJECT_RULE + refPromptSuffix;
         const negativePrompt = locked.negative;
-        let generated = false;
 
+        // ── OpenAI branch (Step 1 picked OpenAI) ──
+        // Single API call per slot. Use /edits when we have a reference,
+        // /generations otherwise. gpt-image-1 returns a 1024×1024 PNG.
+        if (imageEngine === 'openai') {
+          try {
+            console.log(`  🔄 Trying OpenAI gpt-image-1 for option ${i + 1}...`);
+            const refB64 = refImagePart?.inlineData?.data || '';
+            const b64 = refB64
+              ? await callOpenAIImageEdits({
+                  apiKey: openaiKey,
+                  prompt: fullPrompt,
+                  referenceImageBase64: refB64,
+                  transparent: true,
+                })
+              : await callOpenAIImageGenerations({
+                  apiKey: openaiKey,
+                  prompt: fullPrompt,
+                  transparent: true,
+                });
+            console.log(`  ✅ Option ${i + 1} generated via OpenAI`);
+            return { id: `mascot_${i}`, data_url: `data:image/png;base64,${b64}` };
+          } catch (oaErr) {
+            console.error(`  ❌ OpenAI error for option ${i + 1}:`, oaErr.message);
+            return null;
+          }
+        }
+
+        // ── Gemini fallback chain (Step 1 picked Gemini, or unset) ──
         for (const modelName of modelsToTry) {
-          if (generated) break;
-
           // ── Imagen 4 (uses :predict endpoint) ──
           if (modelName === '__imagen4__' || modelName === '__imagen4fast__') {
             const imgModelName = modelName === '__imagen4fast__'
@@ -1246,12 +1316,8 @@ ${schema}`;
                 const imgData = await imgRes.json();
                 const predictions = imgData.predictions || [];
                 if (predictions.length > 0 && predictions[0].bytesBase64Encoded) {
-                  images.push({
-                    id: `mascot_${i}`,
-                    data_url: `data:image/png;base64,${predictions[0].bytesBase64Encoded}`
-                  });
                   console.log(`  ✅ Option ${i + 1} generated via ${imgModelName}`);
-                  generated = true;
+                  return { id: `mascot_${i}`, data_url: `data:image/png;base64,${predictions[0].bytesBase64Encoded}` };
                 } else {
                   console.log(`  ⚠️ ${imgModelName} returned OK but no image predictions`);
                 }
@@ -1292,29 +1358,30 @@ ${schema}`;
             const parts = data?.candidates?.[0]?.content?.parts || [];
             for (const part of parts) {
               if (part.inlineData) {
-                images.push({
-                  id: `mascot_${i}`,
-                  data_url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`
-                });
                 console.log(`  ✅ Option ${i + 1} generated via ${modelName}`);
-                generated = true;
-                break;
+                return { id: `mascot_${i}`, data_url: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}` };
               }
             }
-            if (!generated) {
-              console.log(`  ⚠️ ${modelName} OK but no image in parts:`, JSON.stringify(parts.map(p => Object.keys(p))).slice(0, 200));
-            }
+            console.log(`  ⚠️ ${modelName} OK but no image in parts:`, JSON.stringify(parts.map(p => Object.keys(p))).slice(0, 200));
           } catch (genErr) {
             console.error(`  ❌ ${modelName} error for option ${i}:`, genErr.message);
           }
         }
 
-        if (!generated) {
-          console.error(`  ❌ All models failed for option ${i + 1}`);
-        }
-      }
+        console.error(`  ❌ All models failed for option ${i + 1}`);
+        return null;
+      };
 
-      console.log(`  ✅ Generated ${images.length} mascot images — running background removal...`);
+      // Run all 9 slots in parallel — total time ≈ slowest single call,
+      // not sum of all calls. Promise.all because a single failed slot
+      // shouldn't break the whole batch (slotTask catches per-slot errors
+      // and returns null).
+      const slotResults = await Promise.all(
+        Array.from({ length: slotCount }, (_, i) => slotTask(i))
+      );
+      const images = slotResults.filter(Boolean);
+
+      console.log(`  ✅ Generated ${images.length}/${slotCount} mascot images — running background removal...`);
 
       // Post-process: remove background via rembg for transparent PNG
       const cleanedImages = [];
