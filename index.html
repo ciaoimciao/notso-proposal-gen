@@ -3539,6 +3539,11 @@ async function previewAndEdit() {
       content.appendChild(wrapper);
     });
 
+    // Re-apply mascot/mockup transforms saved in Edit & Assign view to the
+    // freshly-rendered Overview slides — without this, enlarging a mockup
+    // in Edit and switching to Overview shows the unscaled default.
+    try { _mxpApplyAll(); } catch (_) {}
+
   } catch (err) {
     content.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>${err.message}</div>`;
   }
@@ -4145,8 +4150,12 @@ function _mxpToCSS(t) {
   return `translate(${t.tx||0}px, ${t.ty||0}px) rotate(${t.rot||0}deg) scale(${sx}, ${sy})`;
 }
 
-// Re-apply stored transforms to every matching image in both the cached
-// slide DOM (used for PDF export) and the currently rendered stage.
+// Re-apply stored transforms to every matching image in:
+//   1. Cached slide DOM (Edit & Assign view, also feeds PDF export)
+//   2. Live stage of the unified editor
+//   3. Overview modal (#previewEditContent) — the user enlarged a mockup
+//      in Edit but Overview re-fetched fresh HTML and didn't carry the
+//      transform across; this third selector closes that gap.
 function _mxpApply(slotKey) {
   const t = _mxpGet(slotKey);
   const css = _mxpToCSS(t);
@@ -4160,9 +4169,11 @@ function _mxpApply(slotKey) {
       });
     });
   } catch (_) {}
-  // Live stage
+  // Live stage (unified editor) + Overview modal (previewAndEdit)
   try {
-    document.querySelectorAll(`#unifiedSlideStageContent [data-slot-key="${slotKey}"]`).forEach(el => {
+    document.querySelectorAll(
+      `#unifiedSlideStageContent [data-slot-key="${slotKey}"], #previewEditContent [data-slot-key="${slotKey}"]`
+    ).forEach(el => {
       el.style.transform = css;
       el.style.transformOrigin = 'center center';
     });
