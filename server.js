@@ -2095,10 +2095,25 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
       // Pull industry from client once for dialogue templating
       const _industryHint = (body.industry || body.useCase || '').toString();
 
-      for (const task of finalTasks) {
+      // ── PARALLEL ASSET PACK ──────────────────────────────────
+      // 17 tasks × ~5 sec sequential = 85 sec → blows past Vercel's 60 sec
+      // function limit (the original "Takes 2-4 minutes" claim was wishful).
+      // Split into 2 phases because the phone/laptop mockup compositor
+      // depends on `act-typing` completing first (it uses act-typing's
+      // dataUrl as the inner mascot inside the screen):
+      //   Phase 1: everything EXCEPT the two compositor-driven mockups
+      //   Phase 2: mock-phone-chat + mock-website (after Phase 1 done)
+      // Within each phase, run BATCH_SIZE tasks in parallel. After both
+      // phases, sweep failures and retry once. Total time ≈ 18-30 s.
+      const ASSETPACK_BATCH = 4;
+      const phase1Tasks = finalTasks.filter(t => t.id !== 'mock-phone-chat' && t.id !== 'mock-website');
+      const phase2Tasks = finalTasks.filter(t => t.id === 'mock-phone-chat' || t.id === 'mock-website');
+
+      const runTask = async (task) => {
         console.log(`  🎨 Generating: ${task.category}/${task.label}`);
         let saved = false;
         let lastErr = '';
+        let resultObj = null;
 
         // ── INTERCEPT: phone + laptop mockups go through mockup_compose_v2
         //    (the Node port of compose.py). Pure pixel composition via
@@ -2156,15 +2171,15 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
             const fname = `${task.id}.png`;
             const fpath = path.join(outDir, task.category, fname);
             fs.writeFileSync(fpath, buf);
-            newResults.push({
+            resultObj = {
               id: task.id, category: task.category, label: task.label,
               transparent: false, ok: true,
               file: `${task.category}/${fname}`,
               dataUrl: composedDataUrl,
-            });
+            };
             console.log(`    ✅ ${task.label} → ${fname} (Node compositor v2, ${(buf.length/1024).toFixed(0)}KB)`);
             saved = true;
-            continue;   // skip the Gemini fallback loop
+            return resultObj;   // skip the Gemini fallback loop
           } catch (compErr) {
             console.error(`    ❌ Compositor failed for ${task.label}: ${compErr.message}`);
             console.error(`       stack:`, compErr.stack);
@@ -2241,12 +2256,12 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
                   const fname = `${task.id}.png`;
                   const fpath = path.join(outDir, task.category, fname);
                   fs.writeFileSync(fpath, Buffer.from(b64, 'base64'));
-                  newResults.push({
+                  resultObj = {
                     id: task.id, category: task.category, label: task.label,
                     transparent: !!task.transparent, ok: true,
                     file: `${task.category}/${fname}`,
                     dataUrl: `data:image/png;base64,${b64}`,
-                  });
+                  };
                   console.log(`    ✅ ${task.label} → ${fname} (OpenAI gpt-image-1)`);
                   saved = true;
                   break;   // out of attempt loop; the for-of model loop will exit via `if (saved) break`
@@ -2300,12 +2315,12 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
                   // from the data URL and can bundle them into a ZIP
                   // without a server round-trip.
                   const dataUrl = `data:image/png;base64,${imageB64}`;
-                  newResults.push({
+                  resultObj = {
                     id: task.id, category: task.category, label: task.label,
                     transparent: task.transparent, ok: true,
                     file: `${task.category}/${fname}`,
                     dataUrl,
-                  });
+                  };
                   console.log(`    ✅ ${task.label} → ${fname} (${m} try ${attempt})`);
                   saved = true;
                   break;
@@ -2322,10 +2337,47 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
           }
         }
         if (!saved) {
-          newResults.push({
+          resultObj = {
             id: task.id, category: task.category, label: task.label,
             transparent: task.transparent, ok: false, error: lastErr || 'unknown',
-          });
+          };
+        }
+        return resultObj;
+      };
+
+      // Helper: run an array of tasks in parallel batches and push to newResults
+      const runBatched = async (tasks) => {
+        for (let start = 0; start < tasks.length; start += ASSETPACK_BATCH) {
+          const slice = tasks.slice(start, start + ASSETPACK_BATCH);
+          const results = await Promise.all(slice.map(runTask));
+          for (const r of results) if (r) newResults.push(r);
+        }
+      };
+
+      // Phase 1: everything except mock-phone-chat / mock-website
+      console.log(`  📦 Phase 1: ${phase1Tasks.length} tasks in batches of ${ASSETPACK_BATCH}`);
+      await runBatched(phase1Tasks);
+
+      // Phase 2: the two compositor mockups (need act-typing from Phase 1)
+      if (phase2Tasks.length) {
+        console.log(`  📦 Phase 2: ${phase2Tasks.length} compositor mockups`);
+        await runBatched(phase2Tasks);
+      }
+
+      // Single retry sweep for any task that came back ok:false. One pass,
+      // sequential within the retry to avoid re-triggering rate limits.
+      const failedTasks = newResults
+        .filter(r => !r.ok)
+        .map(r => finalTasks.find(t => t.id === r.id))
+        .filter(Boolean);
+      if (failedTasks.length) {
+        console.log(`  🔁 Retrying ${failedTasks.length} failed task(s)...`);
+        for (const task of failedTasks) {
+          const retry = await runTask(task);
+          if (retry && retry.ok) {
+            const idx = newResults.findIndex(x => x.id === task.id);
+            if (idx >= 0) newResults[idx] = retry;
+          }
         }
       }
 

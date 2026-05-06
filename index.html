@@ -7131,6 +7131,17 @@ function openAssetPackModal() {
   const modal = document.getElementById('assetPackModalBg');
   if (!modal) return;
 
+  // Update the bottom hint to reflect which engine was picked in Step 1.
+  // Hardcoded "Requires a Google Gemini API key" was misleading after we
+  // added OpenAI support — users with OpenAI keys saw a wrong reminder.
+  const hint = document.getElementById('assetPackHint');
+  if (hint) {
+    const engine = (document.getElementById('imageEngine')?.value) || 'gemini';
+    hint.textContent = engine === 'openai'
+      ? 'Requires an OpenAI API key and a generated mascot.'
+      : 'Requires a Google Gemini API key and a generated mascot.';
+  }
+
   // Show/hide website composite line based on whether user uploaded one.
   // Read from the LIVE _uploadedImages.clientSite first (it picks up
   // re-uploads after Step 1) and fall back to the Step-1 snapshot.
