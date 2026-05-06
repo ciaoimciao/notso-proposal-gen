@@ -3371,7 +3371,7 @@ async function serverExport(format) {
     // Downscale mascots to keep the request body under Vercel's 4.5MB limit.
     // 768px keeps PDF quality high at the ≤480px slot sizes we render into
     // while cutting payload ~4× vs. raw 1024×1024 outputs.
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3429,7 +3429,7 @@ async function previewAndEdit() {
     // stays well under Vercel's 4.5MB serverless limit. Without this,
     // 8+ full-res mascots (~8MB total) trigger a 413 and the gateway
     // returns an HTML error page that blows up JSON.parse.
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3726,7 +3726,7 @@ async function openUnifiedEditor() {
   // Fetch preview HTML — same call as legacy previewAndEdit.
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4529,7 +4529,7 @@ async function _unifiedPlaceBackupMascot(idx, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4600,7 +4600,7 @@ async function _unifiedSetDesignStyle(styleId) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -5224,7 +5224,7 @@ async function _unifiedPlaceAsset(assetId, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
