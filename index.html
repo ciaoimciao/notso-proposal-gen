@@ -2171,6 +2171,14 @@ async function bootstrapFromServerConfig() {
 }
 
 function renderPresetBar() {
+  // ── TOGGLE: set to `true` to bring the test-preset bar back ──
+  // Hidden for LinkedIn / public demo videos so colleagues don't see the
+  // internal fixture buttons (Save the Children, WWF, Squla, Yazio,
+  // Bellewaerde). All preset code below still works — just doesn't render.
+  const SHOW_TEST_PRESET_BAR = true;
+
+  if (!SHOW_TEST_PRESET_BAR) return;
+
   const fixtures = window.__notsoFixtures || [];
   if (!fixtures.length) return;
   // Attach just below the page title inside Step 1.
