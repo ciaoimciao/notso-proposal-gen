@@ -3371,11 +3371,11 @@ async function serverExport(format) {
     // Downscale mascots to keep the request body under Vercel's 4.5MB limit.
     // 768px keeps PDF quality high at the ≤480px slot sizes we render into
     // while cutting payload ~4× vs. raw 1024×1024 outputs.
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format, proposal, client, selectedSlides: Array.from(selectedSlides), mascotImages: shrunkMascots })
+      body: JSON.stringify({ format, proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selectedSlides), mascotImages: shrunkMascots })
     });
 
     if (!res.ok) {
@@ -3429,11 +3429,11 @@ async function previewAndEdit() {
     // stays well under Vercel's 4.5MB serverless limit. Without this,
     // 8+ full-res mascots (~8MB total) trigger a 413 and the gateway
     // returns an HTML error page that blows up JSON.parse.
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selectedSlides), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selectedSlides), mascotImages: shrunkMascots })
     });
     // Guard against Vercel edge errors (HTML gateway responses) — read as
     // text first, then try to parse. This turns the old "Unexpected token R"
@@ -3721,11 +3721,11 @@ async function openUnifiedEditor() {
   // Fetch preview HTML — same call as legacy previewAndEdit.
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
     let data;
@@ -4518,11 +4518,11 @@ async function _unifiedPlaceBackupMascot(idx, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
     const data = _safeJsonParse(raw, resp.status);
@@ -4589,11 +4589,11 @@ async function _unifiedSetDesignStyle(styleId) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
     const data = _safeJsonParse(raw, resp.status);
@@ -5213,11 +5213,11 @@ async function _unifiedPlaceAsset(assetId, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 768);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 512);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client, selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
     const data = _safeJsonParse(raw, resp.status);
@@ -5564,7 +5564,7 @@ async function generatePPTXBlob() {
   const res = await fetch('/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ format: 'pptx', proposal, client, selectedSlides: Array.from(selectedSlides) })
+    body: JSON.stringify({ format: 'pptx', proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selectedSlides) })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -6153,6 +6153,24 @@ async function _shrinkDataUrl(dataUrl, maxSide) {
     img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
   });
+}
+
+// Strip heavy upload fields from `client` before sending to /api/preview
+// or /api/generate. These fields can be megabytes each (raw user uploads)
+// and aren't needed for slide rendering — they're only consumed by the
+// mascot generation and asset pack endpoints. Keeping them in the body
+// was the actual cause of HTTP 413 (mascot shrinking already capped
+// asset images at <30 KB each, so it wasn't them).
+function _slimClientForRender(client) {
+  if (!client || typeof client !== 'object') return client;
+  const slim = { ...client };
+  // Heavy: full-size uploaded reference mascot(s) — used only at Step 2
+  delete slim.mascotRefImages;
+  delete slim.mascotRefImage;
+  // Heavy: full-size uploaded customer site screenshot — used only by
+  // the asset-pack laptop compositor. Slide renderers don't read this.
+  delete slim.clientSiteImage;
+  return slim;
 }
 
 async function _shrinkMascotMap(paths, maxSide) {
