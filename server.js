@@ -1298,6 +1298,8 @@ ${schema}`;
               : 'imagen-4.0-generate-001';
             try {
               console.log(`  🔄 Trying ${imgModelName} (predict) for option ${i + 1}...`);
+              // 15 s per-call timeout — without this, a single slow Gemini
+              // response can chain-block all retries past the 60 s cap.
               const imgRes = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${imgModelName}:predict?key=${geminiKey}`,
                 {
@@ -1306,7 +1308,8 @@ ${schema}`;
                   body: JSON.stringify({
                     instances: [{ prompt: fullPrompt }],
                     parameters: { sampleCount: 1, aspectRatio: '1:1' }
-                  })
+                  }),
+                  signal: AbortSignal.timeout(15000),
                 }
               );
               if (!imgRes.ok) {
@@ -1344,7 +1347,10 @@ ${schema}`;
                   generationConfig: {
                     responseModalities: ['TEXT', 'IMAGE'],
                   }
-                })
+                }),
+                // 15 s per-call timeout — keeps a slow Gemini response from
+                // chain-blocking the entire batched retry pass past 60 s.
+                signal: AbortSignal.timeout(15000),
               }
             );
 
@@ -1372,27 +1378,31 @@ ${schema}`;
         return null;
       };
 
-      // Run slots in BATCHES of 4 — purely parallel (all 9 at once) made
-      // 4 of 9 fail because Gemini's burst limit kicked in, leaving the
-      // user with 5 mascots. Batched parallelism (3 batches of 4) keeps
-      // total time around 20–30 s while staying under the burst threshold.
-      // Plus a single retry per failed slot — covers transient "OK but no
-      // image in parts" responses Gemini occasionally returns.
+      // Run slots in BATCHES — purely parallel (all 9 at once) caused some
+      // burst-limit failures, but sequential retry on top of that pushed
+      // total time past Vercel's 60 s cap when Gemini was slow. Strategy:
+      //   • First pass: 4-at-a-time parallel batches
+      //   • Retry pass: ALSO 4-at-a-time parallel — sequential retry was
+      //     the timeout culprit (4 failures × 15 s each = 60 s alone)
+      //   • Plus per-fetch AbortController timeout (lives in slotTask)
+      //     keeps any single Gemini call from blocking forever.
       const BATCH_SIZE = 4;
       const slotResults = new Array(slotCount).fill(null);
-      for (let start = 0; start < slotCount; start += BATCH_SIZE) {
-        const batch = [];
-        for (let i = start; i < Math.min(start + BATCH_SIZE, slotCount); i++) {
-          batch.push(slotTask(i).then(r => { slotResults[i] = r; }));
+      const runBatchedSlots = async (indices) => {
+        for (let start = 0; start < indices.length; start += BATCH_SIZE) {
+          const slice = indices.slice(start, start + BATCH_SIZE);
+          await Promise.all(slice.map(i => slotTask(i).then(r => { slotResults[i] = r; })));
         }
-        await Promise.all(batch);
-      }
-      // Retry any slot that still came back null. One pass, sequential
-      // within the retry batch so we don't re-trigger a burst limit.
-      for (let i = 0; i < slotCount; i++) {
-        if (slotResults[i]) continue;
-        console.log(`  🔁 Retrying slot ${i + 1}...`);
-        slotResults[i] = await slotTask(i);
+      };
+      // First pass: all slots
+      await runBatchedSlots(Array.from({ length: slotCount }, (_, i) => i));
+      // Retry pass: only the slots that came back null, in parallel batches
+      const retryIndices = slotResults
+        .map((r, i) => r ? -1 : i)
+        .filter(i => i >= 0);
+      if (retryIndices.length) {
+        console.log(`  🔁 Retrying ${retryIndices.length} failed slot(s) in parallel...`);
+        await runBatchedSlots(retryIndices);
       }
       const images = slotResults.filter(Boolean);
 
@@ -2104,8 +2114,12 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
       //   Phase 1: everything EXCEPT the two compositor-driven mockups
       //   Phase 2: mock-phone-chat + mock-website (after Phase 1 done)
       // Within each phase, run BATCH_SIZE tasks in parallel. After both
-      // phases, sweep failures and retry once. Total time ≈ 18-30 s.
-      const ASSETPACK_BATCH = 4;
+      // phases, sweep failures and retry in parallel batches.
+      //
+      // Batch size 8 keeps Phase 1 to 2 batches (15 + 15 = ~30 s with
+      // the per-call 15 s timeout), leaving room for Phase 2 (mockups
+      // are local — sub-second) and the retry sweep within the 60 s cap.
+      const ASSETPACK_BATCH = 8;
       const phase1Tasks = finalTasks.filter(t => t.id !== 'mock-phone-chat' && t.id !== 'mock-website');
       const phase2Tasks = finalTasks.filter(t => t.id === 'mock-phone-chat' || t.id === 'mock-website');
 
@@ -2280,7 +2294,11 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
                   body: JSON.stringify({
                     contents: [{ parts: reqParts }],
                     generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
-                  })
+                  }),
+                  // 15 s per-call timeout — same reasoning as in the
+                  // mascot endpoint: keeps a slow Gemini response from
+                  // dragging the asset-pack retry pass past 60 s.
+                  signal: AbortSignal.timeout(15000),
                 }
               );
 
@@ -2364,19 +2382,24 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
         await runBatched(phase2Tasks);
       }
 
-      // Single retry sweep for any task that came back ok:false. One pass,
-      // sequential within the retry to avoid re-triggering rate limits.
+      // Single retry sweep for any task that came back ok:false. Done in
+      // PARALLEL batches now — sequential retry was the timeout culprit
+      // (4 failures × 15 s = 60 s alone, leaving zero budget). Parallel
+      // batched retry hits all failures at once, total ~15 s instead of 60.
       const failedTasks = newResults
         .filter(r => !r.ok)
         .map(r => finalTasks.find(t => t.id === r.id))
         .filter(Boolean);
       if (failedTasks.length) {
-        console.log(`  🔁 Retrying ${failedTasks.length} failed task(s)...`);
-        for (const task of failedTasks) {
-          const retry = await runTask(task);
-          if (retry && retry.ok) {
-            const idx = newResults.findIndex(x => x.id === task.id);
-            if (idx >= 0) newResults[idx] = retry;
+        console.log(`  🔁 Retrying ${failedTasks.length} failed task(s) in parallel...`);
+        for (let start = 0; start < failedTasks.length; start += ASSETPACK_BATCH) {
+          const slice = failedTasks.slice(start, start + ASSETPACK_BATCH);
+          const retries = await Promise.all(slice.map(t => runTask(t)));
+          for (const retry of retries) {
+            if (retry && retry.ok) {
+              const idx = newResults.findIndex(x => x.id === retry.id);
+              if (idx >= 0) newResults[idx] = retry;
+            }
           }
         }
       }
