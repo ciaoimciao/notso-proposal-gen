@@ -6886,9 +6886,17 @@ function _onMascotBgReady() {
   // Only show the "ready" toast if user is currently OUT of Step 2.5
   const stepIndicator = document.querySelector('#si3.active, #si3.done');
   if (stepIndicator) {
+    // Report the actual count from the response, not a hardcoded 9. With
+    // parallel generation some slots can fail (Gemini rate-limit / silent
+    // empty response) so the user sees fewer cards than promised — show the
+    // real number so the toast doesn't lie.
+    const got = (typeof mascotImages !== 'undefined' && Array.isArray(mascotImages)) ? mascotImages.length : 9;
+    const toastText = got >= 9
+      ? '9 mascot options are ready. Pick the ones you like.'
+      : `${got}/9 mascot options ready (some failed — click Regenerate if you want more).`;
     showMascotToast({
       state: 'ready',
-      text: '9 mascot options are ready. Pick the ones you like.'
+      text: toastText
     });
     // Refresh the Mascot tab in Step 3 sidebar so the new options appear there too
     if (typeof _unifiedRenderBackupMascots === 'function') _unifiedRenderBackupMascots();

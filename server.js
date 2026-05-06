@@ -1372,13 +1372,28 @@ ${schema}`;
         return null;
       };
 
-      // Run all 9 slots in parallel — total time ≈ slowest single call,
-      // not sum of all calls. Promise.all because a single failed slot
-      // shouldn't break the whole batch (slotTask catches per-slot errors
-      // and returns null).
-      const slotResults = await Promise.all(
-        Array.from({ length: slotCount }, (_, i) => slotTask(i))
-      );
+      // Run slots in BATCHES of 4 — purely parallel (all 9 at once) made
+      // 4 of 9 fail because Gemini's burst limit kicked in, leaving the
+      // user with 5 mascots. Batched parallelism (3 batches of 4) keeps
+      // total time around 20–30 s while staying under the burst threshold.
+      // Plus a single retry per failed slot — covers transient "OK but no
+      // image in parts" responses Gemini occasionally returns.
+      const BATCH_SIZE = 4;
+      const slotResults = new Array(slotCount).fill(null);
+      for (let start = 0; start < slotCount; start += BATCH_SIZE) {
+        const batch = [];
+        for (let i = start; i < Math.min(start + BATCH_SIZE, slotCount); i++) {
+          batch.push(slotTask(i).then(r => { slotResults[i] = r; }));
+        }
+        await Promise.all(batch);
+      }
+      // Retry any slot that still came back null. One pass, sequential
+      // within the retry batch so we don't re-trigger a burst limit.
+      for (let i = 0; i < slotCount; i++) {
+        if (slotResults[i]) continue;
+        console.log(`  🔁 Retrying slot ${i + 1}...`);
+        slotResults[i] = await slotTask(i);
+      }
       const images = slotResults.filter(Boolean);
 
       console.log(`  ✅ Generated ${images.length}/${slotCount} mascot images — running background removal...`);
