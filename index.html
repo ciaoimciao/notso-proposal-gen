@@ -6520,11 +6520,16 @@ async function generateMascots() {
   // Read reference images FRESH from current state (Step 2.5 may have just
   // uploaded — the snapshot in `client` was taken at Step 1 before any upload).
   // Also sync back into `client` so re-renders / history-save catch the refs.
-  const liveRefs = Array.isArray(_uploadedImages?.mascotRef) ? _uploadedImages.mascotRef.slice() : [];
+  const liveRefsRaw = Array.isArray(_uploadedImages?.mascotRef) ? _uploadedImages.mascotRef.slice() : [];
   const liveUseExisting = (document.getElementById('useExistingMascot') || {}).checked === true;
-  client.mascotRefImages = liveRefs;
-  client.mascotRefImage = liveRefs[0] || '';
+  client.mascotRefImages = liveRefsRaw;
+  client.mascotRefImage = liveRefsRaw[0] || '';
   client.useExistingMascot = liveUseExisting;
+
+  // Shrink references before POST — user uploads can be 3-5 MB raw each;
+  // multiples easily push body past Vercel's 4.5 MB limit (HTTP 413).
+  // 1024 px WebP is plenty for Gemini's vision input.
+  const liveRefs = await Promise.all(liveRefsRaw.map(url => _shrinkDataUrl(url, 1024)));
 
   try {
     const resp = await fetch('/api/mascot/generate', {
@@ -7364,13 +7369,21 @@ async function generateAssetPack(opts = {}) {
 
   // ALWAYS send mascotImage — on Vercel serverless the previous session's
   // in-memory reference may have been dropped during a cold start. Cheap
-  // insurance; the body is only ~1MB and Gemini needs it anyway.
-  const mascotImage = _pickedMascotDataUrl();
-  if (!mascotImage) {
+  // insurance; Gemini needs it anyway.
+  //
+  // SHRINK before send: raw mascot data URL can be 1-2 MB and the user's
+  // uploaded client site can be 3-5 MB. Together they easily breach
+  // Vercel's 4.5 MB request body limit (HTTP 413). 1024 px is plenty for
+  // Gemini's vision input; 1600 px keeps the laptop-mockup screen sharp.
+  const rawMascotImage = _pickedMascotDataUrl();
+  if (!rawMascotImage) {
     document.getElementById('assetPackError').style.display = 'block';
     document.getElementById('assetPackErrorMsg').textContent = 'Please generate and select a mascot first.';
     return;
   }
+  const mascotImage = await _shrinkDataUrl(rawMascotImage, 1024);
+  const rawSite = (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '';
+  const slimSiteImage = rawSite ? await _shrinkDataUrl(rawSite, 1600) : '';
   if (!opts.onlyIds) {
     // Reset session on fresh run
     _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
@@ -7420,7 +7433,7 @@ async function generateAssetPack(opts = {}) {
         // mutated whenever the user picks a new file). client.clientSiteImage
         // is a Step-1 snapshot and goes STALE after subsequent re-uploads —
         // hence the laptop-mockup-uses-old-screenshot bug. Sync both before sending.
-        clientSiteImage: (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '',
+        clientSiteImage: slimSiteImage,
         industry: client.industry || client.useCase || '',
         promoContext,
         sessionId: _assetPackSession.sessionId || undefined,
@@ -7841,7 +7854,11 @@ async function regenerateAssetPackItem(id) {
     const mascotName = (proposal && proposal.s1 && proposal.s1.mascot_name) || client.mascotName || 'Buddy';
     // Re-send the mascot ref each time. Covers Vercel cold starts where
     // the server-side session may have dropped its stored reference.
-    const mascotImage = _pickedMascotDataUrl();
+    // Shrink before POST — same reason as generateAssetPack: raw payload
+    // can exceed Vercel's 4.5 MB limit (HTTP 413).
+    const mascotImage = await _shrinkDataUrl(_pickedMascotDataUrl(), 1024);
+    const rawSiteRegen = (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '';
+    const slimSiteImageRegen = rawSiteRegen ? await _shrinkDataUrl(rawSiteRegen, 1600) : '';
     const resp = await fetch('/api/assetpack/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -7854,10 +7871,7 @@ async function regenerateAssetPackItem(id) {
         brandColor: client.color1,
         greeting,
         mascotImage,
-        // Live re-upload wins over the Step-1 snapshot — same fix as the
-        // primary generateAssetPack() POST. Otherwise re-running the
-        // pack with a freshly uploaded site keeps using the old screenshot.
-        clientSiteImage: (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '',
+        clientSiteImage: slimSiteImageRegen,
         sessionId: _assetPackSession.sessionId,
         onlyIds: [id],
         mascotSizeRatio: (typeof _mascotSizeRatio === 'number' ? _mascotSizeRatio : 0.55),
