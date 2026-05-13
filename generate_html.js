@@ -617,7 +617,13 @@ function getImageHTML(imagePath, alt = 'Image', classes = '', slotKey = '') {
 function renderSlide_S1_Cover(proposal, client, mascotImages) {
   const d = proposal.s1 || {};
   const clientName = client.name || '';
-  const mascotName = stripEmoji(d.mascot_name || proposal.mascot_name || client.mascotName || 'Buddy');
+  // Precedence: user's form input wins over Claude's stale proposal cache.
+  // When user starts a new project, types a fresh mascot name, but doesn't
+  // re-run Step 1's Generate, proposal.s1.mascot_name still holds the
+  // previous project's name. The form field is the ground truth for user
+  // intent — surface that first; fall back to Claude's suggestion only if
+  // the form is blank.
+  const mascotName = stripEmoji(client.mascotName || d.mascot_name || proposal.mascot_name || 'Buddy');
   // S1 lead: keep short — tagline-style. Defaults to industry-flavoured copy.
   const tagline = stripEmoji(d.lead || d.greeting || d.tagline || `The AI coach for ${clientName}`);
   const industry = stripEmoji(client.industry || client.useCase || 'business');
@@ -1032,7 +1038,8 @@ function renderSlide_S6_MascotSelection(proposal, client, mascotImages) {
 
 function renderSlide_S7_MascotDesign(proposal, client, mascotImages) {
   const d = proposal.s7 || {};
-  const mascotName = stripEmoji(d.name || proposal.mascot_name || 'Mascot');
+  // Same precedence rule as S1: user's form input wins over stale proposal.
+  const mascotName = stripEmoji(client.mascotName || d.name || proposal.mascot_name || 'Mascot');
   const personality = stripEmoji(d.personality || d.tone_desc || 'Friendly, helpful, and engaging');
   const phrases = (d.phrases || []).slice(0, 3);
   // Per-slide cover key (cover_s7) — see note in S1.
