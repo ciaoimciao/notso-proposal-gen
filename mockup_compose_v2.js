@@ -189,10 +189,14 @@ function buildPhoneScreenContent({ sw, sh, mascot, mascotName, brandRgb,
   ctx.fillRect(0, 0, sw, sh);
 
   // Font sizes — mirror compose.py
-  const fSmall = Math.max(32, Math.floor(sh / 100));
-  const fBody  = Math.max(58, Math.floor(sh / 60));
-  const fLabel = Math.max(38, Math.floor(sh / 90));
-  const fInput = Math.max(52, Math.floor(sh / 70));
+  // Bumped up roughly 15-20% — user feedback was "+2px on slide" which,
+  // given the phone mockup is composited at 5000 px and scales down to
+  // ~250 px on the slide, requires a meaningful source-px increase to
+  // show up visibly after downscaling.
+  const fSmall = Math.max(36, Math.floor(sh / 88));
+  const fBody  = Math.max(70, Math.floor(sh / 50));
+  const fLabel = Math.max(44, Math.floor(sh / 78));
+  const fInput = Math.max(60, Math.floor(sh / 60));
 
   // Top-right "online"
   const topPad = Math.floor(sh * 0.055);

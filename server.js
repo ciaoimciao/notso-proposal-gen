@@ -1921,18 +1921,25 @@ ${schema}`;
         {
           id: 'promo-poster',
           category: 'mockups',
-          label: 'Promo Poster',
+          label: 'Promo Video Preview',
           transparent: false,
-          prompt: `A square (1:1) promotional poster in 2D flat marketing illustration style with a solid bright ${_bc} background that fills the entire square canvas edge-to-edge.
+          prompt: `A square (1:1) photorealistic product photograph of a human hand holding a smartphone in portrait orientation, with the phone screen showing a VIDEO PLAYER UI featuring the mascot character. The setting suggests "we can also generate promotional videos for this client".
 
 LAYOUT:
-- Top-left: bold sans-serif headline "DIGITAL BUDDY" in dark color (60% darker than the background), two lines stacked
-- Center-right: the SAME mascot character from the reference image, full body, friendly waving pose, with ${_esc(PC.props)} beside it
-- Above the mascot: a small white rounded rectangle speech bubble pointing at the mascot, containing "${_esc(PC.greeting)}"
-- Bottom-left: bold "${_esc(PC.tagline)}" in dark color, large 56pt
-- Bottom-right: a clear black-and-white QR code about 14% of the canvas
+- A realistic human hand (right or left, photographic, natural skin tone) enters from one side of the frame, holding the smartphone vertically. The phone fills roughly 50% of the frame height, sharp in focus.
+- Behind the hand: softly blurred neutral background (could be office, café, retail interior — keep it minimal and out of focus).
+- The phone screen displays a VIDEO PLAYER interface with these elements:
+  * Solid bright ${_bc} background filling the screen as the video frame
+  * Top text: bold "DIGITAL BUDDY" headline in dark color (60% darker than the background), two lines stacked
+  * Center: the SAME mascot character from the reference image, full body, friendly waving pose, with ${_esc(PC.props)} beside it
+  * Center overlay: a LARGE white circular PLAY BUTTON (a clearly visible ▶ triangle inside a white circle, about 18% of the screen width, semi-transparent at ~80% opacity, so the mascot is partially visible behind it)
+  * Near the bottom of the screen: a thin white progress / scrubber bar (about 30% filled from the left) — gives the impression of a paused video
+  * Just under the progress bar: small text "${_esc(PC.tagline)}" or "Watch the demo"
+  * Bottom-right of the screen: a small black-and-white QR code (~10% of the screen width)
 
-[STRICT] Square 1:1 canvas filled edge-to-edge. Single mascot only, no duplicates, no model-sheet rows. Mascot must match reference EXACTLY at part level (eyes, face, body, colors, outline). All four text elements clear and readable. Modern flat marketing illustration style only — no gradients, no textures, no extra characters. Output a complete final poster.`
+CAMERA: realistic product / lifestyle photograph. Hand and phone sharp; background bokeh. Eye-level angle, slight tilt of the phone toward the viewer for clear screen visibility. Soft natural lighting from one side.
+
+[STRICT] Square 1:1 canvas filled edge-to-edge. The phone screen content (mascot, play button, text, QR) must be clearly readable. Single mascot only — printed ON the phone screen, NOT a 3D character outside the phone. Mascot illustration matches the reference EXACTLY at part level (eyes, face, body, colors, outline). The PLAY BUTTON must be visible and obviously look like a video player control. Modern, clean composition — no gradients on the screen content, no extra characters, no third elements competing for attention. Output a complete final photograph.`
         },
         {
           id: 'promo-vinyl-toy',

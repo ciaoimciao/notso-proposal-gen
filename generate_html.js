@@ -300,7 +300,11 @@ function buildStyleVariantCSS() {
     /* ① NOTSO.AI SIGNATURE — rounded white cards, pill eyebrows,       */
     /*    orange glow halo on mascot — the default / official look       */
     /* ═════════════════════════════════════════════════════════════════ */
-    [data-design-style='notso-signature'] .slide{background:#F5F5F5 !important;color:#111 !important}
+    /* Slide bg = #FFFFFF so card grids (S2/S3/S4/S5/S6/S10/S11/S13/S14/S15/S16)
+       don't show a grey cross through the grid gap. Cards still pop because
+       of their box-shadow + occasional border-left accent. Was #F5F5F5 which
+       caused the "grey grid cross" bug user reported. */
+    [data-design-style='notso-signature'] .slide{background:#FFFFFF !important;color:#111 !important}
     [data-design-style='notso-signature'] .slide h1,
     [data-design-style='notso-signature'] .slide h2,
     [data-design-style='notso-signature'] .slide h3{letter-spacing:-.5px}
@@ -1113,14 +1117,14 @@ function renderSlide_S8_PersonalityEmpathy(proposal, client, mascotImages) {
     .join('');
 
   return `
-    <div class="slide" style="background: #F4F4F3; padding: 50px;">
+    <div class="slide" style="background: #FFFFFF; padding: 50px;">
       <!-- Header -->
-      <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
+      <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
         ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
-      <!-- Expressions Grid: 3x2 -->
+      <!-- Expressions Grid: 3x2 — slide bg white so gaps don't show grey -->
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 50px;">
         ${expressionCards}
       </div>
@@ -1169,12 +1173,21 @@ function renderSlide_S9_ChatDemo(proposal, client, mascotImages) {
   // small circular brand-color avatar (with simple eyes + smile), each user
   // bubble has no avatar and is right-aligned. Bubbles use light grey for
   // mascot replies and brand-color for user messages.
+  //
+  // Hardcode brand color from client.color1 instead of using CSS variable —
+  // some preview contexts (notably the Edit & Assign Assets iframe) don't
+  // propagate --brand-c1 to nested elements reliably, leaving the avatars
+  // looking grey/empty even though the chat bubbles next to them render
+  // their brand color correctly. Inline hex is render-context-proof.
+  // Also bumped from 36 → 44 px so the eyes/smile are actually visible at
+  // the slide's typical display scale.
+  const _avBrand = client.color1 || '#DC2626';
   const mascotAvatar = `
-    <div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:var(--brand-c1, var(--accent)); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.12);">
-      <svg viewBox="0 0 36 36" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="13" cy="15" r="2" fill="#fff"/>
-        <circle cx="23" cy="15" r="2" fill="#fff"/>
-        <path d="M12 22 Q18 27 24 22" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <div style="flex-shrink:0; width:44px; height:44px; border-radius:50%; background:${_avBrand}; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,0.15);">
+      <svg viewBox="0 0 44 44" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="18" r="2.5" fill="#fff"/>
+        <circle cx="28" cy="18" r="2.5" fill="#fff"/>
+        <path d="M14 26 Q22 32 30 26" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
       </svg>
     </div>
   `;
@@ -1785,14 +1798,14 @@ function renderSlide_S17_Licensing(proposal, client) {
     .join('');
 
   return `
-    <div class="slide" style="background: #F4F4F3; padding: 50px;">
+    <div class="slide" style="background: #FFFFFF; padding: 50px;">
       <!-- Header -->
-      <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 30px;">
+      <div style="margin-bottom: 40px; border-bottom: 1px solid rgba(0,0,0,0.08); padding-bottom: 30px;">
         <div style="font-family: 'Poppins', sans-serif; font-size: 48px; font-weight: 800; color: #1a1a1a; margin-bottom: 16px;">${headline}</div>
         ${lead ? `<div style="font-family: 'Poppins', sans-serif; font-size: 20px; color: #6b7280; max-width: 70%; line-height: 1.6;">${lead}</div>` : ''}
       </div>
 
-      <!-- Licenses Grid: 2x2 -->
+      <!-- Licenses Grid: 2x2 — slide bg white so gaps don't show grey -->
       <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 40px;">
         ${licenseCards}
       </div>
