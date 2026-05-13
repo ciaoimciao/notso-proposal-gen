@@ -3410,7 +3410,18 @@ async function serverExport(format) {
 
 /* buildPDFHtml removed — server-side generation via generate.py */
 
-function exportPDF() { serverExport("pdf"); }
+function exportPDF() {
+  // If the user has been editing in the unified editor (Edit & Assign
+  // Assets), use the DOM-based export so their text edits + transform
+  // changes (mascot/mockup resize, move, rotate) actually land in the PDF.
+  // Without this routing the top-header "Download PDF" button bypassed
+  // `_unifiedSlideNodes` and re-fetched the original server-rendered
+  // version — which is why image-size and text edits weren't reflected.
+  if (typeof _unifiedSlideNodes !== 'undefined' && _unifiedSlideNodes && _unifiedSlideNodes.size > 0) {
+    return exportPDFFromUnifiedEditor();
+  }
+  return serverExport("pdf");
+}
 
 function getSelectedSlides() { return selectedSlides; }
 

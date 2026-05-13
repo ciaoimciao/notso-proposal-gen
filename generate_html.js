@@ -300,11 +300,23 @@ function buildStyleVariantCSS() {
     /* ① NOTSO.AI SIGNATURE — rounded white cards, pill eyebrows,       */
     /*    orange glow halo on mascot — the default / official look       */
     /* ═════════════════════════════════════════════════════════════════ */
-    /* Slide bg = #FFFFFF so card grids (S2/S3/S4/S5/S6/S10/S11/S13/S14/S15/S16)
-       don't show a grey cross through the grid gap. Cards still pop because
-       of their box-shadow + occasional border-left accent. Was #F5F5F5 which
-       caused the "grey grid cross" bug user reported. */
-    [data-design-style='notso-signature'] .slide{background:#FFFFFF !important;color:#111 !important}
+    /* Slide bg = #F5F5F5 (warm light grey, the original).
+       Card grids could show a grey cross through grid gaps when cards are
+       white on this bg. Fix: cards inside slides get the SAME #F5F5F5 bg
+       (rule below), so the gap is invisible. Cards still pop because of
+       their box-shadow + occasional border-left accent. */
+    [data-design-style='notso-signature'] .slide{background:#F5F5F5 !important;color:#111 !important}
+    /* Card-bg neutralizer: every div under .slide that's styled with an
+       inline background of white / #fff / #FFFFFF is overridden to the
+       slide bg, so the grid gap between cards is invisible. The card's
+       box-shadow + border-left/border-top accents still define the card. */
+    [data-design-style='notso-signature'] .slide div[style*="background: white"],
+    [data-design-style='notso-signature'] .slide div[style*="background:#fff"],
+    [data-design-style='notso-signature'] .slide div[style*="background: #fff"],
+    [data-design-style='notso-signature'] .slide div[style*="background:#FFFFFF"],
+    [data-design-style='notso-signature'] .slide div[style*="background: #FFFFFF"]{
+      background:#F5F5F5 !important;
+    }
     [data-design-style='notso-signature'] .slide h1,
     [data-design-style='notso-signature'] .slide h2,
     [data-design-style='notso-signature'] .slide h3{letter-spacing:-.5px}
