@@ -317,6 +317,16 @@ function buildStyleVariantCSS() {
     [data-design-style='notso-signature'] .slide div[style*="background: #FFFFFF"]{
       background:#F5F5F5 !important;
     }
+    /* Image-slot neutralizer: S6 / S8 / S16 wrap their mascot images in
+       slot divs with an inline #F4F4F3 background (slightly darker than
+       the slide bg). When a mascot is pinned with object-fit contain, the
+       empty sides of the slot show this grey, forming the "grey box around
+       every mascot" the user reported. Setting slot bg to transparent lets
+       the slide bg show through — mascot floats cleanly, no grey halo. */
+    [data-design-style='notso-signature'] .slide div[style*="background: #F4F4F3"],
+    [data-design-style='notso-signature'] .slide div[style*="background:#F4F4F3"]{
+      background:transparent !important;
+    }
     [data-design-style='notso-signature'] .slide h1,
     [data-design-style='notso-signature'] .slide h2,
     [data-design-style='notso-signature'] .slide h3{letter-spacing:-.5px}
