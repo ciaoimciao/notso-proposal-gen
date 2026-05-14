@@ -2289,13 +2289,21 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
               const framingRule = isMockupCategory ? '' :
                 '\n\n[FRAMING: Character must be FULLY VISIBLE — head fully shown, feet fully shown, both arms inside the frame. Leave 8-12% white margin on every side. Character takes 60-75% of frame height, CENTERED. Do NOT crop the head, feet, or any limb. Do NOT zoom in. NO model-sheet, NO turnaround, NO row of mini characters in the background. ONE single hero pose only.]';
               const effectiveBgHint = isMockupCategory ? '' : bgHint;
-              // User-defined generation rules go LAST so they have the
-              // highest visual priority — overrides any defaults Gemini
-              // might add. Wrapped in [USER RULES] tag for clarity.
-              const userRulesBlock = generationRules && generationRules.trim()
-                ? `\n\n[USER RULES — HIGHEST PRIORITY, OVERRIDES ALL OTHER INSTRUCTIONS]\nThe reference mascot has these strict constraints. Follow them EXACTLY in this output:\n${generationRules.trim()}\nDo NOT add features the user has excluded. Do NOT change features the user has locked. These rules win over any default mascot conventions you would normally apply.`
+              // User-defined generation rules go BOTH at the very start
+              // AND at the very end of the prompt — Gemini weights first +
+              // last instructions more heavily, and previous version with
+              // rules only at the end was getting overridden by the
+              // [CONSISTENCY LOCK]'s "MOUTH: same shape family" line.
+              // Double-wrap also adds dedicated FORBIDDEN-FEATURES section
+              // listing the user's constraints in negative form.
+              const userRulesTrim = (generationRules || '').trim();
+              const userRulesBlock = userRulesTrim
+                ? `\n\n[USER RULES — HIGHEST PRIORITY, OVERRIDES EVERYTHING BELOW]\nThe reference mascot has these STRICT constraints — they win over any other instruction in this prompt, including any mention of mouth, eyes, ears, body parts, or accessories below:\n${userRulesTrim}\n\nIf the user said "no mouth", the mascot has NO MOUTH at all — convey emotion through eye shape, eyebrows, and posture instead. If the user said "no ears", do not draw ears even if standard mascot conventions suggest them. Treat every rule above as ABSOLUTE LAW.`
                 : '';
-              const fullPrompt = task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + effectiveBgHint + retryHint + userRulesBlock;
+              const userRulesReminder = userRulesTrim
+                ? `\n\n[FINAL REMINDER — USER RULES ABOVE ARE LAW]\nBefore finalizing the image, verify: ${userRulesTrim}`
+                : '';
+              const fullPrompt = userRulesBlock + '\n\n' + task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + effectiveBgHint + retryHint + userRulesReminder;
               reqParts.push({ text: fullPrompt });
 
               // ── OpenAI branch (when imageEngine='openai') ──

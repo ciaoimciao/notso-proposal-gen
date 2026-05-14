@@ -3968,12 +3968,27 @@ function _unifiedRenderShell(html) {
     .unified-slide-tab .tab-thumb {
       width: 124px;
       aspect-ratio: 16/9;
-      background: #3a3a3a;
+      background: #fff;
       border: 2px solid #555;
       border-radius: 4px;
       position: relative;
       transition: border-color .15s, background .15s;
       overflow: hidden;
+    }
+    /* Inner host that holds a scaled 1440×810 clone of the slide DOM —
+       the transform makes 1440 px feel like the 124 px parent. */
+    .unified-slide-tab .tab-thumb-scaled {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1440px; height: 810px;
+      transform: scale(0.0861);
+      transform-origin: top left;
+      pointer-events: none;
+    }
+    .unified-slide-tab .tab-thumb-scaled .slide {
+      width: 1440px !important;
+      height: 810px !important;
+      pointer-events: none;
     }
     .unified-slide-tab:hover .tab-thumb { border-color: #888; }
     .unified-slide-tab.active .tab-thumb { border-color: #3CC2A6; background: #fff; }
@@ -4189,10 +4204,28 @@ function _unifiedRenderShell(html) {
     tab.dataset.slideId = sid;
     tab.innerHTML = `
       <div class="tab-thumb">
+        <div class="tab-thumb-scaled"></div>
         <input type="checkbox" class="tab-check" ${isChecked ? 'checked' : ''} title="Include in export" />
         <div class="tab-num">${i + 1}</div>
       </div>
       <span class="tab-label">${meta.label}</span>`;
+    // Inject a scaled clone of the actual slide DOM into the thumb so the
+    // strip shows real previews, not empty grey boxes. 124 / 1440 ≈ 0.086.
+    // We CLONE so toggling between thumbs and the main editor stay independent.
+    const slideNode = _unifiedSlideNodes.get(sid);
+    if (slideNode) {
+      const clone = slideNode.cloneNode(true);
+      // Strip any contenteditable from the clone so it can't be edited in
+      // the thumbnail; also kill cursor/outline hints that pure-static
+      // contenteditable adds.
+      clone.querySelectorAll('[contenteditable]').forEach(el => {
+        el.removeAttribute('contenteditable');
+        el.style.cursor = '';
+        el.style.outline = '';
+      });
+      const scaledHost = tab.querySelector('.tab-thumb-scaled');
+      scaledHost.appendChild(clone);
+    }
     // Clicking the thumb area swaps the active slide in the editor pane.
     // Clicking the checkbox toggles inclusion (don't also swap slide).
     tab.querySelector('.tab-thumb').addEventListener('click', e => {
