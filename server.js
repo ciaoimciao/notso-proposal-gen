@@ -1734,6 +1734,11 @@ ${schema}`;
         // the mascot fills more of the screen. Default 0.55 matches the
         // "red-box" reference the user gave.
         mascotSizeRatio = 0.55,
+        // User-defined strict rules from Asset Pack modal's "Generation Rules"
+        // field (e.g. "no mouth", "no ears"). Appended to every prompt with
+        // maximum priority — overrides any default feature expectations Gemini
+        // might add based on its "typical 3D mascot" training.
+        generationRules = '',
       } = body;
 
       // Validate the right key for the picked engine.
@@ -2284,7 +2289,13 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
               const framingRule = isMockupCategory ? '' :
                 '\n\n[FRAMING: Character must be FULLY VISIBLE — head fully shown, feet fully shown, both arms inside the frame. Leave 8-12% white margin on every side. Character takes 60-75% of frame height, CENTERED. Do NOT crop the head, feet, or any limb. Do NOT zoom in. NO model-sheet, NO turnaround, NO row of mini characters in the background. ONE single hero pose only.]';
               const effectiveBgHint = isMockupCategory ? '' : bgHint;
-              const fullPrompt = task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + effectiveBgHint + retryHint;
+              // User-defined generation rules go LAST so they have the
+              // highest visual priority — overrides any defaults Gemini
+              // might add. Wrapped in [USER RULES] tag for clarity.
+              const userRulesBlock = generationRules && generationRules.trim()
+                ? `\n\n[USER RULES — HIGHEST PRIORITY, OVERRIDES ALL OTHER INSTRUCTIONS]\nThe reference mascot has these strict constraints. Follow them EXACTLY in this output:\n${generationRules.trim()}\nDo NOT add features the user has excluded. Do NOT change features the user has locked. These rules win over any default mascot conventions you would normally apply.`
+                : '';
+              const fullPrompt = task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + effectiveBgHint + retryHint + userRulesBlock;
               reqParts.push({ text: fullPrompt });
 
               // ── OpenAI branch (when imageEngine='openai') ──
