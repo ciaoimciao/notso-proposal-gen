@@ -517,7 +517,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <label data-i18n="form.imageEngine">Image Generation Engine <span class="hint" data-i18n="form.imageEngine.hint">— pick one; only that key needs to be filled</span></label>
           <select id="imageEngine" onchange="_onImageEngineChange()">
             <option value="gemini">🎨 Google Gemini (cheaper, ~$0.02 / image, faster)</option>
-            <option value="openai">🖼️ OpenAI GPT Image (better text + transparency, ~$0.04-0.17)</option>
+            <option value="openai">🖼️ OpenAI GPT Image 2 (better text + transparency, latest 2026 model)</option>
           </select>
         </div>
 
@@ -638,7 +638,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
              which engine will run without offering a choice that wouldn't
              work (the 5 Gemini sub-models above all need a Gemini key). -->
         <div id="mascotEngineLockedOpenAI" style="display:none; margin-bottom:12px; padding:8px 12px; background:#FEF9E7; border:1px solid #F0D470; border-radius:8px; font-size:12px; color:#7C5800;">
-          🖼️ Using <strong>OpenAI gpt-image-1</strong> (chosen in Step 1).
+          🖼️ Using <strong>OpenAI gpt-image-2</strong> (chosen in Step 1).
         </div>
         <!-- Mascot Name (moved here from Step 1 — only relevant once we're generating) -->
         <div style="margin-bottom:12px">
@@ -2433,10 +2433,32 @@ async function startGeneration() {
     if (!HIDE_MASCOT_STEP) {
       setTimeout(() => {
         setStep(2.5);
-        // Surface a missing-key hint if needed
-        const k = document.getElementById('googleGeminiKey').value.trim();
+        // Only nag about the GEMINI key when the user actually picked
+        // Gemini in Step 1. If they picked OpenAI, check the OpenAI key
+        // instead; if THAT one is fine, hide the hint entirely.
+        const engine = (document.getElementById('imageEngine')?.value) || 'gemini';
         const hint = document.getElementById('mascotKeyHint');
-        if (hint) hint.style.display = (k && k.startsWith('AIza')) ? 'none' : 'block';
+        if (!hint) return;
+        if (engine === 'openai') {
+          const oa = (document.getElementById('openaiKey')?.value || '').trim();
+          // Repurpose the hint to ask for OpenAI key if missing
+          if (!oa.startsWith('sk-')) {
+            hint.innerHTML = `
+              <div style="font-weight:800;margin-bottom:4px">⚠ OpenAI API key missing</div>
+              <span>You picked OpenAI as the image engine in Step 1 but no OpenAI key is set. Paste it below and click Generate — or press <b>Skip →</b> to continue.</span>
+              <div style="margin-top:8px">
+                <input type="password" id="mascotInlineKey" placeholder="sk-..." style="width:100%;padding:8px 10px;border:1px solid #E6D4A0;border-radius:6px;font-size:12px;font-family:inherit;background:#fff"
+                       oninput="document.getElementById('openaiKey').value=this.value;if(this.value.startsWith('sk-'))document.getElementById('mascotKeyHint').style.display='none'" />
+              </div>`;
+            hint.style.display = 'block';
+          } else {
+            hint.style.display = 'none';
+          }
+        } else {
+          // Default Gemini path: original Gemini-key check
+          const k = document.getElementById('googleGeminiKey').value.trim();
+          hint.style.display = (k && k.startsWith('AIza')) ? 'none' : 'block';
+        }
       }, 600);
     } else {
       setTimeout(() => {

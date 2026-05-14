@@ -48,11 +48,11 @@ async function callOpenAIImageEdits({ apiKey, prompt, referenceImageBase64, tran
   const buf = Buffer.from(referenceImageBase64, 'base64');
   const blob = new Blob([buf], { type: 'image/png' });
   const form = new FormData();
-  form.append('model', 'gpt-image-1');
+  form.append('model', 'gpt-image-2');
   form.append('prompt', prompt);
   form.append('image[]', blob, 'reference.png');
   form.append('size', '1024x1024');
-  // background:'transparent' tells gpt-image-1 to alpha-out the negative space.
+  // background:'transparent' tells gpt-image-2 to alpha-out the negative space.
   // Cleaner than Gemini's "pure white background → chroma-key" workaround.
   if (transparent) form.append('background', 'transparent');
 
@@ -71,7 +71,7 @@ async function callOpenAIImageEdits({ apiKey, prompt, referenceImageBase64, tran
 }
 
 // Text-only counterpart — used when the mascot generator has NO reference
-// image (Step 2 "generate from scratch" flow). gpt-image-1 supports the
+// image (Step 2 "generate from scratch" flow). gpt-image-2 supports the
 // /generations endpoint which is JSON-only (no FormData).
 async function callOpenAIImageGenerations({ apiKey, prompt, transparent }) {
   const resp = await fetch('https://api.openai.com/v1/images/generations', {
@@ -81,7 +81,7 @@ async function callOpenAIImageGenerations({ apiKey, prompt, transparent }) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-image-1',
+      model: 'gpt-image-2',
       prompt,
       size: '1024x1024',
       n: 1,
@@ -1016,7 +1016,7 @@ ${schema}`;
         faithfulMode = false,         // 100% faithful reproduction (no Notso eyes/brows)
         refPromptOverride = '',       // user-editable override for reference-image suffix
         // NEW: which engine the user picked at Step 1 — drives the entire
-        // dispatch below. 'openai' bypasses Gemini and uses gpt-image-1 in
+        // dispatch below. 'openai' bypasses Gemini and uses gpt-image-2 in
         // parallel; anything else (gemini / unset) goes through the
         // existing Gemini model fallback chain.
         imageEngine = 'gemini',
@@ -1264,10 +1264,10 @@ ${schema}`;
 
         // ── OpenAI branch (Step 1 picked OpenAI) ──
         // Single API call per slot. Use /edits when we have a reference,
-        // /generations otherwise. gpt-image-1 returns a 1024×1024 PNG.
+        // /generations otherwise. gpt-image-2 returns a 1024×1024 PNG.
         if (imageEngine === 'openai') {
           try {
-            console.log(`  🔄 Trying OpenAI gpt-image-1 for option ${i + 1}...`);
+            console.log(`  🔄 Trying OpenAI gpt-image-2 for option ${i + 1}...`);
             const refB64 = refImagePart?.inlineData?.data || '';
             const b64 = refB64
               ? await callOpenAIImageEdits({
@@ -2308,7 +2308,7 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
 
               // ── OpenAI branch (when imageEngine='openai') ──
               // Skip Gemini entirely. Native transparency support means we can
-              // hand the task.transparent flag straight to gpt-image-1 and the
+              // hand the task.transparent flag straight to gpt-image-2 and the
               // response is already alpha-clean — no chroma-key needed for
               // those assets. Mockup-category tasks pass transparent=false so
               // the laptop/phone scene background renders.
@@ -2329,7 +2329,7 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
                     file: `${task.category}/${fname}`,
                     dataUrl: `data:image/png;base64,${b64}`,
                   };
-                  console.log(`    ✅ ${task.label} → ${fname} (OpenAI gpt-image-1)`);
+                  console.log(`    ✅ ${task.label} → ${fname} (OpenAI gpt-image-2)`);
                   saved = true;
                   break;   // out of attempt loop; the for-of model loop will exit via `if (saved) break`
                 } catch (oaErr) {
