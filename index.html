@@ -838,7 +838,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
       <span>↔ Left/Right</span>
       <span style="display:flex;align-items:center;gap:4px">
-        <input type="number" id="mxpTxNum" min="-300" max="300" step="1" value="0"
+        <input type="number" id="mxpTxNum" min="-800" max="800" step="1" value="0"
           oninput="_mxpSetFromNumber('tx',this.value)" onchange="_mxpSetFromNumber('tx',this.value)"
           class="mxp-num" />
         <span style="color:#6B7280">px</span>
@@ -846,7 +846,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
     </div>
     <div style="display:flex;gap:6px;align-items:center">
       <button onclick="_mxpNudge('tx',-10)" class="mxp-btn">−</button>
-      <input type="range" id="mxpTx" min="-300" max="300" step="1" value="0" oninput="_mxpSet('tx',this.value)" style="flex:1">
+      <input type="range" id="mxpTx" min="-800" max="800" step="1" value="0" oninput="_mxpSet('tx',this.value)" style="flex:1">
       <button onclick="_mxpNudge('tx',+10)" class="mxp-btn">+</button>
     </div>
   </div>
@@ -855,7 +855,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
       <span>↕ Up/Down</span>
       <span style="display:flex;align-items:center;gap:4px">
-        <input type="number" id="mxpTyNum" min="-300" max="300" step="1" value="0"
+        <input type="number" id="mxpTyNum" min="-800" max="800" step="1" value="0"
           oninput="_mxpSetFromNumber('ty',this.value)" onchange="_mxpSetFromNumber('ty',this.value)"
           class="mxp-num" />
         <span style="color:#6B7280">px</span>
@@ -863,7 +863,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
     </div>
     <div style="display:flex;gap:6px;align-items:center">
       <button onclick="_mxpNudge('ty',-10)" class="mxp-btn">−</button>
-      <input type="range" id="mxpTy" min="-300" max="300" step="1" value="0" oninput="_mxpSet('ty',this.value)" style="flex:1">
+      <input type="range" id="mxpTy" min="-800" max="800" step="1" value="0" oninput="_mxpSet('ty',this.value)" style="flex:1">
       <button onclick="_mxpNudge('ty',+10)" class="mxp-btn">+</button>
     </div>
   </div>
@@ -1605,32 +1605,15 @@ async function autoFetchBrandColors() {
       const pri = (x) => x.type === 'brand' || x.type === 'primary' ? 0 : x.type === 'accent' ? 1 : 2;
       return pri(a) - pri(b);
     });
-    const topFour = sorted.slice(0, 4).map(c => c.hex);
-    topFour.forEach((hex, idx) => {
-      if (!hex) return;
-      const pick = document.getElementById('color' + (idx + 1));
-      const hexInput = document.getElementById('color' + (idx + 1) + 'hex');
-      if (pick && hexInput) {
-        pick.value = hex;
-        hexInput.value = hex.toUpperCase();
-      }
-      // Also push into client state so the palette picker seeds from
-      // the fetched brand color the next time Step 3 renders.
-      if (typeof client !== 'undefined' && client) {
-        client['color' + (idx + 1)] = hex;
-        // Seed _mainColor from the first (primary) brand color so the
-        // Main-color picker in Step 3 starts at the right anchor.
-        if (idx === 0) client._mainColor = hex;
-      }
-    });
-    // If the unified palette sidebar is already mounted (user navigated
-    // back to Step 1 to re-fetch), refresh it so the new Main color shows.
-    if (typeof _unifiedRenderPalette === 'function'
-        && document.getElementById('unifiedPaletteContent')) {
-      try { _unifiedRenderPalette(); } catch (_) { /* ignore */ }
-    }
-    status.style.color = '#059669';
-    status.textContent = `✓ Filled ${topFour.length} color${topFour.length > 1 ? 's' : ''} from ${domain} — fine-tune in Step 3's palette picker.`;
+    const hexes = sorted.map(c => c.hex).filter(Boolean).slice(0, 8);
+    // Stash the full list so the swatch-picker can re-rank when user
+    // promotes a different color to "Main".
+    window._brandfetchHexes = hexes;
+    // Pre-select the top one as Main (the existing default behaviour)
+    _selectMainBrandColor(hexes[0]);
+    // Render the swatch picker — user can click any swatch to override
+    // the auto-pick. Compact ~48 px row, hex shown in monospace below.
+    _renderBrandColorSwatches(hexes, hexes[0], domain);
   } catch (err) {
     status.style.color = '#DC2626';
     const msg = err.message || String(err);
@@ -1644,6 +1627,101 @@ async function autoFetchBrandColors() {
     btn.disabled = false;
     btn.textContent = '🎨 Auto-fill colors';
   }
+}
+
+// Apply a chosen hex as the MAIN brand color (color1) and shuffle the
+// remaining fetched colors into color2/3/4. Called both by the auto-pick
+// (first hex in the sorted list) and by user clicks on the swatch picker.
+function _selectMainBrandColor(mainHex) {
+  if (!mainHex) return;
+  const all = window._brandfetchHexes || [];
+  // Build the order: chosen first, then the rest in original sort order
+  const order = [mainHex, ...all.filter(h => h !== mainHex)].slice(0, 4);
+  order.forEach((hex, idx) => {
+    if (!hex) return;
+    const pick = document.getElementById('color' + (idx + 1));
+    const hexInput = document.getElementById('color' + (idx + 1) + 'hex');
+    if (pick && hexInput) {
+      pick.value = hex;
+      hexInput.value = hex.toUpperCase();
+    }
+    if (typeof client !== 'undefined' && client) {
+      client['color' + (idx + 1)] = hex;
+      if (idx === 0) client._mainColor = hex;
+    }
+  });
+  // If Step 3 palette sidebar is mounted, refresh it
+  if (typeof _unifiedRenderPalette === 'function'
+      && document.getElementById('unifiedPaletteContent')) {
+    try { _unifiedRenderPalette(); } catch (_) {}
+  }
+}
+// Make the swatch click handler globally accessible (called from inline onclick)
+window._selectMainBrandColor = (hex) => {
+  _selectMainBrandColor(hex);
+  // Re-render the picker so the new chosen swatch shows the ✓ badge
+  _renderBrandColorSwatches(window._brandfetchHexes || [], hex);
+};
+
+// Custom hex input — opens a native color picker, then promotes that hex.
+window._addCustomBrandColor = () => {
+  const inp = document.createElement('input');
+  inp.type = 'color';
+  inp.value = '#000000';
+  inp.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(inp);
+  inp.addEventListener('change', () => {
+    const hex = inp.value.toUpperCase();
+    // Push the custom hex into the fetched list (avoid dupes) and select it
+    const list = window._brandfetchHexes || [];
+    if (!list.includes(hex)) list.unshift(hex);
+    window._brandfetchHexes = list.slice(0, 8);
+    _selectMainBrandColor(hex);
+    _renderBrandColorSwatches(window._brandfetchHexes, hex);
+    inp.remove();
+  });
+  inp.click();
+};
+
+// Render the compact 48-px swatch row inside #fetchBrandStatus. Each swatch
+// shows the chosen one with a 2-px black outline + ✓ badge; the rest are
+// neutral with a 1-px grey border so they read as clickable chips.
+function _renderBrandColorSwatches(hexes, chosenHex, domain) {
+  const host = document.getElementById('fetchBrandStatus');
+  if (!host) return;
+  if (!hexes || !hexes.length) { host.style.display = 'none'; return; }
+  host.style.display = 'block';
+  host.style.color = '#1a1a1a';
+
+  const swatches = hexes.map(hex => {
+    const isMain = hex.toUpperCase() === (chosenHex || '').toUpperCase();
+    const safeHex = String(hex).replace(/'/g, '');
+    const tickBadge = isMain
+      ? '<div style="position:absolute; top:-6px; right:-6px; width:16px; height:16px; background:#1a1a1a; color:#fff; border-radius:50%; font-size:10px; line-height:16px; text-align:center;">✓</div>'
+      : '';
+    const outline = isMain
+      ? `border:2px solid #1a1a1a; box-shadow:0 0 0 2px #fff, 0 0 0 4px ${hex};`
+      : 'border:1px solid #eaeaea;';
+    return `
+      <div onclick="_selectMainBrandColor('${safeHex}')" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;">
+        <div style="width:44px; height:44px; background:${hex}; border-radius:8px; ${outline} position:relative;">${tickBadge}</div>
+        <div style="font-size:9px; ${isMain ? 'font-weight:600;color:#1a1a1a' : 'color:#6b7280'}; font-family:monospace;">${hex.toUpperCase()}</div>
+      </div>
+    `;
+  }).join('');
+
+  host.innerHTML = `
+    <div style="font-size:11px; color:#059669; margin-bottom:8px;">
+      ✓ Found ${hexes.length} brand color${hexes.length > 1 ? 's' : ''}${domain ? ' from ' + domain : ''} — click any swatch to set as Main.
+    </div>
+    <div style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap;">
+      ${swatches}
+      <div onclick="_addCustomBrandColor()" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;">
+        <div style="width:44px; height:44px; background:#fff; border:1px dashed #cbc8b8; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; color:#9ca3af;">+</div>
+        <div style="font-size:9px; color:#9ca3af;">Custom</div>
+      </div>
+    </div>
+  `;
 }
 
 /* ─── BRAND THEME (main + 3 accents → CSS vars) ─── */
@@ -4299,7 +4377,7 @@ function _mxpClamp(prop, raw) {
   if (isNaN(n)) return (prop === 'scale') ? 1 : 0;
   if (prop === 'scale') return Math.max(0.2, Math.min(5.0, n));
   if (prop === 'rot')   return Math.max(-180, Math.min(180, n));
-  return Math.max(-300, Math.min(300, n));
+  return Math.max(-800, Math.min(800, n));
 }
 
 // Slider emits raw value (scale: 0.2–5.0; others: number).
@@ -4323,7 +4401,7 @@ function _mxpSetFromNumber(prop, val) {
   } else if (prop === 'rot') {
     t.rot = Math.max(-180, Math.min(180, n));
   } else {
-    t[prop] = Math.max(-300, Math.min(300, n));
+    t[prop] = Math.max(-800, Math.min(800, n));
   }
   _mxpSyncUI(t);
   _mxpApply(_mxpActiveSlot);
@@ -6269,6 +6347,14 @@ function _userUploadDelete(id) {
   _userUploadsSave();
   _userUploadsRender();
 }
+
+// Expose to window so inline onclick handlers in the dynamically-rendered
+// upload cards can find them regardless of script-scope boundaries. Without
+// this, the × delete button silently fails ("ReferenceError" never bubbles
+// up to the user — they just see nothing happening).
+window._userUploadDelete = _userUploadDelete;
+window._userUploadPlaceOnSlide = (id) => _userUploadPlaceOnSlide(id);
+window._userUploadFromInput = (input) => _userUploadFromInput(input);
 
 // Render the grid of thumbnails + their place / delete buttons.
 function _userUploadsRender() {
