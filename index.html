@@ -1632,6 +1632,9 @@ async function autoFetchBrandColors() {
 // Apply a chosen hex as the MAIN brand color (color1) and shuffle the
 // remaining fetched colors into color2/3/4. Called both by the auto-pick
 // (first hex in the sorted list) and by user clicks on the swatch picker.
+// Note: function declarations are auto-attached to window in browsers, so
+// no separate `window.fn = ...` wrapper is needed (and an arrow wrapper
+// that calls the same name would cause infinite recursion).
 function _selectMainBrandColor(mainHex) {
   if (!mainHex) return;
   const all = window._brandfetchHexes || [];
@@ -1655,16 +1658,15 @@ function _selectMainBrandColor(mainHex) {
       && document.getElementById('unifiedPaletteContent')) {
     try { _unifiedRenderPalette(); } catch (_) {}
   }
+  // Re-render the swatch picker so the ✓ badge moves to the new pick.
+  // Skip if the picker hasn't been rendered yet (first auto-pick path).
+  if (document.getElementById('fetchBrandStatus')) {
+    _renderBrandColorSwatches(window._brandfetchHexes || [], mainHex);
+  }
 }
-// Make the swatch click handler globally accessible (called from inline onclick)
-window._selectMainBrandColor = (hex) => {
-  _selectMainBrandColor(hex);
-  // Re-render the picker so the new chosen swatch shows the ✓ badge
-  _renderBrandColorSwatches(window._brandfetchHexes || [], hex);
-};
 
 // Custom hex input — opens a native color picker, then promotes that hex.
-window._addCustomBrandColor = () => {
+function _addCustomBrandColor() {
   const inp = document.createElement('input');
   inp.type = 'color';
   inp.value = '#000000';
@@ -1672,16 +1674,14 @@ window._addCustomBrandColor = () => {
   document.body.appendChild(inp);
   inp.addEventListener('change', () => {
     const hex = inp.value.toUpperCase();
-    // Push the custom hex into the fetched list (avoid dupes) and select it
     const list = window._brandfetchHexes || [];
     if (!list.includes(hex)) list.unshift(hex);
     window._brandfetchHexes = list.slice(0, 8);
     _selectMainBrandColor(hex);
-    _renderBrandColorSwatches(window._brandfetchHexes, hex);
     inp.remove();
   });
   inp.click();
-};
+}
 
 // Render the compact 48-px swatch row inside #fetchBrandStatus. Each swatch
 // shows the chosen one with a 2-px black outline + ✓ badge; the rest are
