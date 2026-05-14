@@ -1809,6 +1809,33 @@ ${schema}`;
         prompt: `A professional product mockup image showing a modern laptop computer angled slightly to the right, with a chat-widget popup in the bottom-right corner of its screen. The laptop screen displays a clean modern marketing website: dark navigation bar at the top with a logo on the left, a bold headline "Stop building lifeless chatbots" in the center, and two call-to-action buttons below. The chat widget popup is small (about 25% of the screen width), a white rounded rectangle, with a brand-coloured header bar containing "${mascotName}" and a small green online dot. Inside the widget: the SAME mascot character from the reference image appears, with a chat bubble saying "${(greeting || `Hi! I'm ${mascotName}. How can I help?`).replace(/"/g, '\\"')}" and a smaller user-side reply bubble below. The mascot is the ONLY character in the entire image. Soft natural studio lighting, light grey background. Output the COMPLETE laptop-with-website-and-widget mockup, not just the mascot alone.`
       });
 
+      // In-store Kiosk mockup — a freestanding touchscreen display in a
+      // physical retail store, showing the mascot on screen. Helps sell
+      // the "physical-floor mascot concierge" use case (the Kiosk
+      // Character Concierge feature on S5 + S10 Trigger & Greet step).
+      defaultTasks.push({
+        id: 'mock-kiosk',
+        category: 'mockups',
+        label: 'In-store Kiosk',
+        transparent: false,
+        prompt: `A photorealistic product mockup image showing a modern freestanding touchscreen KIOSK inside a clean, well-lit retail store. The kiosk is a tall, slim, vertical display (about 165cm tall) with a thin matte-black bezel mounted on a slim stand or pedestal at shopper height. The kiosk screen (in portrait orientation) prominently shows a chat / concierge interface featuring the SAME mascot character from the reference image:
+
+KIOSK SCREEN CONTENTS (must be clearly visible, sharp, in focus):
+- Top: brand-coloured (${brandColor}) header bar with "${mascotName}" name and a small white online dot
+- Center: the mascot character standing in a friendly waving pose, full body visible
+- Below the mascot: a clean white speech bubble with the greeting "${(greeting || `Hi, I'm ${mascotName}! Can I help you find something?`).replace(/"/g, '\\"')}"
+- Below the bubble: 2–3 short tappable suggestion chips (e.g. "New arrivals", "Today's deals", "Help me choose")
+- Bottom: a rounded input bar with placeholder "Ask me anything…" and a small send arrow
+
+SCENE:
+- A real retail store interior — shelves with product packaging softly visible in the background (out of focus), warm overhead lighting, polished floor
+- A SHOPPER's hand or arm enters from one side of the frame, reaching toward the kiosk screen (showing interactivity)
+- Camera: eye-level shot, slight angle to show the kiosk's depth, kiosk in sharp focus, store background in soft focus
+- The mascot appears ONLY on the kiosk screen — NOT as a physical 3D character in the store scene
+
+[STRICT] Single mascot only, printed on the kiosk screen, no duplicates. Mascot matches reference EXACTLY at part level (eyes, face, body, colours, outline). All on-screen text readable. Lifestyle product photography style. No additional people in the background, no second mascot, no floor stickers with the mascot. Output a complete final photograph of the kiosk-in-store with the mascot on screen.`
+      });
+
       // ─────────────────────────────────────────────────────────────────
       // PROMOTIONAL MATERIALS (3 industry-aware Gemini-generated tasks)
       // ─────────────────────────────────────────────────────────────────

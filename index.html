@@ -971,6 +971,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <button type="button" data-tab="colors"  class="unified-tab">🌈 <span data-i18n="tabs.colors">Colors</span></button>
           <button type="button" data-tab="mascot"  class="unified-tab">🎭 <span data-i18n="tabs.mascot">Mascot</span></button>
           <button type="button" data-tab="assets"  class="unified-tab">📦 <span data-i18n="tabs.assets">Assets</span></button>
+          <button type="button" data-tab="uploads" class="unified-tab">📤 <span data-i18n="tabs.uploads">Uploads</span></button>
         </div>
 
         <!-- Tab panels — content from existing render functions writes here -->
@@ -1014,6 +1015,24 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
               <button class="btn btn-primary" style="margin-top:12px;font-size:11px;padding:6px 12px" onclick="openAssetPackModal()">🎁 Generate Asset Pack</button>
             </div>
           </div>
+        </div>
+
+        <!-- 📤 User Uploads tab: drag/click to upload, place on current slide,
+             persists in localStorage. See _userUploads* functions below. -->
+        <div data-tab-panel="uploads" class="unified-tab-panel" hidden style="padding:10px">
+          <label id="userUploadDropzone" for="userUploadInput"
+                 style="display:block; border:2px dashed #cbc8b8; border-radius:10px; padding:24px 16px; text-align:center; cursor:pointer; background:#FAFAF7; transition:background .15s;">
+            <div style="font-size:28px; color:#9ca3af; margin-bottom:6px;">📁</div>
+            <div style="font-size:13px; font-weight:600; color:#1a1a1a; margin-bottom:4px;">Click or drag to upload</div>
+            <div style="font-size:11px; color:#9ca3af;">PNG, JPG, WebP · auto-compressed to 1024px</div>
+          </label>
+          <input type="file" id="userUploadInput" accept="image/*" multiple style="display:none" onchange="_userUploadFromInput(this)" />
+
+          <div id="userUploadHint" style="margin-top:10px; padding:8px 10px; background:#FEF9E7; border-radius:6px; font-size:10px; color:#7C5800; line-height:1.4;">
+            💡 Placed images appear at the center of the current slide. Click the image to resize / move via the transform panel.
+          </div>
+
+          <div id="userUploadList" style="margin-top:14px;"></div>
         </div>
       </aside>
     </div>
@@ -3760,6 +3779,10 @@ async function openUnifiedEditor() {
     _unifiedRenderBackupMascots();
     _unifiedRenderDesignStyle();
     _unifiedRenderPalette();
+    // User uploads — restore from localStorage and wire dropzone listeners
+    _userUploadsLoad();
+    _userUploadsRender();
+    _userUploadInitDropzone();
     _unifiedRenderCanvasText();
     // Re-apply the active palette so live overrides stick after a re-fetch.
     if (client && client._activePaletteId) {
@@ -6177,6 +6200,162 @@ async function _shrinkDataUrl(dataUrl, maxSide) {
   });
 }
 
+// ═════════════════════════════════════════════════════════════════════
+// 📤 USER UPLOADS — custom images dropped in by the user
+// ═════════════════════════════════════════════════════════════════════
+// Lives in the Edit & Assign Assets sidebar under the "📤 Uploads" tab.
+// Use cases: product photos, customer logos, hand-picked images that
+// don't fit the asset-pack categories.
+//
+// Storage shape:
+//   _userUploads = [{ id: 'up_171...', name: 'logo.png', dataUrl: 'data:image/webp;base64,...' }]
+//   localStorage['notso_user_uploads'] = JSON.stringify(_userUploads)
+//
+// Placement model:
+//   Each "Place on slide" click injects an <img> into the currently active
+//   slide DOM (in _unifiedSlideNodes). The img gets `data-slot-key="user_upload_<id>"`
+//   so the existing transform panel can target it for resize / move /
+//   rotate / flip. The transforms write into the cached slide node, which
+//   feeds the PDF exporter — so placed uploads survive download.
+let _userUploads = [];
+
+function _userUploadsLoad() {
+  try {
+    const raw = localStorage.getItem('notso_user_uploads');
+    if (raw) _userUploads = JSON.parse(raw) || [];
+  } catch (_) { _userUploads = []; }
+}
+
+function _userUploadsSave() {
+  try { localStorage.setItem('notso_user_uploads', JSON.stringify(_userUploads)); }
+  catch (e) {
+    // Quota exceeded → tell the user
+    alert('Storage full — please delete a few uploads before adding more.');
+    console.warn('localStorage save failed:', e.message);
+  }
+}
+
+// Read each File via FileReader, shrink to 1024px WebP, push into _userUploads.
+async function _userUploadHandleFiles(fileList) {
+  if (!fileList || !fileList.length) return;
+  for (const file of Array.from(fileList)) {
+    if (!file.type.startsWith('image/')) continue;
+    const raw = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = e => res(e.target.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    // Reuse the existing _shrinkDataUrl helper (1024px WebP @ 0.95)
+    const shrunk = await _shrinkDataUrl(raw, 1024);
+    _userUploads.push({
+      id: 'up_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      name: file.name || 'image',
+      dataUrl: shrunk,
+    });
+  }
+  _userUploadsSave();
+  _userUploadsRender();
+}
+
+// Wrapper for the <input type=file> change handler
+function _userUploadFromInput(input) {
+  _userUploadHandleFiles(input.files);
+  input.value = '';  // reset so same file can be re-uploaded
+}
+
+function _userUploadDelete(id) {
+  _userUploads = _userUploads.filter(u => u.id !== id);
+  _userUploadsSave();
+  _userUploadsRender();
+}
+
+// Render the grid of thumbnails + their place / delete buttons.
+function _userUploadsRender() {
+  const host = document.getElementById('userUploadList');
+  if (!host) return;
+  if (!_userUploads.length) {
+    host.innerHTML = '<div style="padding:18px 6px; color:#9ca3af; font-size:11px; text-align:center;">No uploads yet. Drop an image above to start.</div>';
+    return;
+  }
+  const cards = _userUploads.map(u => `
+    <div style="border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; background:#fff; position:relative;">
+      <button onclick="_userUploadDelete('${u.id}')" title="Delete"
+              style="position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; border:1px solid #fff; background:rgba(0,0,0,0.55); color:#fff; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2;">×</button>
+      <div style="aspect-ratio:1/1; background:#F4F4F3; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+        <img src="${u.dataUrl}" alt="${_escHtml(u.name)}" style="max-width:100%; max-height:100%; object-fit:contain;">
+      </div>
+      <div style="padding:6px 8px;">
+        <div title="${_escHtml(u.name)}" style="font-size:10px; color:#6b7280; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${_escHtml(u.name)}</div>
+        <button onclick="_userUploadPlaceOnSlide('${u.id}')"
+                style="width:100%; padding:5px 6px; background:var(--brand-c1, #3CC2A6); color:#fff; border:0; border-radius:4px; font-size:10px; font-weight:600; cursor:pointer;">+ Place on slide</button>
+      </div>
+    </div>
+  `).join('');
+  host.innerHTML = `
+    <div style="font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px;">Your uploads (${_userUploads.length})</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">${cards}</div>
+  `;
+}
+
+// Inject the chosen upload into the currently active slide DOM. The img
+// is absolutely positioned in the center, given a `data-slot-key` so the
+// existing transform panel can target it, and registered for click→edit.
+function _userUploadPlaceOnSlide(uploadId) {
+  const upload = _userUploads.find(u => u.id === uploadId);
+  if (!upload) return;
+  const slideId = _unifiedActiveSlideId;
+  if (!slideId) { alert('Click a slide on the left first, then place the image.'); return; }
+  const slideNode = _unifiedSlideNodes && _unifiedSlideNodes.get(slideId);
+  if (!slideNode) { alert('Slide not loaded yet. Try again in a moment.'); return; }
+
+  // Build the floating image. position:absolute lets transform centre+drag
+  // without disturbing surrounding layout. Slot key uses upload id +
+  // placement timestamp so the same upload can be placed on multiple
+  // slides without slot-key collisions.
+  const slotKey = 'user_upload_' + upload.id + '_' + Date.now().toString(36);
+  const img = document.createElement('img');
+  img.src = upload.dataUrl;
+  img.alt = upload.name;
+  img.setAttribute('data-slot-key', slotKey);
+  img.setAttribute('data-user-upload', 'true');
+  // Default placement: roughly center, 280 px wide, transformable.
+  img.style.cssText = 'position:absolute; top:35%; left:50%; width:280px; height:auto; transform:translate(-50%,0); transform-origin:center center; cursor:pointer; z-index:10;';
+
+  // Ensure the slide root is positioned so absolute children anchor to it
+  if (getComputedStyle(slideNode).position === 'static') {
+    slideNode.style.position = 'relative';
+  }
+  slideNode.appendChild(img);
+
+  // Live stage mirror: also append to the currently displayed stage so the
+  // user sees their image immediately (otherwise it only shows on next swap).
+  const stageEl = document.querySelector('#unifiedSlideStageContent .slide');
+  if (stageEl && stageEl !== slideNode) {
+    if (getComputedStyle(stageEl).position === 'static') stageEl.style.position = 'relative';
+    stageEl.appendChild(img.cloneNode(true));
+  }
+
+  // Wire up the transform-panel click handler so the user can immediately
+  // resize / move. _mxpInstallClickHandlers binds new img[data-slot-key]
+  // elements that don't already have ._mxpBound.
+  try { if (typeof _mxpInstallClickHandlers === 'function') _mxpInstallClickHandlers(); } catch (_) {}
+}
+
+// Drag-drop on the dropzone — wired at modal-open time so the listeners
+// only attach once per page lifecycle.
+function _userUploadInitDropzone() {
+  const dz = document.getElementById('userUploadDropzone');
+  if (!dz || dz.dataset.dzWired) return;
+  dz.dataset.dzWired = '1';
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.background = '#FFF6D9'; });
+  dz.addEventListener('dragleave', () => { dz.style.background = '#FAFAF7'; });
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.style.background = '#FAFAF7';
+    _userUploadHandleFiles(e.dataTransfer.files);
+  });
+}
+
 // Strip heavy upload fields from `client` before sending to /api/preview
 // or /api/generate. These fields can be megabytes each (raw user uploads)
 // and aren't needed for slide rendering — they're only consumed by the
@@ -7027,6 +7206,7 @@ async function uploadMascotZip(input) {
     // Mockups (Phone Chat / Website Composite — auto-pin to S9 / S10)
     [/mock[_-]?phone/,     () => ({ assetId: 'mock-phone-chat', category: 'mockups', slot: 'cover_s9',  label: 'Phone Chat' })],
     [/mock[_-]?website/,   () => ({ assetId: 'mock-website',    category: 'mockups', slot: 'cover_s10', label: 'Website Composite' })],
+    [/mock[_-]?kiosk/,     () => ({ assetId: 'mock-kiosk',      category: 'mockups', slot: null,        label: 'In-store Kiosk' })],
     // S16 Promo materials
     [/promo[_-]?poster/,   () => ({ assetId: 'promo-poster',    category: 'mockups', slot: 'material_0', label: 'Promo Video Preview' })],
     [/promo[_-]?vinyl/,    () => ({ assetId: 'promo-vinyl-toy', category: 'mockups', slot: 'material_1', label: 'Promo Vinyl Toy' })],
