@@ -2166,10 +2166,12 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
       // Within each phase, run BATCH_SIZE tasks in parallel. After both
       // phases, sweep failures and retry in parallel batches.
       //
-      // Batch size 8 keeps Phase 1 to 2 batches (15 + 15 = ~30 s with
-      // the per-call 15 s timeout), leaving room for Phase 2 (mockups
-      // are local — sub-second) and the retry sweep within the 60 s cap.
-      const ASSETPACK_BATCH = 8;
+      // Batch size 8 for Gemini (high RPM, paid tier). For OpenAI we drop
+      // to 3 because gpt-image-2 on Tier 1 has very tight RPM (~5 RPM) and
+      // 8 parallel calls trigger HTTP 429 "Rate limit reached for gpt-image-2".
+      // Tier 2+ users can bump this back up but the safe default avoids
+      // the failure mode the user reported.
+      const ASSETPACK_BATCH = (imageEngine === 'openai') ? 3 : 8;
       const phase1Tasks = finalTasks.filter(t => t.id !== 'mock-phone-chat' && t.id !== 'mock-website');
       const phase2Tasks = finalTasks.filter(t => t.id === 'mock-phone-chat' || t.id === 'mock-website');
 
@@ -2427,12 +2429,20 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
         return resultObj;
       };
 
-      // Helper: run an array of tasks in parallel batches and push to newResults
+      // Helper: run an array of tasks in parallel batches and push to newResults.
+      // For OpenAI on Tier 1, add a small delay between batches so we
+      // don't keep hammering against the ~5 RPM cap.
+      const BATCH_DELAY_MS = (imageEngine === 'openai') ? 8000 : 0;
       const runBatched = async (tasks) => {
         for (let start = 0; start < tasks.length; start += ASSETPACK_BATCH) {
           const slice = tasks.slice(start, start + ASSETPACK_BATCH);
           const results = await Promise.all(slice.map(runTask));
           for (const r of results) if (r) newResults.push(r);
+          // Delay before next batch (except after last) so OpenAI's per-minute
+          // rate window has time to clear.
+          if (start + ASSETPACK_BATCH < tasks.length && BATCH_DELAY_MS) {
+            await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
+          }
         }
       };
 
