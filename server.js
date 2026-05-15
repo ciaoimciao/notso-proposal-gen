@@ -43,8 +43,16 @@ const { buildStylePrompt, STYLE_VERSION, NEGATIVE_SUFFIX, STYLE_TRANSFER_MODIFIE
 
 async function callOpenAIImageEdits({ apiKey, prompt, referenceImageBase64, transparent }) {
   // Uses /v1/images/edits when we have a reference (asset-pack mascots).
-  // Native transparency support — no chroma-key needed when transparent=true.
   // Returns the base64 PNG string from data[0].b64_json.
+  //
+  // NOTE on transparency (gpt-image-2): the `background: 'transparent'`
+  // parameter was REMOVED in gpt-image-2 — sending it returns HTTP 400
+  // "transparent backgrounds not supported". OpenAI now only accepts
+  // `auto` or `opaque`. So we DON'T send the param; the mascot prompts
+  // already include "pure #FFFFFF background" + we rely on the existing
+  // client-side `chromaKeyWhiteBackground` edge-flood to alpha out the
+  // white background after download. Result is the same transparent PNG
+  // the user expects — just via post-processing instead of native API.
   const buf = Buffer.from(referenceImageBase64, 'base64');
   const blob = new Blob([buf], { type: 'image/png' });
   const form = new FormData();
@@ -52,9 +60,9 @@ async function callOpenAIImageEdits({ apiKey, prompt, referenceImageBase64, tran
   form.append('prompt', prompt);
   form.append('image[]', blob, 'reference.png');
   form.append('size', '1024x1024');
-  // background:'transparent' tells gpt-image-2 to alpha-out the negative space.
-  // Cleaner than Gemini's "pure white background → chroma-key" workaround.
-  if (transparent) form.append('background', 'transparent');
+  // Intentionally NOT appending background: 'transparent' — gpt-image-2
+  // rejects it. (Kept the `transparent` param in this fn's signature so
+  // callers don't have to change; we use it only for logging hints.)
 
   const resp = await fetch('https://api.openai.com/v1/images/edits', {
     method: 'POST',
@@ -73,6 +81,8 @@ async function callOpenAIImageEdits({ apiKey, prompt, referenceImageBase64, tran
 // Text-only counterpart — used when the mascot generator has NO reference
 // image (Step 2 "generate from scratch" flow). gpt-image-2 supports the
 // /generations endpoint which is JSON-only (no FormData).
+// (gpt-image-2 dropped support for `background: transparent` — see the
+// edit-endpoint helper above for the workaround story.)
 async function callOpenAIImageGenerations({ apiKey, prompt, transparent }) {
   const resp = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -85,7 +95,8 @@ async function callOpenAIImageGenerations({ apiKey, prompt, transparent }) {
       prompt,
       size: '1024x1024',
       n: 1,
-      ...(transparent ? { background: 'transparent' } : {}),
+      // No background param — gpt-image-2 only accepts 'auto' or 'opaque',
+      // and the chroma-key on the client side will strip the white bg.
     }),
   });
   const text = await resp.text();
