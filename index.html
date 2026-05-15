@@ -7372,12 +7372,24 @@ async function chromaKeyWhiteBackground(dataUrl) {
   // They ate the mascot's eye whites (same colour as the white bg). We
   // deliberately dropped them. Edge-connectivity via Pass B is enough to
   // strip the background cleanly without destroying enclosed features.
-  const FLOOD_TOLERANCE = 70;    // Pass B: was 90 — lowered to be less
-                                 //         aggressive so we don't eat
-                                 //         legit near-white mascot parts
-                                 //         (belly, eye whites, highlights
-                                 //         on rounded surfaces).
-  const HARD_ALPHA_CUTOFF = 140; // Pass D: alpha ≥ this → 255 else 0
+  const FLOOD_TOLERANCE = 85;    // Pass B: was 70 — bumped because the
+                                 //         user reported "破破的像素"
+                                 //         (jagged leftover pixels) on
+                                 //         hands/feet/edges. More-aggressive
+                                 //         flood catches the anti-aliased
+                                 //         halo ring before Pass D has to
+                                 //         deal with it. We still flood-
+                                 //         from-edge-only, so enclosed
+                                 //         features (eye whites, mouth
+                                 //         highlights) stay safe.
+  // Pass D constants — soft matte + despill REPLACES the old hard-snap.
+  // Pixels with color-distance ≤ SOFT_LOW → fully transparent.
+  // Pixels with color-distance ≥ SOFT_HIGH → fully opaque.
+  // Anything in between → smooth alpha + RGB despill so edges look like
+  //   the AI's original anti-aliased silhouette instead of a 1-px
+  //   stair-step.
+  const SOFT_LOW  = 40;
+  const SOFT_HIGH = 120;
   const MIN_ISLAND_RATIO = 0.02; // Pass E: was 0.05 — lowered so small
                                  //         legit mascot parts (eyes, held
                                  //         items, antennae, tail tips)
@@ -7482,12 +7494,93 @@ async function chromaKeyWhiteBackground(dataUrl) {
           pushIfBg(x, y - 1);
         }
 
-        // ── Pass D: hard-snap alpha ────────────────────────────────────
-        // No semi-transparent halo — snap every alpha to 0 or 255 above
-        // /below the cutoff so the cutout has hard edges suitable for
-        // clippings/collages. Edge-flooded pixels are already alpha 0.
-        for (let i = 0; i < d.length; i += 4) {
-          d[i+3] = d[i+3] >= HARD_ALPHA_CUTOFF ? 255 : 0;
+        // ── Pass D: SOFT MATTE + DESPILL (edge band only) ──────────────
+        // Replaces the old hard-snap. The previous version aliased
+        // every alpha to 0 or 255, which is exactly what causes the
+        // "破破的像素" the user keeps reporting: anti-aliased edges
+        // drawn smoothly by the AI got stair-stepped into a 1-pixel
+        // jagged border.
+        //
+        // New algorithm — applied to a 2-pixel-wide band along the
+        // silhouette edge (any opaque pixel within 2 hops of a
+        // transparent neighbour). Interior pixels are left fully
+        // opaque so light features (eye whites, belly highlights,
+        // sparkles) cannot accidentally become semi-transparent.
+        //
+        // For each edge-band pixel:
+        //   dist ≤ SOFT_LOW  → alpha 0      (it's basically background)
+        //   dist ≥ SOFT_HIGH → alpha 255    (it's solid mascot colour)
+        //   otherwise        → smooth alpha ramp + DESPILL
+        //
+        // Despill solves the alpha-blend equation C = α·F + (1−α)·B
+        // for the original foreground colour F, removing the white-
+        // tint contamination that gives soft-edge cutouts a halo.
+        {
+          // Step D-1: mark pixels in the 2-px edge band.
+          //   isEdge[p] = 1 if p is opaque AND (a 4-neighbour is
+          //               transparent OR p is on the image border).
+          //   isEdge[p] = 2 if p is opaque AND adjacent to an
+          //               isEdge-1 pixel (second-ring softening).
+          const isEdge = new Uint8Array(w * h);
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const p = y * w + x;
+              if (d[p * 4 + 3] === 0) continue;
+              let onBorder = (x === 0 || y === 0 || x === w - 1 || y === h - 1);
+              if (!onBorder) {
+                if (d[((y - 1) * w + x) * 4 + 3] === 0) onBorder = true;
+                else if (d[((y + 1) * w + x) * 4 + 3] === 0) onBorder = true;
+                else if (d[(y * w + (x - 1)) * 4 + 3] === 0) onBorder = true;
+                else if (d[(y * w + (x + 1)) * 4 + 3] === 0) onBorder = true;
+              }
+              if (onBorder) isEdge[p] = 1;
+            }
+          }
+          // Second ring — adjacent to ring-1 pixels.
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const p = y * w + x;
+              if (d[p * 4 + 3] === 0 || isEdge[p]) continue;
+              let touch = false;
+              if (y > 0     && isEdge[(y - 1) * w + x] === 1) touch = true;
+              else if (y < h-1 && isEdge[(y + 1) * w + x] === 1) touch = true;
+              else if (x > 0 && isEdge[y * w + (x - 1)] === 1) touch = true;
+              else if (x < w-1 && isEdge[y * w + (x + 1)] === 1) touch = true;
+              if (touch) isEdge[p] = 2;
+            }
+          }
+
+          // Step D-2: apply soft alpha + despill only to edge-band pixels.
+          const SOFT_RANGE = SOFT_HIGH - SOFT_LOW;
+          for (let p = 0; p < w * h; p++) {
+            if (!isEdge[p]) continue;
+            const i = p * 4;
+            const dist = colorDist(d[i], d[i+1], d[i+2]);
+            if (dist <= SOFT_LOW) {
+              d[i+3] = 0;
+              continue;
+            }
+            if (dist >= SOFT_HIGH) {
+              // Edge pixel that's strongly mascot-coloured — leave solid.
+              d[i+3] = 255;
+              continue;
+            }
+            const a = (dist - SOFT_LOW) / SOFT_RANGE;
+            // Second-ring pixels softened less (they're 1 step inside the
+            // true edge, so they should be mostly opaque — slight ramp).
+            const finalA = (isEdge[p] === 2) ? Math.min(1, 0.6 + a * 0.4) : a;
+            d[i+3] = Math.round(finalA * 255);
+            // Despill — recover the pristine foreground colour by
+            // solving C = α·F + (1−α)·B for F.
+            const inv = 1 / finalA;
+            const w1 = 1 - finalA;
+            const rr = (d[i]   - bgR * w1) * inv;
+            const gg = (d[i+1] - bgG * w1) * inv;
+            const bb = (d[i+2] - bgB * w1) * inv;
+            d[i]   = rr < 0 ? 0 : rr > 255 ? 255 : rr;
+            d[i+1] = gg < 0 ? 0 : gg > 255 ? 255 : gg;
+            d[i+2] = bb < 0 ? 0 : bb > 255 ? 255 : bb;
+          }
         }
 
         // ── Pass E: connected-component island drop ─────────────────────
