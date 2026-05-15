@@ -4758,24 +4758,37 @@ function _mxpToCSS(t) {
 function _mxpApply(slotKey) {
   const t = _mxpGet(slotKey);
   const css = _mxpToCSS(t);
+  // For cover-fit images, also apply object-position (pan inside the
+  // crop window). Only set it if the user has actually panned —
+  // otherwise leave whatever the slide's stylesheet specified.
+  const hasPan = (typeof t.objX === 'number' && typeof t.objY === 'number');
+  const objPos = hasPan ? (t.objX.toFixed(1) + '% ' + t.objY.toFixed(1) + '%') : '';
+
+  const writeOne = (el) => {
+    el.style.transform = css;
+    el.style.transformOrigin = 'center center';
+    if (hasPan) {
+      // Only apply to cover-fit images — for contain-fit, object-position
+      // does nothing useful and would just be dead style.
+      try {
+        const fit = getComputedStyle(el).objectFit;
+        if (fit === 'cover') el.style.objectPosition = objPos;
+      } catch (_) {}
+    }
+  };
+
   // Cached nodes (persisted across stage swaps → PDF export picks up)
   try {
     (_unifiedSlideNodes || new Map()).forEach(node => {
       if (!node) return;
-      node.querySelectorAll(`[data-slot-key="${slotKey}"]`).forEach(el => {
-        el.style.transform = css;
-        el.style.transformOrigin = 'center center';
-      });
+      node.querySelectorAll(`[data-slot-key="${slotKey}"]`).forEach(writeOne);
     });
   } catch (_) {}
   // Live stage (unified editor) + Overview modal (previewAndEdit)
   try {
     document.querySelectorAll(
       `#unifiedSlideStageContent [data-slot-key="${slotKey}"], #previewEditContent [data-slot-key="${slotKey}"]`
-    ).forEach(el => {
-      el.style.transform = css;
-      el.style.transformOrigin = 'center center';
-    });
+    ).forEach(writeOne);
   } catch (_) {}
 }
 function _mxpApplyAll() {
@@ -5010,6 +5023,17 @@ function _dmSelect(slotKey, el) {
   _dmEnsureOverlay();
   _dmOverlay.style.display = 'block';
   el.classList.add('mxp-active');
+  // Switch the hint text based on whether the slot is cover-fit (pan)
+  // or contain-fit (translate). Users get a cue what their drag does.
+  try {
+    const isCover = (getComputedStyle(el).objectFit === 'cover');
+    const hint = _dmOverlay.querySelector('._dm-hint');
+    if (hint) {
+      hint.textContent = isCover
+        ? 'drag = choose crop · corner = zoom · double-click = more'
+        : 'drag = move · corner = resize · double-click = more';
+    }
+  } catch (_) {}
   _dmRepositionOverlay();
 }
 
@@ -5038,6 +5062,17 @@ function _dmInstallGlobalHandlers() {
       const dySlide = rawDy / scale;
       t.tx = Math.max(-800, Math.min(800, _dmDrag.startTx + dxSlide));
       t.ty = Math.max(-800, Math.min(800, _dmDrag.startTy + dySlide));
+    } else if (_dmDrag.mode === 'pan') {
+      // Cover-fit pan — adjust object-position by % of element size.
+      // Dragging right shows MORE of the image's left half (object-position
+      // moves toward 0%). Multiplier × 2 compensates for the typical
+      // overflow ratio of cover-cropped images so the cursor tracks the
+      // visible content tightly.
+      const rect = _dmSelected.el.getBoundingClientRect();
+      const dPctX = rect.width  ? -(rawDx / rect.width)  * 100 : 0;
+      const dPctY = rect.height ? -(rawDy / rect.height) * 100 : 0;
+      t.objX = Math.max(0, Math.min(100, (_dmDrag.startObjX) + dPctX));
+      t.objY = Math.max(0, Math.min(100, (_dmDrag.startObjY) + dPctY));
     } else if (_dmDrag.mode === 'resize') {
       const dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
       let sign = 1;
@@ -5106,13 +5141,27 @@ function _mxpInstallClickHandlers() {
       e.stopPropagation();
       _dmSelect(slot, el);
       const t = _mxpGet(slot);
-      _dmDrag = {
-        mode: 'move',
-        startMouseX: e.clientX,
-        startMouseY: e.clientY,
-        startTx: t.tx || 0,
-        startTy: t.ty || 0,
-      };
+      // Detect cover-fit: those images are cropped to fill a slot, so
+      // dragging should change which part is visible (object-position)
+      // rather than translating the whole element. S16 promo cards are
+      // the main case; any future cover-fit slot inherits this behavior.
+      let isCover = false;
+      try { isCover = (getComputedStyle(el).objectFit === 'cover'); } catch (_) {}
+      _dmDrag = isCover
+        ? {
+            mode: 'pan',
+            startMouseX: e.clientX,
+            startMouseY: e.clientY,
+            startObjX: (typeof t.objX === 'number') ? t.objX : 50,
+            startObjY: (typeof t.objY === 'number') ? t.objY : 50,
+          }
+        : {
+            mode: 'move',
+            startMouseX: e.clientX,
+            startMouseY: e.clientY,
+            startTx: t.tx || 0,
+            startTy: t.ty || 0,
+          };
       _dmDragMoved = false;
     });
 
