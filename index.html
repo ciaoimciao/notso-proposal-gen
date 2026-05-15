@@ -951,10 +951,26 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbFontSize(-2)" title="Smaller">A−</button>
           <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbFontSize(+2)" title="Larger">A+</button>
           <span class="utb-sep"></span>
-          <label class="utb-color-wrap" title="Text color">
-            <span style="font-weight:600">A</span>
-            <input type="color" id="utbColor" onchange="_utbColor(this.value)" style="width:26px;height:22px;border:none;background:transparent;cursor:pointer;padding:0">
-          </label>
+          <div style="position:relative">
+            <button type="button" class="utb-btn" id="utbColorBtn" onmousedown="event.preventDefault()"
+                    onclick="_utbToggleColorPopover()" title="Text color"
+                    style="display:inline-flex;gap:4px;padding:0 6px;width:auto;min-width:0">
+              <span style="font-weight:600">A</span>
+              <span id="utbColorDot" style="width:14px;height:14px;border-radius:3px;border:0.5px solid rgba(0,0,0,0.15);background:#1a1a1a"></span>
+              <span style="font-size:10px;color:#888">▾</span>
+            </button>
+            <div id="utbColorPop" style="display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:60;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px;width:228px;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#9ca3af;font-weight:700;margin:0 0 5px">Brand</div>
+              <div id="utbBrandSwatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#9ca3af;font-weight:700;margin:10px 0 5px">Standard</div>
+              <div id="utbStdSwatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid #f3f4f6;font-size:12px">
+                <span style="color:#6b7280">Custom</span>
+                <input type="color" id="utbColorCustom" onchange="_utbColorPick(this.value)" style="width:24px;height:24px;border:none;background:transparent;cursor:pointer;padding:0">
+                <span id="utbColorHex" style="font-size:11px;color:#9ca3af;font-family:ui-monospace,monospace">#1a1a1a</span>
+              </div>
+            </div>
+          </div>
           <span class="utb-sep"></span>
           <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbExec('justifyLeft')" title="Align left">⬅</button>
           <button type="button" class="utb-btn" onmousedown="event.preventDefault()" onclick="_utbExec('justifyCenter')" title="Align center">⬌</button>
@@ -4015,6 +4031,9 @@ function _unifiedReattachFromCache() {
       tab.classList.toggle('unchecked', !e.target.checked);
       if (typeof renderSlidePicker === 'function') { try { renderSlidePicker(); } catch (_) {} }
     });
+    // Drag-reorder: lets the user drop this thumb anywhere in the strip
+    // to change slide order (PDF/PPTX export honors the new order).
+    try { _installSlideTabDragHandlers(tab, sid); } catch (_) {}
     list.appendChild(tab);
   });
 
@@ -4046,6 +4065,9 @@ function closeUnifiedEditor() {
   // Best-effort snapshot to localStorage so a full page reload also
   // recovers the edits (in-memory state alone is reload-fragile).
   try { _unifiedSnapshotEdits(); } catch (_) {}
+  // Drop any active drag-selection so the floating handles don't show
+  // while the modal is hidden.
+  try { if (typeof _dmDeselect === 'function') _dmDeselect(); } catch (_) {}
 
   document.getElementById('unifiedEditorModal').classList.add('hidden');
   // Don't clear sidebar / stage / thumb-strip innerHTML either —
@@ -4248,6 +4270,12 @@ function _unifiedRenderShell(html) {
       pointer-events: none;
     }
     .unified-slide-tab.active .tab-num { background: #3CC2A6; }
+    /* Drag-reorder visual states */
+    .unified-slide-tab[draggable="true"] .tab-thumb { cursor: grab; }
+    .unified-slide-tab.dragging { opacity: 0.4; }
+    .unified-slide-tab.dragging .tab-thumb { cursor: grabbing; }
+    .unified-slide-tab.drop-before .tab-thumb { box-shadow: -3px 0 0 #F5A623; }
+    .unified-slide-tab.drop-after  .tab-thumb { box-shadow:  3px 0 0 #F5A623; }
     .unified-slide-tab .tab-label {
       font-size: 10px;
       color: #ccc;
@@ -4473,6 +4501,8 @@ function _unifiedRenderShell(html) {
       // stay in sync when user goes back to Step 1.
       if (typeof renderSlidePicker === 'function') { try { renderSlidePicker(); } catch (_) {} }
     });
+    // Drag-reorder support — same handler installed on both render paths
+    try { _installSlideTabDragHandlers(tab, sid); } catch (_) {}
     list.appendChild(tab);
   });
 
@@ -4492,11 +4522,125 @@ function _unifiedRenderShell(html) {
 // Swap the center pane to display the requested slide. Re-uses the cached
 // DOM node so any in-place edits the user made on a previous slide are
 // preserved.
+// ─────────────────────────────────────────────────────────────────
+// Slide drag-reorder for the bottom thumbnail strip
+// ─────────────────────────────────────────────────────────────────
+// Wires HTML5 drag-and-drop onto each .unified-slide-tab. Dropping
+// thumb A on thumb B reorders _unifiedSlideIds so A lands either
+// before or after B (depending on which half of B the mouse was in).
+// Updates:
+//   - _unifiedSlideIds order
+//   - selectedSlides order (the Set is iteration-order preserving;
+//     we rebuild it from _unifiedSlideIds so PDF export emits the
+//     slides in the new order)
+//   - DOM order of the thumb strip via list.appendChild reordering
+//   - tab-num badge text
+// Edits are NOT lost: each .slide DOM node lives in _unifiedSlideNodes
+// keyed by id, so the existing edits move with the slide.
+function _installSlideTabDragHandlers(tab, sid) {
+  tab.setAttribute('draggable', 'true');
+  tab.addEventListener('dragstart', (e) => {
+    tab.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', sid);
+    // Use a tiny invisible drag image so the cursor stays clean.
+    try {
+      const ghost = document.createElement('div');
+      ghost.style.cssText = 'width:1px;height:1px;opacity:0';
+      document.body.appendChild(ghost);
+      e.dataTransfer.setDragImage(ghost, 0, 0);
+      setTimeout(() => ghost.remove(), 0);
+    } catch (_) {}
+  });
+  tab.addEventListener('dragend', () => {
+    tab.classList.remove('dragging');
+    document.querySelectorAll('.unified-slide-tab.drop-before, .unified-slide-tab.drop-after')
+      .forEach(n => { n.classList.remove('drop-before'); n.classList.remove('drop-after'); });
+  });
+  tab.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (tab.classList.contains('dragging')) return;
+    // Show insertion line on the side closest to the cursor
+    const rect = tab.getBoundingClientRect();
+    const before = (e.clientX < rect.left + rect.width / 2);
+    tab.classList.toggle('drop-before', before);
+    tab.classList.toggle('drop-after', !before);
+  });
+  tab.addEventListener('dragleave', () => {
+    tab.classList.remove('drop-before');
+    tab.classList.remove('drop-after');
+  });
+  tab.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const fromId = e.dataTransfer.getData('text/plain');
+    const toId = sid;
+    const rect = tab.getBoundingClientRect();
+    const insertBefore = (e.clientX < rect.left + rect.width / 2);
+    tab.classList.remove('drop-before');
+    tab.classList.remove('drop-after');
+    if (!fromId || fromId === toId) return;
+    _reorderUnifiedSlides(fromId, toId, insertBefore);
+  });
+}
+
+// Move slideId `fromId` so that it sits immediately before/after `toId`.
+// Updates: in-memory order array, the DOM order of the bottom thumb
+// strip, the tab-num badges, and the global `selectedSlides` Set so
+// PDF/PPTX export honors the new order.
+function _reorderUnifiedSlides(fromId, toId, insertBefore) {
+  const arr = _unifiedSlideIds;
+  const fromIdx = arr.indexOf(fromId);
+  const toIdx   = arr.indexOf(toId);
+  if (fromIdx < 0 || toIdx < 0) return;
+
+  // Remove fromId then compute insertion index relative to the post-removal array.
+  arr.splice(fromIdx, 1);
+  const refIdx = arr.indexOf(toId);
+  let insertAt = insertBefore ? refIdx : refIdx + 1;
+  if (insertAt < 0) insertAt = 0;
+  arr.splice(insertAt, 0, fromId);
+
+  // Re-key `selectedSlides` (Set) to match the new order so PDF export
+  // emits slides in the displayed sequence. We preserve membership
+  // state — only the iteration order changes.
+  if (typeof selectedSlides !== 'undefined' && selectedSlides instanceof Set) {
+    const remembered = new Set(selectedSlides);
+    selectedSlides.clear();
+    arr.forEach(id => { if (remembered.has(id)) selectedSlides.add(id); });
+  }
+
+  // Reorder the DOM thumbs without re-rendering (faster, cleaner).
+  const list = document.getElementById('unifiedSlideList');
+  if (list) {
+    arr.forEach((id, i) => {
+      const tab = list.querySelector('.unified-slide-tab[data-slide-id="' + id + '"]');
+      if (!tab) return;
+      list.appendChild(tab); // moves to end; doing this in order rebuilds DOM order
+      const num = tab.querySelector('.tab-num');
+      if (num) num.textContent = String(i + 1);
+    });
+  }
+
+  // Step-1 slide picker (if visible) stays in sync.
+  if (typeof renderSlidePicker === 'function') { try { renderSlidePicker(); } catch (_) {} }
+
+  // Snapshot edits with the new slide order baked in (best-effort).
+  try { _unifiedSnapshotEdits(); } catch (_) {}
+}
+
+window._installSlideTabDragHandlers = _installSlideTabDragHandlers;
+window._reorderUnifiedSlides = _reorderUnifiedSlides;
+
 function _unifiedShowSlide(slideId) {
   const stage = document.getElementById('unifiedSlideStageContent');
   const node  = _unifiedSlideNodes.get(slideId);
   if (!node) return;
   _unifiedActiveSlideId = slideId;
+
+  // Switching slides → drop any active mascot selection (handles were
+  // anchored to the old slide's image).
+  try { if (typeof _dmDeselect === 'function') _dmDeselect(); } catch (_) {}
 
   // Highlight the active tab.
   document.querySelectorAll('#unifiedSlideList .unified-slide-tab').forEach(el => {
@@ -4767,18 +4911,217 @@ function _mxpReset() {
 // Attach click handlers to images in the currently visible stage.
 // Called after every render/swap. Only real <img> elements open the
 // panel — empty placeholders don't (nothing to transform yet).
+// ═══════════════════════════════════════════════════════════════════
+// DIRECT MANIPULATION (drag-move + corner-resize)
+// ═══════════════════════════════════════════════════════════════════
+// Lets the user grab a mascot/mockup image and drag it directly, with
+// 4 corner handles for resize. Operates on the same _mascotTransforms
+// state the modal panel uses, so the two stay in sync. Double-click
+// still opens the precision modal panel (for rotate / flip / exact
+// numeric input / reset).
+//
+// Selection model:
+//   _dmSelected = { slotKey, el }  // null if nothing is selected
+//   _dmDrag     = { mode, ... }    // null when not actively dragging
+//
+// Overlay (handles + outline) is a fixed-position child of <body>,
+// repositioned on mousemove + scroll + resize. Living outside the
+// stage means the CSS scale on the slide frame doesn't shrink it,
+// so handles stay a constant 11px on screen regardless of zoom.
+//
+// Coordinate math:
+//   The slide frame is rendered at native 1440 px wide and CSS-scaled
+//   down to fit the stage. _mascotTransforms.tx/ty live in NATIVE
+//   1440-space. So mouse-pixel deltas must be divided by the CSS
+//   scale to convert screen-px → slide-px.
+let _dmSelected = null;
+let _dmDrag = null;
+let _dmOverlay = null;
+let _dmDragMoved = false;     // true if cursor moved during current drag
+
+function _dmGetSlideScale() {
+  const frame = document.querySelector('#unifiedSlideStageContent .preview-stage-frame');
+  if (!frame) return 1;
+  const w = frame.getBoundingClientRect().width;
+  return w > 0 ? (w / 1440) : 1;
+}
+
+function _dmEnsureOverlay() {
+  if (_dmOverlay && document.body.contains(_dmOverlay)) return _dmOverlay;
+  _dmOverlay = document.createElement('div');
+  _dmOverlay.id = '_dmOverlay';
+  _dmOverlay.style.cssText = 'position:fixed;z-index:340;pointer-events:none;display:none;box-sizing:border-box';
+  const HANDLE_BASE = 'position:absolute;width:11px;height:11px;background:#fff;border:1.5px solid #3CC2A6;border-radius:2px;pointer-events:auto;box-sizing:border-box';
+  _dmOverlay.innerHTML =
+    '<div class="_dm-outline" style="position:absolute;inset:0;border:2px solid #3CC2A6;border-radius:2px;pointer-events:none;box-sizing:border-box"></div>' +
+    '<div class="_dm-handle" data-corner="nw" style="' + HANDLE_BASE + ';left:-6px;top:-6px;cursor:nwse-resize"></div>' +
+    '<div class="_dm-handle" data-corner="ne" style="' + HANDLE_BASE + ';right:-6px;top:-6px;cursor:nesw-resize"></div>' +
+    '<div class="_dm-handle" data-corner="sw" style="' + HANDLE_BASE + ';left:-6px;bottom:-6px;cursor:nesw-resize"></div>' +
+    '<div class="_dm-handle" data-corner="se" style="' + HANDLE_BASE + ';right:-6px;bottom:-6px;cursor:nwse-resize"></div>' +
+    '<div class="_dm-hint" style="position:absolute;left:0;top:-22px;font-size:10px;background:rgba(26,26,26,0.85);color:#fff;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">drag = move · corner = resize · double-click = more</div>';
+  document.body.appendChild(_dmOverlay);
+  // Wire handle mousedown → start resize drag
+  _dmOverlay.querySelectorAll('._dm-handle').forEach(h => {
+    h.addEventListener('mousedown', (e) => {
+      if (!_dmSelected) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const t = _mxpGet(_dmSelected.slotKey);
+      _dmDrag = {
+        mode: 'resize',
+        corner: h.dataset.corner,
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startScale: t.scale || 1,
+      };
+      _dmDragMoved = false;
+    });
+  });
+  return _dmOverlay;
+}
+
+function _dmRepositionOverlay() {
+  if (!_dmSelected || !_dmOverlay) return;
+  const r = _dmSelected.el.getBoundingClientRect();
+  _dmOverlay.style.left = r.left + 'px';
+  _dmOverlay.style.top = r.top + 'px';
+  _dmOverlay.style.width = r.width + 'px';
+  _dmOverlay.style.height = r.height + 'px';
+}
+
+function _dmSelect(slotKey, el) {
+  if (_dmSelected && _dmSelected.el === el) return;
+  _dmDeselect();
+  _dmSelected = { slotKey, el };
+  _dmEnsureOverlay();
+  _dmOverlay.style.display = 'block';
+  el.classList.add('mxp-active');
+  _dmRepositionOverlay();
+}
+
+function _dmDeselect() {
+  if (_dmSelected && _dmSelected.el) {
+    _dmSelected.el.classList.remove('mxp-active');
+  }
+  if (_dmOverlay) _dmOverlay.style.display = 'none';
+  _dmSelected = null;
+}
+
+// Global mouse handlers (installed once)
+function _dmInstallGlobalHandlers() {
+  if (_dmInstallGlobalHandlers._done) return;
+  _dmInstallGlobalHandlers._done = true;
+
+  document.addEventListener('mousemove', (e) => {
+    if (!_dmDrag || !_dmSelected) return;
+    const rawDx = e.clientX - _dmDrag.startMouseX;
+    const rawDy = e.clientY - _dmDrag.startMouseY;
+    if (Math.abs(rawDx) > 1 || Math.abs(rawDy) > 1) _dmDragMoved = true;
+    const scale = _dmGetSlideScale() || 1;
+    const t = _mxpGet(_dmSelected.slotKey);
+    if (_dmDrag.mode === 'move') {
+      const dxSlide = rawDx / scale;
+      const dySlide = rawDy / scale;
+      t.tx = Math.max(-800, Math.min(800, _dmDrag.startTx + dxSlide));
+      t.ty = Math.max(-800, Math.min(800, _dmDrag.startTy + dySlide));
+    } else if (_dmDrag.mode === 'resize') {
+      const dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
+      let sign = 1;
+      if (_dmDrag.corner === 'se')      sign = (rawDx + rawDy) >= 0 ? 1 : -1;
+      else if (_dmDrag.corner === 'nw') sign = (rawDx + rawDy) <= 0 ? 1 : -1;
+      else if (_dmDrag.corner === 'ne') sign = (rawDx - rawDy) >= 0 ? 1 : -1;
+      else if (_dmDrag.corner === 'sw') sign = (rawDx - rawDy) <= 0 ? 1 : -1;
+      // Dividing by 150 makes the resize feel proportional to mouse travel.
+      // Lower = more sensitive. 150 ≈ "doubles after dragging 150px."
+      t.scale = Math.max(0.2, Math.min(5, _dmDrag.startScale + sign * dist / 150));
+    }
+    _mxpApply(_dmSelected.slotKey);
+    _dmRepositionOverlay();
+    // Sync the modal panel's UI if it happens to be open for this slot
+    if (_mxpActiveSlot === _dmSelected.slotKey) {
+      try { _mxpSyncUI(t); } catch (_) {}
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    _dmDrag = null;
+    // Tiny timeout so a synthetic click that fires right after mouseup
+    // sees the moved flag and can be suppressed by the image's click handler.
+    setTimeout(() => { _dmDragMoved = false; }, 20);
+  });
+
+  // Click outside any [data-slot-key] image → deselect.
+  document.addEventListener('mousedown', (e) => {
+    if (!_dmSelected) return;
+    if (e.target.closest && e.target.closest('[data-slot-key]')) return;
+    if (e.target.closest && e.target.closest('#_dmOverlay')) return;
+    if (e.target.closest && e.target.closest('#mascotXformPanel')) return;
+    _dmDeselect();
+  });
+
+  // Esc → deselect / close modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      _dmDeselect();
+      if (typeof _mxpClose === 'function') _mxpClose();
+    }
+  });
+
+  // Reposition overlay on scroll/resize so handles stay glued to the image.
+  window.addEventListener('scroll', () => _dmRepositionOverlay(), true);
+  window.addEventListener('resize', () => _dmRepositionOverlay());
+}
+
+// Bind drag-move / dblclick to every slot-key image inside the slide stage.
+// Original name kept for backward compat — anywhere that used to call
+// _mxpInstallClickHandlers now gets the new direct-manipulation behavior.
 function _mxpInstallClickHandlers() {
+  _dmInstallGlobalHandlers();
   document.querySelectorAll('#unifiedSlideStageContent img[data-slot-key]').forEach(el => {
     if (el._mxpBound) return;
     el._mxpBound = true;
-    el.addEventListener('click', (e) => {
-      // Don't interfere with text editing inside a wrapping contenteditable.
-      e.stopPropagation();
+    el.style.cursor = 'move';
+
+    const slot = el.getAttribute('data-slot-key');
+    if (!slot) return;
+
+    el.addEventListener('mousedown', (e) => {
+      // Ignore clicks that started on a popover/panel.
+      if (e.button !== 0) return;
       e.preventDefault();
-      const slot = el.getAttribute('data-slot-key');
-      if (!slot) return;
+      e.stopPropagation();
+      _dmSelect(slot, el);
+      const t = _mxpGet(slot);
+      _dmDrag = {
+        mode: 'move',
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startTx: t.tx || 0,
+        startTy: t.ty || 0,
+      };
+      _dmDragMoved = false;
+    });
+
+    // Suppress click-after-drag so the precision modal doesn't pop open
+    // every time the user finishes dragging (browsers fire click on the
+    // element after mousedown+mouseup).
+    el.addEventListener('click', (e) => {
+      if (_dmDragMoved) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+
+    // Double-click → open the precision modal for rotate/flip/reset/numbers
+    el.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       _mxpOpen(slot, el);
     });
+
+    // Disable native image-drag (the ghost preview) so our handler owns
+    // the gesture.
+    el.addEventListener('dragstart', (e) => e.preventDefault());
   });
 }
 
@@ -5799,6 +6142,99 @@ function _utbColor(value) {
   }
   _utbExec('foreColor', value);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Text color popover — brand swatches + standard preset + custom
+// ─────────────────────────────────────────────────────────────────
+// Replaces the bare <input type="color"> that opened the OS native
+// picker on every click. Now: a popover with one-click brand-color
+// swatches (pulled from client.color1-4) and 8 standard text colors.
+// "Custom..." still opens the native picker for non-preset hex codes.
+//
+// All swatch buttons use onmousedown="event.preventDefault()" so the
+// user's text selection isn't dropped when they click.
+const _UTB_STD_COLORS = ['#1a1a1a', '#5F5E5A', '#B4B2A9', '#FFFFFF',
+                         '#E24B4A', '#EF9F27', '#1D9E75', '#378ADD'];
+
+function _utbToggleColorPopover() {
+  const pop = document.getElementById('utbColorPop');
+  if (!pop) return;
+  if (pop.style.display === 'block') {
+    pop.style.display = 'none';
+    return;
+  }
+  _utbRenderColorSwatches();
+  pop.style.display = 'block';
+  // Click-outside to close (next tick so this current click doesn't trigger it)
+  setTimeout(() => {
+    const closer = (e) => {
+      if (pop.contains(e.target)) return;
+      if (e.target.closest && e.target.closest('#utbColorBtn')) return;
+      pop.style.display = 'none';
+      document.removeEventListener('mousedown', closer, true);
+    };
+    document.addEventListener('mousedown', closer, true);
+  }, 0);
+}
+
+function _utbRenderColorSwatches() {
+  // Brand row — pull live values from the form (Step 1 has the source
+  // of truth via input#color1 etc.); fall back to client.colorN if the
+  // form inputs aren't present.
+  const brand = [];
+  for (const id of ['color1', 'color2', 'color3', 'color4']) {
+    const el = document.getElementById(id);
+    const fromForm = el && el.value ? el.value : null;
+    const fromClient = (typeof client !== 'undefined' && client) ? client[id] : null;
+    const v = fromForm || fromClient;
+    if (v) brand.push(v);
+  }
+  // Fallbacks if brand is empty (e.g., user loaded a session without colors)
+  while (brand.length < 4) brand.push(['#3CC2A6', '#F5A623', '#1a1a1a', '#FFFFFF'][brand.length]);
+
+  const _swatch = (hex) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.style.cssText = 'width:24px;height:24px;border-radius:5px;border:0.5px solid rgba(0,0,0,0.18);cursor:pointer;padding:0;background:' + hex + ';transition:transform .08s';
+    b.title = hex;
+    b.onmousedown = (e) => e.preventDefault();
+    b.onmouseover = () => b.style.transform = 'scale(1.12)';
+    b.onmouseout = () => b.style.transform = '';
+    b.onclick = () => _utbColorPick(hex);
+    return b;
+  };
+
+  const brandHost = document.getElementById('utbBrandSwatches');
+  const stdHost   = document.getElementById('utbStdSwatches');
+  if (brandHost) {
+    brandHost.innerHTML = '';
+    brand.forEach(c => brandHost.appendChild(_swatch(c)));
+  }
+  if (stdHost) {
+    stdHost.innerHTML = '';
+    _UTB_STD_COLORS.forEach(c => stdHost.appendChild(_swatch(c)));
+  }
+}
+
+// Single point that all swatches + custom input route through.
+function _utbColorPick(hex) {
+  if (!hex) return;
+  _utbColor(hex);  // existing helper — handles execCommand + multi-block
+  // Update indicator + hex readout
+  const dot = document.getElementById('utbColorDot');
+  if (dot) dot.style.background = hex;
+  const out = document.getElementById('utbColorHex');
+  if (out) out.textContent = hex;
+  const cust = document.getElementById('utbColorCustom');
+  if (cust) cust.value = hex;
+  // Close popover after applying
+  const pop = document.getElementById('utbColorPop');
+  if (pop) pop.style.display = 'none';
+}
+
+// Expose for inline onclick handlers
+window._utbToggleColorPopover = _utbToggleColorPopover;
+window._utbColorPick = _utbColorPick;
 
 // ═══════════════════════════════════════════════════════════════════
 // MULTI-SELECT TEXT BLOCKS (Ctrl / ⌘ + Click) → batch font-size change
