@@ -2328,7 +2328,7 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
                   const b64 = await callOpenAIImageEdits({
                     apiKey: openaiKey,
                     prompt: fullPrompt,
-                    referenceImageBase64: effectiveMascotPart.inline_data.data,
+                    referenceImageBase64: effectiveMascotPart.inlineData.data,
                     transparent: !!task.transparent,
                   });
                   const fname = `${task.id}.png`;
