@@ -649,6 +649,8 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
           </label>
           <input type="text" id="mascotName"
                  placeholder="e.g. Liza, Finn, Max, Biek..."
+                 oninput="_syncMascotNameFromStep2(this.value)"
+                 onblur="_syncMascotNameFromStep2(this.value)"
                  style="width:100%;padding:10px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px;font-family:inherit" />
         </div>
 
@@ -2446,6 +2448,18 @@ async function startGeneration() {
     document.getElementById('loadTitle').textContent = 'Done! Building your preview...';
     btn.textContent = 'Generate Proposal →';
     btn.disabled = false;
+
+    // Snapshot the AI-invented mascot name so later renames (typed on
+    // step 2's mascot input) can do a whole-word find-and-replace
+    // across baked-in slide text (s7 description, s9 chat messages,
+    // s11 bullets, etc.). Without this snapshot we wouldn't know which
+    // string to replace when the user types a different name.
+    try {
+      const initialName = (proposal && proposal.s1 && proposal.s1.mascot_name) ||
+                          (proposal && proposal.mascot_name) || '';
+      if (initialName) proposal._originalMascotName = initialName;
+    } catch (_) {}
+
     // Save to history automatically
     saveToHistory(client, proposal);
 
@@ -6848,6 +6862,17 @@ function loadFromHistory(id) {
   proposal = entry.proposal;
   client = entry.client;
 
+  // Legacy histories saved before the rename-snapshot fix don't have
+  // proposal._originalMascotName. Synthesize it from whatever's on s1
+  // so the next rename can do a clean find-and-replace.
+  try {
+    if (proposal && !proposal._originalMascotName) {
+      proposal._originalMascotName =
+        (proposal.s1 && proposal.s1.mascot_name) ||
+        proposal.mascot_name || '';
+    }
+  } catch (_) {}
+
   // Restore mascot state so Asset Pack modal opens with the right options
   // and the previously-generated asset-pack grid reappears instead of the
   // intro screen.
@@ -7504,6 +7529,125 @@ async function chromaKeyWhiteBackground(dataUrl) {
 let mascotImages = [];     // Array of { id, data_url }
 let mascotSelections = {};  // { option_a: data_url, option_b: data_url }
 let savedMascotPaths = {};  // { cover: '/tmp/...', option_a: '/tmp/...', option_b: '/tmp/...' }
+
+// ─────────────────────────────────────────────────────────────────
+// Mascot name sync (Step 2 input → proposal text)
+// ─────────────────────────────────────────────────────────────────
+// The #mascotName input lives on Step 2, but `client` is built at the
+// moment "Generate Proposal" is clicked on Step 1 — when the input is
+// still empty. So client.mascotName captured "" and Claude invented a
+// name (PenPen, Buddy, etc.) which got baked into s7 description, s9
+// chat messages, etc. Typing "YOYO" on Step 2 later only updated the
+// input value — neither client nor the proposal text knew about it.
+//
+// This helper runs on every keystroke (oninput) of #mascotName:
+//   1. Update client.mascotName so all later reads (generateMascots,
+//      preview, asset pack) see the new name.
+//   2. Do a whole-word replace across all string fields in the
+//      proposal JSON, from `proposal._originalMascotName` → newName.
+//      Idempotent: we also update _originalMascotName to the new name
+//      so the next rename does the right swap.
+//   3. Bump `proposal.s1.mascot_name` + `proposal.s7.name` directly
+//      so slide renderers that read those fields see the change even
+//      if the name string didn't appear in their slide's text.
+function _syncMascotNameFromStep2(rawValue) {
+  const next = String(rawValue || '').trim();
+  if (typeof client === 'object' && client) client.mascotName = next;
+
+  if (!next || typeof proposal !== 'object' || !proposal) return;
+
+  // Find the current "source name" we want to replace. Prefer the
+  // snapshot set at proposal creation; fall back to whatever's in
+  // s1.mascot_name today.
+  const prev = (proposal._originalMascotName ||
+                (proposal.s1 && proposal.s1.mascot_name) ||
+                proposal.mascot_name || '').trim();
+
+  // No previous name to swap from, OR the user typed the same name —
+  // just update the canonical fields and bail.
+  if (!prev || prev === next) {
+    if (proposal.s1) proposal.s1.mascot_name = next;
+    if (proposal.s7) proposal.s7.name = next;
+    proposal.mascot_name = next;
+    proposal._originalMascotName = next;
+    return;
+  }
+
+  // Whole-word replace via regex. Use Unicode \p{L} so Chinese / non-Latin
+  // names also get clean boundaries (e.g. "皮皮" inside "皮皮車站" won't
+  // be replaced because the next char is also a letter).
+  // Fall back to simple lookahead/lookbehind for older engines.
+  let pattern;
+  try {
+    pattern = new RegExp('(?<![\\p{L}\\p{N}_])' +
+                         prev.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+                         '(?![\\p{L}\\p{N}_])', 'gu');
+  } catch (_) {
+    // Older browsers without \p{L} — settle for ASCII word boundaries.
+    pattern = new RegExp('\\b' +
+                         prev.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+                         '\\b', 'g');
+  }
+
+  // Walk every string in the proposal tree and apply the replace.
+  // Excludes the bookkeeping field `_originalMascotName`.
+  const walk = (obj) => {
+    if (!obj) return;
+    if (Array.isArray(obj)) { obj.forEach(walk); return; }
+    if (typeof obj !== 'object') return;
+    for (const k of Object.keys(obj)) {
+      if (k === '_originalMascotName') continue;
+      const v = obj[k];
+      if (typeof v === 'string') {
+        const replaced = v.replace(pattern, next);
+        if (replaced !== v) obj[k] = replaced;
+      } else if (typeof v === 'object' && v !== null) {
+        walk(v);
+      }
+    }
+  };
+  walk(proposal);
+
+  // Belt-and-braces on the canonical fields (regex misses things like
+  // names hyphenated or in mixed case).
+  if (proposal.s1) proposal.s1.mascot_name = next;
+  if (proposal.s7) proposal.s7.name = next;
+  proposal.mascot_name = next;
+  proposal._originalMascotName = next;
+
+  // If the unified editor was already opened (its DOM cache has the
+  // old name baked in), walk the cached slide DOM and replace text
+  // nodes in-place. Preserves any other user edits in the same slides.
+  try {
+    if (typeof _unifiedSlideNodes !== 'undefined' && _unifiedSlideNodes instanceof Map) {
+      _unifiedSlideNodes.forEach(node => {
+        if (node) _replaceTextNodesInTree(node, pattern, next);
+      });
+    }
+    // Also raw HTML cache (so the cold-path reopen still has the fix).
+    if (typeof _unifiedRawHtml === 'string' && _unifiedRawHtml) {
+      _unifiedRawHtml = _unifiedRawHtml.replace(pattern, next);
+    }
+  } catch (_) {}
+}
+
+// Walk a DOM subtree and apply a regex/replace to every Text node.
+// Leaves attribute values and element types untouched. Safe-fails if
+// the input isn't a real DOM node.
+function _replaceTextNodesInTree(root, regex, replacement) {
+  if (!root || typeof root.nodeType === 'undefined') return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const hits = [];
+  let n;
+  while ((n = walker.nextNode())) hits.push(n);
+  hits.forEach(tn => {
+    if (!tn.nodeValue) return;
+    const next = tn.nodeValue.replace(regex, replacement);
+    if (next !== tn.nodeValue) tn.nodeValue = next;
+  });
+}
+
+window._syncMascotNameFromStep2 = _syncMascotNameFromStep2;
 
 async function generateMascots() {
   // Read engine + key from the unified provider config (Gemini OR OpenAI).
