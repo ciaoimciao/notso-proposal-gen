@@ -7439,7 +7439,7 @@ async function chromaKeyWhiteBackground(dataUrl) {
           sampleAt(0, dy); sampleAt(w - 1, dy);
           sampleAt(4, dy); sampleAt(w - 5, dy);
         }
-        let bgR = 255, bgG = 0, bgB = 255, topCount = 0;
+        let bgR = 255, bgG = 255, bgB = 255, topCount = 0;
         for (const { count, r, g, b } of buckets.values()) {
           if (count > topCount) {
             topCount = count;
@@ -7449,24 +7449,14 @@ async function chromaKeyWhiteBackground(dataUrl) {
           }
         }
         // If the dominant edge colour isn't that dominant (less than ~20%
-        // of samples), the image probably already has a transparent edge.
-        // We now default to MAGENTA #FF00FF because the server prompts ask
-        // the AI to render on a magenta chroma-key matte. White used to be
-        // the default but caused "破破的像素" (jagged edges + eaten limbs)
-        // because mascots have lots of near-white pixels (eyes, belly,
-        // skin highlights) that collided with the bg colour. Magenta has
-        // zero overlap with normal mascot colours, so the chroma-key is
-        // bulletproof — no halo, no eaten parts, clean edges.
+        // of samples), the image probably already has a transparent edge —
+        // default to white so we at least strip any white remnants. The
+        // primary bg-removal path is now /api/bg-remove (Replicate) which
+        // handles semantic separation; this canvas chroma-key only runs as
+        // a fallback when the API is unavailable.
         const totalSamples = Array.from(buckets.values()).reduce((n, e) => n + e.count, 0);
         if (!totalSamples || topCount / totalSamples < 0.15) {
-          bgR = 255; bgG = 0; bgB = 255;
-        }
-        // Magenta-pixel safety net: if the detected bg is anywhere near
-        // magenta (R≈255, G≈0, B≈255), snap it to pure magenta. Avoids
-        // chroma-key picking up a slightly-off-magenta from a tiny sample
-        // and leaving partial magenta pixels behind.
-        if (bgR > 200 && bgG < 80 && bgB > 200) {
-          bgR = 255; bgG = 0; bgB = 255;
+          bgR = 255; bgG = 255; bgB = 255;
         }
         const colorDist = (r, g, b) => {
           const dr = r - bgR, dg = g - bgG, db = b - bgB;
@@ -7505,23 +7495,6 @@ async function chromaKeyWhiteBackground(dataUrl) {
           pushIfBg(x - 1, y);
           pushIfBg(x, y + 1);
           pushIfBg(x, y - 1);
-        }
-
-        // ── Pass B+: magenta sweep (only when bg is magenta) ────────────
-        // Catches enclosed magenta islands the edge flood can't reach
-        // (e.g. an AI-drawn "hole" through the mascot's hand or between
-        // fingers). Safe because we instructed the AI not to use magenta
-        // anywhere on the mascot itself — any remaining magenta pixel is
-        // by definition a chunk of chroma matte that leaked into a hole.
-        // Threshold is tight (R>220 & G<60 & B>220) so we never grab a
-        // legit pinkish mascot pixel by accident.
-        if (bgR === 255 && bgG === 0 && bgB === 255) {
-          for (let i = 0; i < d.length; i += 4) {
-            if (d[i + 3] === 0) continue;
-            if (d[i] > 220 && d[i + 1] < 60 && d[i + 2] > 220) {
-              d[i + 3] = 0;
-            }
-          }
         }
 
         // ── Pass D: SOFT MATTE + DESPILL (edge band only) ──────────────

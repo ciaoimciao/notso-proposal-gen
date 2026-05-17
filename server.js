@@ -1213,7 +1213,7 @@ ${schema}`;
 - If the pose is dynamic (jumping, running), still keep ALL of the body visible — do NOT zoom in.
 
 ★★★ BACKGROUND RULE ★★★
-- Pure magenta #FF00FF solid background — bright fuchsia/hot-pink, NOT pastel pink, NOT red, NOT purple, NOT gradient. This colour is used as a chroma-key matte by post-processing, so the mascot itself MUST NOT contain any pure magenta pixels anywhere (no magenta clothing, no magenta accessories, no magenta highlights). NO scenery. NO accessory props placed on the floor. NO speech bubbles. NO text elements. NO ground-line shadow that looks like a separate object. ONLY the character and an empty solid magenta canvas.`;
+- Pure white #FFFFFF solid background. NO scenery. NO accessory props placed on the floor. NO speech bubbles. NO text elements. NO ground-line shadow that looks like a separate object. ONLY the character and an empty white canvas.`;
 
       console.log(`  🎨 Generating ${numOptions} mascot options via Gemini Imagen (style lock v${STYLE_VERSION}${styleTransferMode ? ', style-transfer' : ''})...`);
 
@@ -1268,13 +1268,13 @@ ${schema}`;
       // Default selection: first 9 archetypes (stable + predictable)
       // If client passes body.variations, use that directly instead.
       const defaultVariations = archetypePool.slice(0, 9).map((desc, i) =>
-        `Design ${i + 1} — ${desc} Full body, brand-colored accent clothing or accessory. PNG on a pure magenta (#FF00FF) solid background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.`
+        `Design ${i + 1} — ${desc} Full body, brand-colored accent clothing or accessory. PNG on a pure white (#FFFFFF) solid background — NOT grey, NOT cream, NOT off-white, NOT gradient.`
       );
       const variations = (Array.isArray(body.variations) && body.variations.length >= 1)
         ? body.variations.slice(0, 9).map((desc, i) => {
             // Normalize: if client sent plain descriptions, wrap with Design N — prefix
             const hasPrefix = /^Design\s*\d+\s*—/i.test(desc);
-            return hasPrefix ? desc : `Design ${i + 1} — ${desc} ONE single character only. Full body, PNG on a pure magenta (#FF00FF) solid background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.`;
+            return hasPrefix ? desc : `Design ${i + 1} — ${desc} ONE single character only. Full body, PNG on a pure white (#FFFFFF) solid background — NOT grey, NOT cream, NOT off-white, NOT gradient.`;
           })
         : defaultVariations;
 
@@ -1687,7 +1687,7 @@ ${schema}`;
         }
       }
 
-      const finalText = `[MODE ${mode} — ${modeHints[mode]}]\n\n${positivePrompt}${negativeTail}\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates. Output MUST be a PNG image on a pure magenta (#FF00FF) SOLID background — bright fuchsia/hot-pink chroma-key matte, NOT pink, NOT purple, NOT red, NOT gradient. No scenery, no studio backdrop, no dark backgrounds. A clean uniform #FF00FF backdrop is REQUIRED so chroma-key can cleanly separate the subject. The mascot itself MUST NOT contain any pure magenta colour anywhere (no magenta clothing, no magenta accessories, no magenta highlights).]`;
+      const finalText = `[MODE ${mode} — ${modeHints[mode]}]\n\n${positivePrompt}${negativeTail}\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates. Output MUST be a PNG image on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient. No scenery, no studio backdrop, no dark backgrounds. A clean uniform #FFFFFF backdrop is REQUIRED so the AI background-removal step can cleanly separate the subject.]`;
       parts.push({ text: finalText });
 
       const modelName = 'gemini-2.5-flash-image';
@@ -1900,25 +1900,25 @@ ${schema}`;
       // Default task list — 18 images total
       const defaultTasks = [
         // 6 EXPRESSIONS (use mascot image as reference, transparent background)
-        { id: 'expr-happy',        category: 'expressions', label: 'Happy',        transparent: true, prompt: `The SAME mascot character shown in the reference image (same face, same outfit, same art style), now showing a big bright joyful smile, eyes sparkling with happiness, both hands near the cheeks or clasped together. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'expr-empathetic',   category: 'expressions', label: 'Empathetic',   transparent: true, prompt: `The SAME mascot character from the reference image, now with a soft caring gentle expression, head tilted slightly, one hand placed over the heart, eyebrows slightly raised showing understanding and empathy. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'expr-curious',      category: 'expressions', label: 'Curious',      transparent: true, prompt: `The SAME mascot character from the reference image, now with a curious inquisitive expression, head tilted, one finger on chin, wide interested eyes, small question-mark feeling in the air. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'expr-celebrating',  category: 'expressions', label: 'Celebrating',  transparent: true, prompt: `The SAME mascot character from the reference image, now celebrating — both arms raised high in the air, mouth open in cheer, confetti-like energy around but no actual confetti blocking the character. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'expr-apologetic',   category: 'expressions', label: 'Apologetic',   transparent: true, prompt: `The SAME mascot character from the reference image, now with an apologetic expression — small nervous smile, one hand rubbing the back of the head or neck, shoulders slightly hunched, eyes looking up. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'expr-helpful',      category: 'expressions', label: 'Helpful',      transparent: true, prompt: `The SAME mascot character from the reference image, now in a helpful pose — gesturing forward with an open palm offering assistance, warm welcoming smile, slight forward lean. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
+        { id: 'expr-happy',        category: 'expressions', label: 'Happy',        transparent: true, prompt: `The SAME mascot character shown in the reference image (same face, same outfit, same art style), now showing a big bright joyful smile, eyes sparkling with happiness, both hands near the cheeks or clasped together. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'expr-empathetic',   category: 'expressions', label: 'Empathetic',   transparent: true, prompt: `The SAME mascot character from the reference image, now with a soft caring gentle expression, head tilted slightly, one hand placed over the heart, eyebrows slightly raised showing understanding and empathy. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'expr-curious',      category: 'expressions', label: 'Curious',      transparent: true, prompt: `The SAME mascot character from the reference image, now with a curious inquisitive expression, head tilted, one finger on chin, wide interested eyes, small question-mark feeling in the air. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'expr-celebrating',  category: 'expressions', label: 'Celebrating',  transparent: true, prompt: `The SAME mascot character from the reference image, now celebrating — both arms raised high in the air, mouth open in cheer, confetti-like energy around but no actual confetti blocking the character. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'expr-apologetic',   category: 'expressions', label: 'Apologetic',   transparent: true, prompt: `The SAME mascot character from the reference image, now with an apologetic expression — small nervous smile, one hand rubbing the back of the head or neck, shoulders slightly hunched, eyes looking up. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'expr-helpful',      category: 'expressions', label: 'Helpful',      transparent: true, prompt: `The SAME mascot character from the reference image, now in a helpful pose — gesturing forward with an open palm offering assistance, warm welcoming smile, slight forward lean. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
 
         // 6 ACTIONS
-        { id: 'act-waving',        category: 'actions',     label: 'Waving',       transparent: true, prompt: `The SAME mascot character from the reference image, now waving one hand in friendly hello gesture, big smile, free hand at side or on hip. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'act-thumbs-up',     category: 'actions',     label: 'Thumbs Up',    transparent: true, prompt: `The SAME mascot character from the reference image, now giving a big thumbs-up gesture with one hand, confident proud smile, the other hand on hip. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'act-typing',        category: 'actions',     label: 'Typing Laptop',transparent: true, prompt: `The SAME mascot character from the reference image, now sitting and typing on a cute small laptop computer balanced on lap or tiny desk, focused friendly expression. The character and the laptop are the only things in the frame. Single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'act-pointing',      category: 'actions',     label: 'Pointing',     transparent: true, prompt: `The SAME mascot character from the reference image, now pointing excitedly to the side (as if pointing at a slide or chart), big enthusiastic smile, other hand on waist. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'act-presenting',    category: 'actions',     label: 'Presenting',   transparent: true, prompt: `The SAME mascot character from the reference image, now in a presenting pose — one arm extended to the side with open palm showcasing something, the other hand near the body, professional cheerful smile. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'act-tablet',        category: 'actions',     label: 'Holding Tablet',transparent:true, prompt: `The SAME mascot character from the reference image, now holding a cute small tablet device with both hands, looking at it with interested friendly smile. The character and the tablet are the only objects. Single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
+        { id: 'act-waving',        category: 'actions',     label: 'Waving',       transparent: true, prompt: `The SAME mascot character from the reference image, now waving one hand in friendly hello gesture, big smile, free hand at side or on hip. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'act-thumbs-up',     category: 'actions',     label: 'Thumbs Up',    transparent: true, prompt: `The SAME mascot character from the reference image, now giving a big thumbs-up gesture with one hand, confident proud smile, the other hand on hip. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'act-typing',        category: 'actions',     label: 'Typing Laptop',transparent: true, prompt: `The SAME mascot character from the reference image, now sitting and typing on a cute small laptop computer balanced on lap or tiny desk, focused friendly expression. The character and the laptop are the only things in the frame. Single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'act-pointing',      category: 'actions',     label: 'Pointing',     transparent: true, prompt: `The SAME mascot character from the reference image, now pointing excitedly to the side (as if pointing at a slide or chart), big enthusiastic smile, other hand on waist. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'act-presenting',    category: 'actions',     label: 'Presenting',   transparent: true, prompt: `The SAME mascot character from the reference image, now in a presenting pose — one arm extended to the side with open palm showcasing something, the other hand near the body, professional cheerful smile. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'act-tablet',        category: 'actions',     label: 'Holding Tablet',transparent:true, prompt: `The SAME mascot character from the reference image, now holding a cute small tablet device with both hands, looking at it with interested friendly smile. The character and the tablet are the only objects. Single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
 
         // FESTIVE (3) — transparent PNG
-        { id: 'fest-birthday',     category: 'festive',     label: 'Birthday',     transparent: true, prompt: `The SAME mascot character from the reference image, now wearing a cute little cone-shaped birthday party hat, holding a small birthday cupcake with a lit candle on top, warm joyful celebration expression. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'fest-christmas',    category: 'festive',     label: 'Christmas',    transparent: true, prompt: `The SAME mascot character from the reference image, now wearing a red Santa hat with white fluffy trim, holding a small wrapped Christmas present box, cozy warm smile. Winter holiday feeling. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
-        { id: 'fest-newyear',      category: 'festive',     label: 'New Year',     transparent: true, prompt: `The SAME mascot character from the reference image, now holding up a small sign or banner that says "Happy New Year" in clear readable letters, wearing a tiny party hat, cheerful celebratory pose. Full body, single character only. PNG on a pure magenta (#FF00FF) SOLID background — NOT pink, NOT purple, NOT red, NOT gradient. The mascot itself must NOT contain any pure magenta colour anywhere.` },
+        { id: 'fest-birthday',     category: 'festive',     label: 'Birthday',     transparent: true, prompt: `The SAME mascot character from the reference image, now wearing a cute little cone-shaped birthday party hat, holding a small birthday cupcake with a lit candle on top, warm joyful celebration expression. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'fest-christmas',    category: 'festive',     label: 'Christmas',    transparent: true, prompt: `The SAME mascot character from the reference image, now wearing a red Santa hat with white fluffy trim, holding a small wrapped Christmas present box, cozy warm smile. Winter holiday feeling. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
+        { id: 'fest-newyear',      category: 'festive',     label: 'New Year',     transparent: true, prompt: `The SAME mascot character from the reference image, now holding up a small sign or banner that says "Happy New Year" in clear readable letters, wearing a tiny party hat, cheerful celebratory pose. Full body, single character only. PNG on a pure white (#FFFFFF) SOLID background — NOT grey, NOT cream, NOT off-white, NOT gradient.` },
 
         // MOCKUPS (keep background)
         // Phone Chat mockup — verified working with Gemini direct on the
@@ -2387,14 +2387,16 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
               if (task.needsSite && effectiveSitePart) reqParts.push(effectiveSitePart);
               const retryHint = attempt > 1 ? '\n\n[Retry: previous attempt did not produce an image. Please output a PNG image as the response.]' : '';
               // Extra background-colour hint — Gemini occasionally returns a
-              // solid black, cream, or grey studio background. We now REQUIRE
-              // pure magenta #FF00FF (chroma-key matte, no other colour on
-              // the mascot can collide with this) so the client-side
-              // chroma-key can deterministically strip the bg. White used to
-              // collide with eye-whites / belly / skin → "破破的像素" at the
-              // edges. Magenta solves that because no mascot has magenta in
-              // it naturally.
-              const bgHint = '\n\n[BACKGROUND: Output MUST be a plain pure #FF00FF SOLID magenta background (bright fuchsia/hot-pink chroma-key matte) — NOT pink, NOT purple, NOT red, NOT transparent, NOT gradient. DO NOT use white, black, dark, scenery, studio, or any other coloured backgrounds. A flat uniform #FF00FF backdrop is REQUIRED for chroma-key to work. The mascot itself MUST NOT contain any pure magenta colour anywhere — no magenta clothing, accessories, or highlights.]';
+              // solid black, cream, or grey studio background. We require
+              // pure #FFFFFF so the downstream bg-removal step has clean
+              // input. We tried magenta as a "chroma-key matte" but the AI
+              // misread it as a design cue and started painting magenta
+              // details onto the mascot itself (pink socks, fuchsia accents,
+              // mosaic backgrounds bleeding through). Reverting to white —
+              // Replicate's semantic AI bg-removal handles white vs near-
+              // white interior features (eye whites, belly highlights)
+              // correctly, which was the original reason we tried magenta.
+              const bgHint = '\n\n[BACKGROUND: Output MUST be a plain pure #FFFFFF SOLID white background — NOT grey, NOT cream, NOT off-white, NOT transparent, NOT gradient. DO NOT use black, dark, scenery, studio, or coloured backgrounds. A flat uniform #FFFFFF backdrop is REQUIRED for the downstream AI bg-removal to work.]';
 
               // CONSISTENCY LOCK — every asset MUST be visually identical to
               // the reference mascot at the part-level (eyes, mouth shape,
@@ -2421,7 +2423,7 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
               // tasks (phone, laptop, poster, vinyl-toy, banner) need their
               // own backgrounds and place the mascot in a scene, not a
               // centered hero shot. Forcing "60-75% frame height" and the
-              // magenta chroma-key bg conflicts with the mockup goal and was
+              // white background bg conflicts with the mockup goal and was
               // making Gemini return blank/broken images for phone+laptop.
               const isMockupCategory = task.category === 'mockups';
               const framingRule = isMockupCategory ? '' :
