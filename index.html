@@ -7695,6 +7695,70 @@ async function chromaKeyWhiteBackground(dataUrl) {
   });
 }
 
+// ─────────────────────────────────────────────────────────────────
+// removeBackgroundForImage — top-level "make this image transparent"
+// ─────────────────────────────────────────────────────────────────
+// Routes through /api/bg-remove (Replicate / 851-labs/background-remover)
+// for AI-powered semantic background removal. Falls back to the
+// in-browser canvas chroma-key if:
+//   - the server endpoint returns an error (no token, no credit, 5xx)
+//   - the fetch itself times out (default 60s)
+//   - server returns malformed payload
+//
+// AI bg-removal beats colour-distance chroma-key on:
+//   - mascots with white/near-white parts (eye whites, belly, skin
+//     highlights) — these get correctly classified as foreground
+//     even when bg is white
+//   - thin extremities (fingers, antennae, tails) — semantic
+//     understanding keeps them attached instead of eating them as
+//     "small anti-aliased blob"
+//   - complex/textured backgrounds — chroma-key needs solid colour
+//     fill but the AI model doesn't care
+//
+// Both paths return a data URL with PNG transparency.
+async function removeBackgroundForImage(dataUrl, opts = {}) {
+  const timeoutMs = opts.timeoutMs || 60000;
+  const useApi = (opts.useApi !== false);  // default: try API first
+
+  if (useApi) {
+    try {
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), timeoutMs);
+      const resp = await fetch('/api/bg-remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataUrl }),
+        signal: ac.signal,
+      });
+      clearTimeout(timer);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.dataUrl && data.dataUrl.startsWith('data:image/')) {
+          return data.dataUrl;
+        }
+      } else {
+        // 402 (no credit), 503 (no token), 500 — fall through silently.
+        // We log once so the user knows why fallback was triggered.
+        const errText = await resp.text().catch(() => '');
+        if (!window._bgRemoveWarnedOnce) {
+          window._bgRemoveWarnedOnce = true;
+          console.warn('[bg-remove] API returned', resp.status, '— falling back to canvas chroma-key.', errText.slice(0, 200));
+        }
+      }
+    } catch (e) {
+      // Network error / timeout / aborted — fall through.
+      if (!window._bgRemoveWarnedOnce) {
+        window._bgRemoveWarnedOnce = true;
+        console.warn('[bg-remove] API fetch failed — falling back to canvas chroma-key.', e && e.message);
+      }
+    }
+  }
+  // Fallback: in-browser canvas chroma-key (the existing algorithm).
+  return chromaKeyWhiteBackground(dataUrl);
+}
+
+window.removeBackgroundForImage = removeBackgroundForImage;
+
 /* ═══════════════════════════════════════════════
    MASCOT GENERATION (Gemini Imagen)
    ═══════════════════════════════════════════════ */
@@ -7956,10 +8020,10 @@ async function generateMascots() {
       const processed = await Promise.all(
         mascotImages.map(async (img, idx) => {
           try {
-            const transparent = await chromaKeyWhiteBackground(img.data_url);
+            const transparent = await removeBackgroundForImage(img.data_url);
             return { ...img, data_url: transparent };
           } catch (e) {
-            console.warn(`Mascot ${idx} chroma-key failed, using original:`, e.message);
+            console.warn(`Mascot ${idx} bg-removal failed, using original:`, e.message);
             return img;
           }
         })
@@ -9179,7 +9243,7 @@ async function _chromaKeyAssetPackItems(items, byId) {
       if (!r.transparent) return;
       if (r._chromaKeyed) return;
       try {
-        const transparent = await chromaKeyWhiteBackground(r.dataUrl);
+        const transparent = await removeBackgroundForImage(r.dataUrl);
         const merged = byId.get(r.id);
         if (merged) {
           merged.dataUrl = transparent;

@@ -382,6 +382,127 @@ const handler = async (req, res) => {
   }
 
   // ──────────────────────────────────────
+  // API: AI background removal via Replicate
+  // POST /api/bg-remove
+  // Body: { dataUrl: "data:image/png;base64,..." }
+  // Returns: { dataUrl: "data:image/png;base64,..." }
+  //
+  // Uses 851-labs/background-remover (transparent-background U2Net derivative).
+  // ~0.7s per image on GPU, ~$0.00015 per image at Replicate's rates.
+  //
+  // The client calls this BEFORE falling back to the canvas chroma-key
+  // algorithm. AI bg-removal understands semantic structure (knows
+  // "this is hair, this is body") and produces dramatically cleaner
+  // edges than colour-distance chroma matting.
+  // ──────────────────────────────────────
+  if (url.pathname === '/api/bg-remove' && req.method === 'POST') {
+    try {
+      const buf = await collectBody(req);
+      let body;
+      try { body = JSON.parse(buf.toString('utf8')); }
+      catch (e) { return json(res, 400, { error: 'Invalid JSON body' }); }
+      const dataUrl = body && body.dataUrl;
+      if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+        return json(res, 400, { error: 'Missing or invalid dataUrl (expected data:image/...;base64,...)' });
+      }
+
+      // Token resolution: env var first, then .secrets.json fallback for
+      // local dev. Same pattern as brandfetch above.
+      let token = process.env.REPLICATE_API_TOKEN || '';
+      if (!token) {
+        try {
+          const secretsPath = path.join(__dirname, '.secrets.json');
+          if (fs.existsSync(secretsPath)) {
+            const secrets = JSON.parse(fs.readFileSync(secretsPath, 'utf8'));
+            token = secrets.REPLICATE_API_TOKEN || '';
+          }
+        } catch (_) {}
+      }
+      if (!token) {
+        return json(res, 503, { error: 'REPLICATE_API_TOKEN not configured' });
+      }
+
+      // 851-labs/background-remover is a community model — use the
+      // generic /v1/predictions endpoint with an explicit version pin.
+      // (Replicate reserves /v1/models/{owner}/{name}/predictions for
+      // models marked is_official:true, otherwise returns 404.)
+      // If the model owner publishes a new version, bump this hash.
+      const MODEL_VERSION = 'a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc';
+
+      // Submit prediction with Prefer: wait so the API blocks up to 55s
+      // waiting for completion before returning. The 851-labs model
+      // typically finishes in ~0.7s so this is usually one round-trip.
+      const createRes = await fetch('https://api.replicate.com/v1/predictions', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+          'Prefer': 'wait=55',
+        },
+        body: JSON.stringify({
+          version: MODEL_VERSION,
+          input: {
+            image: dataUrl,
+            format: 'png',
+            background_type: 'rgba',
+            threshold: 0,
+          },
+        }),
+      });
+
+      if (!createRes.ok) {
+        const errBody = await createRes.text();
+        return json(res, createRes.status, {
+          error: 'Replicate ' + createRes.status + ': ' + errBody.slice(0, 300),
+        });
+      }
+
+      let pred = await createRes.json();
+
+      // If still processing after the wait window, poll for up to 20 more
+      // seconds. Combined with wait=55 this stays under Vercel's 60s
+      // timeout for typical predictions and surfaces an error fast if not.
+      const tStart = Date.now();
+      while (pred.status !== 'succeeded' && pred.status !== 'failed' && pred.status !== 'canceled') {
+        if (Date.now() - tStart > 20000) break;
+        await new Promise(r => setTimeout(r, 1200));
+        if (!pred.urls || !pred.urls.get) break;
+        const pollRes = await fetch(pred.urls.get, {
+          headers: { 'Authorization': 'Bearer ' + token },
+        });
+        if (!pollRes.ok) break;
+        pred = await pollRes.json();
+      }
+
+      if (pred.status === 'failed' || pred.status === 'canceled') {
+        return json(res, 500, { error: 'Replicate prediction ' + pred.status + ': ' + (pred.error || 'unknown error') });
+      }
+      if (pred.status !== 'succeeded') {
+        return json(res, 504, { error: 'Replicate prediction stuck in status: ' + pred.status });
+      }
+      if (!pred.output || typeof pred.output !== 'string') {
+        return json(res, 500, { error: 'Replicate returned no output image' });
+      }
+
+      // Fetch the resulting PNG and base64-encode it for the client.
+      // Returning a URL would be faster but Replicate URLs expire after
+      // ~1h and we want long-lived data URLs that survive across sessions.
+      const imgRes = await fetch(pred.output);
+      if (!imgRes.ok) {
+        return json(res, 502, { error: 'Could not fetch result PNG from Replicate: ' + imgRes.status });
+      }
+      const outBuf = Buffer.from(await imgRes.arrayBuffer());
+      const outDataUrl = 'data:image/png;base64,' + outBuf.toString('base64');
+      return json(res, 200, {
+        dataUrl: outDataUrl,
+        predictTime: pred.metrics ? pred.metrics.predict_time : null,
+      });
+    } catch (err) {
+      return json(res, 500, { error: 'bg-remove failed: ' + (err && err.message ? err.message : String(err)) });
+    }
+  }
+
+  // ──────────────────────────────────────
   // API: Google Slides OAuth config (for frontend)
   // GET /api/gslides/config
   // ──────────────────────────────────────
