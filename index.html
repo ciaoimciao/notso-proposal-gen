@@ -924,6 +924,9 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         <span style="font-size:11px;color:#6b7280;margin-left:8px" id="unifiedHint">Pick a slide on the left • Click text to edit • Click an asset on the right to place it on the current slide</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <span id="pdfSizeBadge"
+              title="預估 PDF 上傳大小（壓縮後）。Vercel 上限 4.5 MB，安全閾值 4.3 MB。"
+              style="font-size:11px;font-family:ui-monospace,monospace;padding:4px 9px;background:#f3f4f6;color:#6b7280;border-radius:6px;letter-spacing:0.2px;border:1px solid transparent;transition:background .15s,color .15s,border-color .15s">— MB / 4.3 MB</span>
         <button class="btn btn-primary" onclick="exportPDFFromUnifiedEditor()" id="unifiedExportBtn" style="font-size:12px;padding:6px 16px">📄 Export PDF</button>
         <button class="btn btn-secondary" onclick="exportPPTX()" title="Export to PowerPoint. Note: DOM edits (text, transforms) carry through PDF but PPTX uses the original generated layout." style="font-size:12px;padding:6px 16px">📊 Export PPTX</button>
         <button class="btn btn-secondary" onclick="refreshUnifiedEditorFromServer()" title="Discard your text edits and reload slides from the server (use this after adding new asset pack images)." style="font-size:12px;padding:6px 12px">🔄 Refresh</button>
@@ -3915,6 +3918,7 @@ async function openUnifiedEditor() {
           .find(x => x.id === client._activePaletteId);
         if (p) _unifiedApplyPalette(p);
       }
+      try { _updatePdfSizeBadge(); } catch (_) {}
       return;
     } catch (err) {
       // Fall through to fresh fetch if reattach failed somehow.
@@ -3989,6 +3993,7 @@ async function openUnifiedEditor() {
         .find(x => x.id === client._activePaletteId);
       if (p) _unifiedApplyPalette(p);
     }
+    try { _updatePdfSizeBadge(); } catch (_) {}
   } catch (err) {
     stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>${err.message}</div>`;
   }
@@ -3999,6 +4004,87 @@ async function openUnifiedEditor() {
 // rebuilds the bottom thumbnail strip, and shows the previously
 // active slide. Mirrors the relevant parts of _unifiedRenderShell
 // without re-parsing _unifiedRawHtml (which would clobber edits).
+// ─────────────────────────────────────────────────────────────────
+// PDF size estimator (live badge in editor header)
+// ─────────────────────────────────────────────────────────────────
+// Sums base64 lengths of every inline <img> across all cached slides,
+// applies an empirical post-compression ratio (~0.50 for 800px WebP
+// vs raw PNG), adds HTML/CSS overhead, and updates the badge with
+// colour coding. Lets the user see how close they are to Vercel's
+// 4.5 MB hard cap (we warn at 4.3 MB) before they hit Export PDF.
+const _PDF_SIZE_LIMIT_MB = 4.3;
+function _estimatePdfPayloadMB() {
+  if (!(_unifiedSlideNodes instanceof Map) || !_unifiedSlideNodes.size) return null;
+  let rawImgBytes = 0;
+  let htmlBytes = 0;
+  _unifiedSlideNodes.forEach(node => {
+    if (!node) return;
+    try {
+      const imgs = node.querySelectorAll('img[src^="data:image/"]');
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        // base64 decoded byte length ≈ src.length * 0.75
+        rawImgBytes += src.length * 0.75;
+      });
+      // Subtract image lengths from HTML overhead estimate so we don't
+      // double-count.
+      const totalLen = (node.outerHTML || '').length;
+      let imgLenSum = 0;
+      imgs.forEach(img => { imgLenSum += (img.getAttribute('src') || '').length; });
+      htmlBytes += Math.max(0, totalLen - imgLenSum);
+    } catch (_) {}
+  });
+  // Empirical post-shrink ratio: 1024px PNG mascot → 800px WebP@0.95
+  // typically lands around 0.4-0.5×. Use 0.5 to err conservative.
+  // For already-small icons the ratio approaches 1.0 but they're
+  // negligible in the total.
+  const SHRINK_FACTOR = 0.5;
+  // JSON overhead + style tag + fixed payload wrap: ~250 KB.
+  const OVERHEAD_BYTES = 250 * 1024;
+  const estBytes = (rawImgBytes * SHRINK_FACTOR) + htmlBytes + OVERHEAD_BYTES;
+  return estBytes / (1024 * 1024);
+}
+
+function _updatePdfSizeBadge() {
+  const badge = document.getElementById('pdfSizeBadge');
+  if (!badge) return;
+  const mb = _estimatePdfPayloadMB();
+  if (mb == null) {
+    badge.textContent = '— MB / ' + _PDF_SIZE_LIMIT_MB + ' MB';
+    badge.style.background = '#f3f4f6';
+    badge.style.color = '#6b7280';
+    badge.style.borderColor = 'transparent';
+    return;
+  }
+  badge.textContent = '預估 PDF: ' + mb.toFixed(2) + ' / ' + _PDF_SIZE_LIMIT_MB + ' MB';
+  // Traffic-light colour bands. Edges chosen to nudge before users hit
+  // the wall — yellow at 70%, red at 95% of the limit.
+  if (mb < _PDF_SIZE_LIMIT_MB * 0.70) {
+    badge.style.background = '#dcfce7';
+    badge.style.color = '#15803d';
+    badge.style.borderColor = '#86efac';
+  } else if (mb < _PDF_SIZE_LIMIT_MB * 0.95) {
+    badge.style.background = '#fef9c3';
+    badge.style.color = '#854d0e';
+    badge.style.borderColor = '#fde68a';
+  } else {
+    badge.style.background = '#fecaca';
+    badge.style.color = '#991b1b';
+    badge.style.borderColor = '#fca5a5';
+  }
+}
+
+// Lightweight debounce wrapper so DOM-mutation-driven calls don't
+// hammer the calculation on every keystroke.
+let _pdfBadgeDebounce = null;
+function _schedulePdfSizeUpdate() {
+  clearTimeout(_pdfBadgeDebounce);
+  _pdfBadgeDebounce = setTimeout(_updatePdfSizeBadge, 250);
+}
+
+window._updatePdfSizeBadge = _updatePdfSizeBadge;
+window._schedulePdfSizeUpdate = _schedulePdfSizeUpdate;
+
 function _unifiedReattachFromCache() {
   const list = document.getElementById('unifiedSlideList');
   if (!list) throw new Error('unifiedSlideList not found');
@@ -7294,6 +7380,7 @@ function _userUploadPlaceOnSlide(uploadId) {
   // resize / move. _mxpInstallClickHandlers binds new img[data-slot-key]
   // elements that don't already have ._mxpBound.
   try { if (typeof _mxpInstallClickHandlers === 'function') _mxpInstallClickHandlers(); } catch (_) {}
+  try { _schedulePdfSizeUpdate(); } catch (_) {}
 }
 
 // Drag-drop on the dropzone — wired at modal-open time so the listeners
@@ -8771,6 +8858,7 @@ function assignAssetToSlide(assetId, encodedFile, imageKey) {
 
   savedMascotPaths[imageKey] = item.dataUrl;
   console.log('Assigned', assetId, '→', imageKey, '(stored as dataUrl)');
+  try { _schedulePdfSizeUpdate(); } catch (_) {}
 }
 
 // Return the currently-picked mascot data URL from the Asset Pack modal.
@@ -9521,6 +9609,7 @@ function _replaceAssetPackItem(assetId, dataUrl, sourceName) {
   try { _pruneHistory && _pruneHistory(); } catch (_) {}
 
   renderAssetPackResults();
+  try { _schedulePdfSizeUpdate(); } catch (_) {}
 }
 
 // Expose for inline onclick handlers. Direct references — no arrow
