@@ -8819,6 +8819,18 @@ async function generateAssetPack(opts = {}) {
     // Pass Claude-written promo_context (and industry) so server-side
     // INDUSTRY_PROFILES + per-field overrides can compose the 3 promo prompts.
     const promoContext = (proposal && proposal.s16 && proposal.s16.promo_context) || {};
+
+    // Pin the already-generated act-typing mascot for the phone/laptop
+    // mockup compositor — keeps the inner mascot photo CONSISTENT across
+    // re-generations and size-slider tweaks even if Vercel cold-starts
+    // and wipes the server-side session record. Only sent when we
+    // already have one cached.
+    let actTypingDataUrl = '';
+    try {
+      const at = (_assetPackSession.results || []).find(r => r && r.id === 'act-typing' && r.ok && r.dataUrl);
+      if (at && at.dataUrl) actTypingDataUrl = await _shrinkDataUrl(at.dataUrl, 1024);
+    } catch (_) {}
+
     const resp = await fetch('/api/assetpack/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -8836,6 +8848,7 @@ async function generateAssetPack(opts = {}) {
         // is a Step-1 snapshot and goes STALE after subsequent re-uploads —
         // hence the laptop-mockup-uses-old-screenshot bug. Sync both before sending.
         clientSiteImage: slimSiteImage,
+        innerMockupMascot: actTypingDataUrl || undefined,
         industry: client.industry || client.useCase || '',
         promoContext,
         sessionId: _assetPackSession.sessionId || undefined,
@@ -9289,6 +9302,19 @@ async function regenerateAssetPackItem(id) {
     const mascotImage = await _shrinkDataUrl(_pickedMascotDataUrl(), 1024);
     const rawSiteRegen = (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '';
     const slimSiteImageRegen = rawSiteRegen ? await _shrinkDataUrl(rawSiteRegen, 1600) : '';
+
+    // Always re-send the act-typing data URL from the client cache so the
+    // mockup compositor uses a CONSISTENT mascot photo every regen / size
+    // tweak. Without this, Vercel cold-starts could wipe the server
+    // session's act-typing record, falling back to the original reference
+    // image and producing a visually different mascot inside the phone /
+    // laptop screen each round.
+    let actTypingDataUrl = '';
+    try {
+      const at = (_assetPackSession.results || []).find(r => r && r.id === 'act-typing' && r.ok && r.dataUrl);
+      if (at && at.dataUrl) actTypingDataUrl = await _shrinkDataUrl(at.dataUrl, 1024);
+    } catch (_) {}
+
     const resp = await fetch('/api/assetpack/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -9302,6 +9328,7 @@ async function regenerateAssetPackItem(id) {
         greeting,
         mascotImage,
         clientSiteImage: slimSiteImageRegen,
+        innerMockupMascot: actTypingDataUrl || undefined,  // NEW: pins act-typing for mockup compositor
         sessionId: _assetPackSession.sessionId,
         onlyIds: [id],
         mascotSizeRatio: (typeof _mascotSizeRatio === 'number' ? _mascotSizeRatio : 0.55),

@@ -1871,6 +1871,14 @@ ${schema}`;
         // maximum priority — overrides any default feature expectations Gemini
         // might add based on its "typical 3D mascot" training.
         generationRules = '',
+        // Optional: client-pinned mascot image for the phone/laptop mockup
+        // compositor. When present, this image (typically the already-
+        // generated act-typing pose) is used verbatim as the inner mascot
+        // inside the phone screen and laptop screen, guaranteeing the SAME
+        // mascot photo every regen / size tweak — survives Vercel cold
+        // starts that would otherwise wipe the session's act-typing
+        // record and force a fallback to the generic reference image.
+        innerMockupMascot = '',
       } = body;
 
       // Validate the right key for the picked engine.
@@ -2308,17 +2316,31 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
         //    Output matches mockup-assets/samples/{phone,laptop}-yazi.png.
         if (_mockupCompose && (task.id === 'mock-phone-chat' || task.id === 'mock-website')) {
           try {
-            // Use the act-typing action (mascot using a laptop) as the mascot
-            // visual inside the phone screen / chat widget — matches the user's
-            // brand spec ("Typing Laptop" pose). Falls back to the original
-            // mascot reference when act-typing isn't in the results yet
-            // (e.g. it failed to generate). Tasks run in defaultTasks order
-            // so by the time we hit mock-* tasks, act-typing is already done.
+            // Source order for the inner mascot photo (locked-in for
+            // consistency across regens / size tweaks):
+            //   1. innerMockupMascot from request body — client-pinned
+            //      act-typing image. Survives Vercel cold starts that
+            //      would otherwise wipe the session's stored record.
+            //   2. existingResults[].act-typing — server's own cached
+            //      record (works when session file is still warm).
+            //   3. newResults[].act-typing — just-generated this run.
+            //   4. mascotImage — the original generic reference (fallback
+            //      when act-typing failed everywhere).
             const allResults = [...(existingResults || []), ...newResults];
             const typingAct = allResults.find(r => r && r.id === 'act-typing' && r.ok && r.dataUrl);
-            const innerMascotDataUrl = typingAct?.dataUrl ||
-              (mascotImage.startsWith('data:') ? mascotImage : `data:image/png;base64,${mascotImage}`);
-            console.log(`    📍 Inner mascot for ${task.id}: ${typingAct ? 'act-typing' : 'original ref'}`);
+            let innerMascotDataUrl;
+            let innerSource;
+            if (innerMockupMascot && innerMockupMascot.startsWith('data:image/')) {
+              innerMascotDataUrl = innerMockupMascot;
+              innerSource = 'client-pinned';
+            } else if (typingAct && typingAct.dataUrl) {
+              innerMascotDataUrl = typingAct.dataUrl;
+              innerSource = 'act-typing (server)';
+            } else {
+              innerMascotDataUrl = mascotImage.startsWith('data:') ? mascotImage : `data:image/png;base64,${mascotImage}`;
+              innerSource = 'original ref (fallback)';
+            }
+            console.log(`    📍 Inner mascot for ${task.id}: ${innerSource}`);
 
             const mockupArgs = {
               mascotDataUrl: innerMascotDataUrl,
