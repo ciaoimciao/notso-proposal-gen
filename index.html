@@ -8849,7 +8849,21 @@ async function generateAssetPack(opts = {}) {
 
     const data = await resp.json().catch(() => null);
     if (!resp.ok || !data) {
-      throw new Error((data && data.error) || ('Server error ' + resp.status));
+      // Coerce the server error into a readable string. Plain string → use
+      // it. Object → JSON-stringify so the user sees something useful
+      // instead of "[object Object]". Null/missing → fall back to status.
+      let errStr;
+      const e = data && data.error;
+      if (typeof e === 'string' && e) errStr = e;
+      else if (e && typeof e === 'object') {
+        try { errStr = JSON.stringify(e); } catch (_) { errStr = String(e); }
+      } else {
+        errStr = 'Server error ' + resp.status + (resp.statusText ? ' ' + resp.statusText : '');
+      }
+      // Surface in console for full inspection — `err.message` shown to
+      // the user is a single-line summary; console gets the whole payload.
+      console.error('Asset pack generate failed:', { status: resp.status, data });
+      throw new Error(errStr);
     }
 
     _assetPackSession.sessionId = data.sessionId;
@@ -8899,7 +8913,14 @@ async function generateAssetPack(opts = {}) {
       renderAssetPackResults();
     }
     document.getElementById('assetPackError').style.display = 'block';
-    document.getElementById('assetPackErrorMsg').textContent = 'Error: ' + err.message;
+    // Defensive stringification — handles Error, plain string, or weird
+    // object shapes that came back from a misbehaving endpoint.
+    let displayMsg;
+    if (err && typeof err.message === 'string' && err.message) displayMsg = err.message;
+    else if (typeof err === 'string') displayMsg = err;
+    else { try { displayMsg = JSON.stringify(err); } catch (_) { displayMsg = String(err); } }
+    document.getElementById('assetPackErrorMsg').textContent = 'Error: ' + displayMsg;
+    console.error('Asset pack error (full):', err);
     // Modal closed? Ping with toast so user isn't waiting in the dark.
     const modalOpen = document.getElementById('assetPackModalBg')?.classList.contains('open');
     if (!modalOpen && typeof _onAssetPackBgError === 'function') {
