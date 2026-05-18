@@ -6399,8 +6399,16 @@ async function exportPDFFromUnifiedEditor() {
   btn.disabled = true;
 
   try {
-    // Gather slide HTML in display order.
-    const slideHtmls = _unifiedSlideIds.map(sid => {
+    // Gather slide HTML in display order — and SHRINK every inline
+    // data-URL image down to a PDF-appropriate size before serializing.
+    // Without this, an 18-slide deck (each with mascot, expressions,
+    // mockups, asset-pack images embedded as base64 PNG) easily blows
+    // past Vercel's 4.5 MB request body cap → HTTP 413.
+    //
+    // 800 px max side + WebP @ 0.85 = ~80% size reduction vs raw PNG,
+    // and Puppeteer renders WebP identically to PNG so the final PDF
+    // looks unchanged. Done in parallel per slide for speed.
+    const slideHtmls = (await Promise.all(_unifiedSlideIds.map(async sid => {
       const node = _unifiedSlideNodes.get(sid);
       if (!node) return '';
       const clone = node.cloneNode(true);
@@ -6409,8 +6417,17 @@ async function exportPDFFromUnifiedEditor() {
         el.style.cursor = '';
         el.style.outline = '';
       });
+      // Shrink each inline image. Failures are non-fatal — we just keep
+      // the original src and let the payload check warn later.
+      const imgs = Array.from(clone.querySelectorAll('img[src^="data:image/"]'));
+      await Promise.all(imgs.map(async img => {
+        try {
+          const shrunk = await _shrinkDataUrl(img.getAttribute('src'), 800);
+          if (shrunk && typeof shrunk === 'string') img.setAttribute('src', shrunk);
+        } catch (_) { /* keep original */ }
+      }));
       return clone.outerHTML;
-    }).filter(Boolean).join('\n');
+    }))).filter(Boolean).join('\n');
 
     // Pull the same <style> blocks the server originally injected, AND the
     // live palette override (if user applied a palette), so PDF respects them.
@@ -6434,10 +6451,19 @@ async function exportPDFFromUnifiedEditor() {
       editedHtml: fullHtml,
       client: { name: client && client.name, designStyle: _ds },
     };
+    const body = JSON.stringify(payload);
+    const sizeMB = (body.length / 1024 / 1024);
+    console.log('PDF export payload size: ' + sizeMB.toFixed(2) + ' MB (' + _unifiedSlideIds.length + ' slides)');
+    if (sizeMB > 4.3) {
+      throw new Error(
+        'Payload too large: ' + sizeMB.toFixed(1) + ' MB (Vercel limit is 4.5 MB). ' +
+        'Try regenerating with fewer slides selected, or remove very-high-resolution custom uploads.'
+      );
+    }
     const resp = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body
     });
     if (!resp.ok) {
       // Try JSON first; if the server timed out or returned HTML (Vercel
