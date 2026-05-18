@@ -57,9 +57,15 @@ function pickDialogue(industry, mascotName) {
   return [m.replace('{name}', mascotName), u, m2];
 }
 
-// ── Chroma-key: knock out near-white background pixels (alpha = 0) ──
+// ── Chroma-key: knock out near-white OR near-magenta background pixels ──
 // Uses edge-flood: only pixels reachable from the image border get knocked
 // out. This preserves bright-white highlights inside the mascot body.
+//
+// Magenta sampling added defensively because we briefly experimented with
+// magenta as the AI generation matte; if any old magenta-bg mascot is
+// still in cache and gets fed to this compositor, we'd otherwise paste a
+// pink rectangle inside the phone/laptop frame. Detecting magenta only
+// at the border means legit mascot pinks (rare) are not eaten.
 function knockOutWhiteBackground(img, threshold = 235) {
   const w = img.width, h = img.height;
   const tmp = createCanvas(w, h);
@@ -71,20 +77,42 @@ function knockOutWhiteBackground(img, threshold = 235) {
   const data = imgData.data;
   const visited = new Uint8Array(w * h);
   const queue = [];
-  // Seed with all border pixels that are "near white"
+
+  // Detect what to flood from — sample the four corners + their nearest
+  // inset neighbours and pick the dominant "near-bg" criterion. Lets us
+  // handle both white-bg and magenta-bg mascots in one pass.
+  let bgMode = 'white';
+  let magCount = 0, whiteCount = 0;
+  const cornerOffsets = [
+    [0,0], [w-1,0], [0,h-1], [w-1,h-1],
+    [3,3], [w-4,3], [3,h-4], [w-4,h-4],
+  ];
+  for (const [cx, cy] of cornerOffsets) {
+    if (cx < 0 || cy < 0 || cx >= w || cy >= h) continue;
+    const i = (cy * w + cx) * 4;
+    if (data[i] >= threshold && data[i+1] >= threshold && data[i+2] >= threshold) whiteCount++;
+    if (data[i] > 200 && data[i+1] < 80 && data[i+2] > 200) magCount++;
+  }
+  if (magCount > whiteCount) bgMode = 'magenta';
+
   function isNearWhite(i) {
     return data[i] >= threshold && data[i+1] >= threshold && data[i+2] >= threshold;
   }
+  function isNearMagenta(i) {
+    // Loose match — anything in the "vivid pink/fuchsia/magenta" zone counts.
+    return data[i] > 180 && data[i+1] < 110 && data[i+2] > 180;
+  }
+  const isBg = bgMode === 'magenta' ? isNearMagenta : isNearWhite;
   for (let x = 0; x < w; x++) {
     for (const y of [0, h - 1]) {
       const i = (y * w + x) * 4;
-      if (isNearWhite(i)) { queue.push(x + y * w); visited[x + y * w] = 1; }
+      if (isBg(i)) { queue.push(x + y * w); visited[x + y * w] = 1; }
     }
   }
   for (let y = 0; y < h; y++) {
     for (const x of [0, w - 1]) {
       const i = (y * w + x) * 4;
-      if (isNearWhite(i)) { queue.push(x + y * w); visited[x + y * w] = 1; }
+      if (isBg(i)) { queue.push(x + y * w); visited[x + y * w] = 1; }
     }
   }
   // BFS flood
@@ -99,7 +127,7 @@ function knockOutWhiteBackground(img, threshold = 235) {
       const np = ny * w + nx;
       if (visited[np]) continue;
       const ni = np * 4;
-      if (isNearWhite(ni)) { visited[np] = 1; queue.push(np); }
+      if (isBg(ni)) { visited[np] = 1; queue.push(np); }
     }
   }
   tctx.putImageData(imgData, 0, 0);
