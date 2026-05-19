@@ -924,6 +924,9 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         <span style="font-size:11px;color:#6b7280;margin-left:8px" id="unifiedHint">Pick a slide on the left • Click text to edit • Click an asset on the right to place it on the current slide</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <span id="unifiedSaveStatus"
+              title="編輯自動每 5 秒存進瀏覽器 localStorage，可救回意外關閉的編輯"
+              style="font-size:11px;color:#9ca3af;font-family:ui-monospace,monospace;min-width:78px;text-align:right">— 未存</span>
         <span id="pdfSizeBadge"
               title="預估 PDF 上傳大小（壓縮後）。Vercel 上限 4.5 MB，安全閾值 4.3 MB。"
               style="font-size:11px;font-family:ui-monospace,monospace;padding:4px 9px;background:#f3f4f6;color:#6b7280;border-radius:6px;letter-spacing:0.2px;border:1px solid transparent;transition:background .15s,color .15s,border-color .15s">— MB / 4.3 MB</span>
@@ -3919,6 +3922,7 @@ async function openUnifiedEditor() {
         if (p) _unifiedApplyPalette(p);
       }
       try { _updatePdfSizeBadge(); } catch (_) {}
+      try { _unifiedStartAutoSave(); } catch (_) {}
       return;
     } catch (err) {
       // Fall through to fresh fetch if reattach failed somehow.
@@ -3994,6 +3998,7 @@ async function openUnifiedEditor() {
       if (p) _unifiedApplyPalette(p);
     }
     try { _updatePdfSizeBadge(); } catch (_) {}
+    try { _unifiedStartAutoSave(); } catch (_) {}
   } catch (err) {
     stage.innerHTML = `<div style="text-align:center;padding:40px;color:#DC2626"><div style="font-size:48px;margin-bottom:16px">⚠️</div>${err.message}</div>`;
   }
@@ -4165,6 +4170,7 @@ function closeUnifiedEditor() {
   // Best-effort snapshot to localStorage so a full page reload also
   // recovers the edits (in-memory state alone is reload-fragile).
   try { _unifiedSnapshotEdits(); } catch (_) {}
+  try { _unifiedStopAutoSave(); } catch (_) {}
   // Drop any active drag-selection so the floating handles don't show
   // while the modal is hidden.
   try { if (typeof _dmDeselect === 'function') _dmDeselect(); } catch (_) {}
@@ -4180,43 +4186,109 @@ function closeUnifiedEditor() {
 // Snapshot the current slide DOM (which contains live contenteditable
 // changes) to localStorage. Keyed by client + proposal so different
 // proposals don't collide.
+// ─────────────────────────────────────────────────────────────────
+// Edit persistence — multi-tier fallback so edits survive even when:
+//   - proposal.s1.title shifts between regens (Claude rephrases it)
+//   - localStorage runs out of room (we drop old buckets aggressively)
+//   - the user reloads / closes the tab without "clean" close
+//   - they hop between similar-named projects
+//
+// Three keys are written every save, restored in order:
+//   1. <name>::<title>    full key (back-compat)
+//   2. <name>             stable client-only key
+//   3. __latest__         universal fallback (always overwrites)
+// At read time we try them in the same order and use whichever lands.
+const _LATEST_SNAPSHOT_KEY = 'notso_unified_edits::__latest__';
+
 function _unifiedSnapshotKey() {
   const name = (typeof client !== 'undefined' && client && (client.name || client.brand)) || 'untitled';
   const tag  = (typeof proposal !== 'undefined' && proposal && (proposal.title || (proposal.s1 && proposal.s1.title))) || '';
   return 'notso_unified_edits::' + name + '::' + tag;
 }
+function _unifiedSnapshotNameOnlyKey() {
+  const name = (typeof client !== 'undefined' && client && (client.name || client.brand)) || 'untitled';
+  return 'notso_unified_edits::' + name;
+}
 
-function _unifiedSnapshotEdits() {
-  if (!(_unifiedSlideNodes instanceof Map) || !_unifiedSlideNodes.size) return;
+// Status indicator setter — shows "✓ Saved 11:32" or "⚠️ Save failed"
+// next to the PDF size badge. Visible feedback so the user knows the
+// auto-save is actually running.
+function _unifiedSetSaveStatus(text, color) {
+  const el = document.getElementById('unifiedSaveStatus');
+  if (!el) return;
+  el.textContent = text;
+  if (color) el.style.color = color;
+}
+
+function _unifiedSnapshotEdits(opts) {
+  opts = opts || {};
+  if (!(_unifiedSlideNodes instanceof Map) || !_unifiedSlideNodes.size) return false;
   const snap = {};
   _unifiedSlideNodes.forEach((node, sid) => {
     if (node && typeof node.innerHTML === 'string') snap[sid] = node.innerHTML;
   });
-  if (!Object.keys(snap).length) return;
-  try {
-    localStorage.setItem(_unifiedSnapshotKey(), JSON.stringify({
-      ts: Date.now(),
-      activeSlide: _unifiedActiveSlideId || null,
-      slides: snap,
-    }));
-  } catch (e) {
-    // QuotaExceeded etc — non-fatal, the in-memory cache still works.
-    console.warn('Could not persist editor snapshot:', e.message);
+  if (!Object.keys(snap).length) return false;
+  const payload = JSON.stringify({
+    ts: Date.now(),
+    activeSlide: _unifiedActiveSlideId || null,
+    slides: snap,
+  });
+  let savedTo = 0;
+  // Write all three keys. If the first throws (quota), the others still
+  // get a shot — by then we'll have evicted older entries below.
+  const keys = [_unifiedSnapshotKey(), _unifiedSnapshotNameOnlyKey(), _LATEST_SNAPSHOT_KEY];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    savedTo = 0;
+    let quotaHit = false;
+    for (const k of keys) {
+      try {
+        localStorage.setItem(k, payload);
+        savedTo++;
+      } catch (e) {
+        quotaHit = true;
+        console.warn('[edit-save] localStorage.setItem(' + k + ') failed:', e.message);
+      }
+    }
+    if (!quotaHit) break;
+    // Evict ALL other notso_unified_edits::* entries (older projects /
+    // stale buckets) so this one fits.
+    try {
+      const stale = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('notso_unified_edits::') && !keys.includes(k)) stale.push(k);
+      }
+      stale.forEach(k => localStorage.removeItem(k));
+      if (stale.length) console.log('[edit-save] Evicted ' + stale.length + ' stale snapshot bucket(s) to make room.');
+    } catch (_) { break; }
   }
+  if (savedTo === 0) {
+    if (!opts.silent) {
+      _unifiedSetSaveStatus('⚠️ 存檔失敗（localStorage 滿了）', '#dc2626');
+    }
+    return false;
+  }
+  if (!opts.silent) {
+    const t = new Date();
+    const hhmm = String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+    _unifiedSetSaveStatus('✓ 已存 ' + hhmm, '#16A34A');
+  }
+  return true;
 }
 
-// Best-effort restore. Called after a fresh _unifiedRenderShell() so
-// the user's text edits get overlaid on top of any server-side image /
-// layout updates. If a slide structure has changed the innerHTML
-// overwrite still works — only that slide's text is replaced, the rest
-// of the deck is untouched.
 function _unifiedRestoreEditsFromStorage() {
-  let snap;
-  try {
-    const raw = localStorage.getItem(_unifiedSnapshotKey());
-    if (!raw) return 0;
-    snap = JSON.parse(raw);
-  } catch (_) { return 0; }
+  let snap = null;
+  let sourceKey = '';
+  const keys = [_unifiedSnapshotKey(), _unifiedSnapshotNameOnlyKey(), _LATEST_SNAPSHOT_KEY];
+  for (const k of keys) {
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      snap = JSON.parse(raw);
+      sourceKey = k;
+      if (snap && snap.slides && Object.keys(snap.slides).length) break;
+    } catch (_) { /* try next */ }
+  }
   if (!snap || !snap.slides) return 0;
   let n = 0;
   _unifiedSlideNodes.forEach((node, sid) => {
@@ -4224,11 +4296,35 @@ function _unifiedRestoreEditsFromStorage() {
       try { node.innerHTML = snap.slides[sid]; n++; } catch (_) {}
     }
   });
+  if (n > 0) {
+    const ageMin = Math.round((Date.now() - (snap.ts || 0)) / 60000);
+    console.log('[edit-restore] Restored ' + n + ' slide(s) from "' + sourceKey + '" (age: ' + ageMin + ' min)');
+  }
   return n;
 }
 
 function _unifiedClearStorageSnapshot() {
-  try { localStorage.removeItem(_unifiedSnapshotKey()); } catch (_) {}
+  // Wipe all three tiers so the user's "discard" is clean.
+  [_unifiedSnapshotKey(), _unifiedSnapshotNameOnlyKey(), _LATEST_SNAPSHOT_KEY]
+    .forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+}
+
+// Auto-save: while the editor is open, save every 5 seconds. Cheap if
+// nothing changed (we'd just overwrite the same JSON). Provides a
+// safety net for browser crashes, force-close, or anything that
+// doesn't fire the close handler.
+let _unifiedAutoSaveTimer = null;
+function _unifiedStartAutoSave() {
+  if (_unifiedAutoSaveTimer) return;
+  _unifiedAutoSaveTimer = setInterval(() => {
+    try { _unifiedSnapshotEdits(); } catch (_) {}
+  }, 5000);
+}
+function _unifiedStopAutoSave() {
+  if (_unifiedAutoSaveTimer) {
+    clearInterval(_unifiedAutoSaveTimer);
+    _unifiedAutoSaveTimer = null;
+  }
 }
 
 // Force a clean re-fetch from /api/preview. Used by the explicit
