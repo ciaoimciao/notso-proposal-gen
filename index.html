@@ -931,7 +931,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
               title="預估 PDF 上傳大小（壓縮後）。Vercel 上限 4.5 MB，安全閾值 4.3 MB。"
               style="font-size:11px;font-family:ui-monospace,monospace;padding:4px 9px;background:#f3f4f6;color:#6b7280;border-radius:6px;letter-spacing:0.2px;border:1px solid transparent;transition:background .15s,color .15s,border-color .15s">— MB / 4.3 MB</span>
         <button class="btn btn-primary" onclick="exportPDFFromUnifiedEditor()" id="unifiedExportBtn" style="font-size:12px;padding:6px 16px">📄 Export PDF</button>
-        <button class="btn btn-secondary" onclick="exportPPTX()" title="Export to PowerPoint. Note: DOM edits (text, transforms) carry through PDF but PPTX uses the original generated layout." style="font-size:12px;padding:6px 16px">📊 Export PPTX</button>
+        <button class="btn btn-secondary" onclick="exportPPTX()" title="Export to PowerPoint. Each slide is a high-res image of your design (reflects all your edits) — opens in PowerPoint/Keynote but text isn't individually editable." style="font-size:12px;padding:6px 16px">📊 Export PPTX</button>
         <button class="btn btn-secondary" onclick="refreshUnifiedEditorFromServer()" title="Discard your text edits and reload slides from the server (use this after adding new asset pack images)." style="font-size:12px;padding:6px 12px">🔄 Refresh</button>
         <button class="btn btn-secondary" onclick="closeUnifiedEditor()" style="font-size:12px;padding:6px 16px">Close</button>
       </div>
@@ -1131,6 +1131,11 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
      serverless would fail (no file system for static assets at runtime),
      so we load from the Cloudflare CDN. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- Client-side PPTX export: html2canvas rasterizes each slide DOM →
+     pptxgenjs assembles them into a .pptx. Pure browser, no server
+     python3 needed (which Vercel serverless doesn't have). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
 
 <script>
 /* ─── STATE ─── */
@@ -2278,16 +2283,11 @@ async function bootstrapFromServerConfig() {
   } catch (_) { /* localStorage unavailable — skip */ }
 
   // (2) Hide server-side export buttons when running on Vercel.
-  //     PPTX + Google Slides require binaries (python3, Puppeteer-in-Chromium
-  //     with Google OAuth) we haven't fully wired for the serverless target.
-  //     Leaving them visible would let users click and get a cryptic 500.
+  //     Google Slides still needs server-side Google OAuth we haven't
+  //     wired for serverless. PPTX export is now CLIENT-SIDE (html2canvas
+  //     + pptxgenjs) so it works fine on Vercel — no longer hidden.
   if (cfg.isVercel) {
-    // Hide only the export buttons that require server-side binaries we don't
-    // ship to the serverless target. Asset Pack uses Gemini HTTP calls + /tmp
-    // for image serving, so it works on Vercel (ZIP download falls back to
-    // "View in browser" links if python3 isn't available).
     const hideSelectors = [
-      'button[onclick="exportPPTX()"]',
       'button[onclick="sendToGoogleSlides()"]',
     ];
     hideSelectors.forEach(sel => {
@@ -6680,8 +6680,104 @@ async function exportPDFFromUnifiedEditor() {
 
 /* buildPPTXPresentation removed — server-side generation via generate.py */
 
-/* ─── EXPORT PPTX (download) ─── */
-function exportPPTX() { serverExport('pptx'); }
+/* ─── EXPORT PPTX (client-side, image-based) ─── */
+// Renders each slide DOM to a PNG via html2canvas, then assembles a
+// real .pptx with pptxgenjs — entirely in the browser. Works on
+// Vercel (no server python3 needed). Each slide becomes one full-bleed
+// 16:9 image on a PowerPoint slide: pixel-identical to the design,
+// reflects all the user's text edits / asset placements, but the text
+// is NOT individually editable in PowerPoint (it's a picture). That
+// tradeoff is what makes it work without a server-side renderer.
+async function exportPPTX() {
+  // Slides come from the unified editor cache. If the user hasn't
+  // opened the editor yet, open it first so _unifiedSlideNodes fills.
+  if (!(_unifiedSlideNodes instanceof Map) || !_unifiedSlideNodes.size) {
+    const proceed = confirm('PPTX export needs the slide editor loaded first.\n\nOpen "Edit & Assign Assets" now? (Then click Export PPTX again.)');
+    if (proceed) { try { await openUnifiedEditor(); } catch (_) {} }
+    return;
+  }
+  if (typeof PptxGenJS === 'undefined' || typeof html2canvas === 'undefined') {
+    alert('PPTX libraries are still loading from the CDN — wait a few seconds and try again.');
+    return;
+  }
+
+  // Find the button to show progress on (works from both the Step-page
+  // button and the in-editor header button).
+  const btns = Array.from(document.querySelectorAll('button[onclick="exportPPTX()"]'));
+  const setBtns = (txt, disabled) => btns.forEach(b => { b.textContent = txt; b.disabled = !!disabled; });
+  const origLabels = btns.map(b => b.textContent);
+  const restoreBtns = () => btns.forEach((b, i) => { b.textContent = origLabels[i]; b.disabled = false; });
+
+  // Honor the export selection (the per-slide checkboxes in the strip).
+  const ids = _unifiedSlideIds.filter(sid =>
+    (typeof selectedSlides === 'undefined' || !selectedSlides) ? true : selectedSlides.has(sid)
+  );
+  if (!ids.length) { alert('No slides selected for export. Tick at least one slide in the bottom strip.'); return; }
+
+  // Off-screen render host at native 1440×810 so html2canvas captures
+  // the full-resolution slide regardless of how the editor scaled it.
+  const _ds = (client && client.designStyle) || 'notso-signature';
+  const host = document.createElement('div');
+  host.setAttribute('data-design-style', _ds);
+  host.style.cssText = 'position:fixed; left:-99999px; top:0; width:1440px; height:810px; overflow:hidden; background:#fff; z-index:-1;';
+  document.body.appendChild(host);
+
+  try {
+    const pptx = new PptxGenJS();
+    // 16:9 widescreen — 13.333in × 7.5in is PowerPoint's standard.
+    pptx.defineLayout({ name: 'NOTSO_16x9', width: 13.333, height: 7.5 });
+    pptx.layout = 'NOTSO_16x9';
+
+    for (let i = 0; i < ids.length; i++) {
+      const sid = ids[i];
+      const node = _unifiedSlideNodes.get(sid);
+      if (!node) continue;
+      setBtns('⏳ ' + (i + 1) + '/' + ids.length + '…', true);
+
+      // Clone, strip edit affordances, force native size.
+      const clone = node.cloneNode(true);
+      clone.querySelectorAll('[contenteditable]').forEach(el => {
+        el.removeAttribute('contenteditable');
+        el.style.cursor = '';
+        el.style.outline = '';
+      });
+      clone.style.width = '1440px';
+      clone.style.height = '810px';
+      clone.style.margin = '0';
+      host.innerHTML = '';
+      host.appendChild(clone);
+
+      // scale:2 → crisp 2880×1620 capture; backgroundColor null keeps
+      // any transparency, but slides are opaque so #fff fallback is fine.
+      let dataUrl;
+      try {
+        const canvas = await html2canvas(clone, {
+          width: 1440, height: 810, scale: 2,
+          useCORS: true, allowTaint: true, backgroundColor: '#ffffff',
+          logging: false,
+        });
+        dataUrl = canvas.toDataURL('image/png');
+      } catch (e) {
+        console.warn('html2canvas failed for slide ' + sid + ':', e && e.message);
+        continue;  // skip this slide rather than abort the whole deck
+      }
+
+      const slide = pptx.addSlide();
+      slide.addImage({ data: dataUrl, x: 0, y: 0, w: 13.333, h: 7.5 });
+    }
+
+    setBtns('⏳ Saving…', true);
+    const fileName = 'notso-proposal-' + ((client && client.name) || 'draft').replace(/[^\w-]/g, '-') + '.pptx';
+    await pptx.writeFile({ fileName });
+  } catch (err) {
+    console.error('PPTX export error:', err);
+    alert('PPTX export failed: ' + (err && err.message ? err.message : err));
+  } finally {
+    try { document.body.removeChild(host); } catch (_) {}
+    restoreBtns();
+  }
+}
+window.exportPPTX = exportPPTX;
 
 
 /* ─── GOOGLE SLIDES EXPORT ─── */
