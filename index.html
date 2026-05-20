@@ -7610,7 +7610,9 @@ function _userUploadsRender() {
       <div style="padding:6px 8px;">
         <div title="${_escHtml(u.name)}" style="font-size:10px; color:#6b7280; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${_escHtml(u.name)}</div>
         <button onclick="_userUploadPlaceOnSlide('${u.id}')"
-                style="width:100%; padding:5px 6px; background:var(--brand-c1, #3CC2A6); color:#fff; border:0; border-radius:4px; font-size:10px; font-weight:600; cursor:pointer;">+ Place on slide</button>
+                style="width:100%; padding:5px 6px; background:var(--brand-c1, #3CC2A6); color:#fff; border:0; border-radius:4px; font-size:10px; font-weight:600; cursor:pointer;">+ 放這頁</button>
+        <button onclick="_userUploadPlaceOnAllSlides('${u.id}')" title="當作 logo / 浮水印放到每一頁（同位置，可單獨拖移或刪除）"
+                style="width:100%; margin-top:4px; padding:5px 6px; background:#fff; color:var(--brand-c1, #3CC2A6); border:1px solid var(--brand-c1, #3CC2A6); border-radius:4px; font-size:10px; font-weight:600; cursor:pointer;">📋 放所有頁（logo）</button>
       </div>
     </div>
   `).join('');
@@ -7664,6 +7666,44 @@ function _userUploadPlaceOnSlide(uploadId) {
   try { if (typeof _mxpInstallClickHandlers === 'function') _mxpInstallClickHandlers(); } catch (_) {}
   try { _schedulePdfSizeUpdate(); } catch (_) {}
 }
+
+// Place an upload on EVERY slide at the same position — handy for a logo
+// / watermark you want on the whole deck. Each copy is independently
+// draggable / resizable / deletable (so you can nudge it per slide, or
+// click 🗑 to remove it from a page that shouldn't have it). The
+// position defaults to top-right-ish but the user just drags from there.
+function _userUploadPlaceOnAllSlides(uploadId) {
+  const upload = _userUploads.find(u => u.id === uploadId);
+  if (!upload) return;
+  if (!(_unifiedSlideNodes instanceof Map) || !_unifiedSlideNodes.size) {
+    alert('Slides not loaded yet. Open the editor first.');
+    return;
+  }
+  let placed = 0;
+  _unifiedSlideNodes.forEach((slideNode, sid) => {
+    if (!slideNode) return;
+    const slotKey = 'user_upload_' + upload.id + '_' + sid;
+    // Skip if this upload is already on this slide (avoid dupes on repeat clicks)
+    if (slideNode.querySelector('[data-slot-key="' + slotKey + '"]')) return;
+    const img = document.createElement('img');
+    img.src = upload.dataUrl;
+    img.alt = upload.name;
+    img.setAttribute('data-slot-key', slotKey);
+    img.setAttribute('data-user-upload', 'true');
+    // Logo-friendly default: 160px wide, top-right area. User drags from here.
+    img.style.cssText = 'position:absolute; top:28px; right:34px; width:160px; height:auto; transform-origin:center center; cursor:pointer; z-index:10;';
+    if (getComputedStyle(slideNode).position === 'static') slideNode.style.position = 'relative';
+    slideNode.appendChild(img);
+    placed++;
+  });
+  // Refresh the live stage so the current slide shows its copy immediately.
+  if (_unifiedActiveSlideId) { try { _unifiedShowSlide(_unifiedActiveSlideId); } catch (_) {} }
+  try { if (typeof _mxpInstallClickHandlers === 'function') _mxpInstallClickHandlers(); } catch (_) {}
+  try { _schedulePdfSizeUpdate(); } catch (_) {}
+  try { _unifiedSnapshotEdits(); } catch (_) {}
+  alert('已放到 ' + placed + ' 頁。\n\n每一頁的這張圖都可以單獨拖移、縮放、或點「🗑 刪除」拿掉不要的頁面。');
+}
+window._userUploadPlaceOnAllSlides = _userUploadPlaceOnAllSlides;
 
 // Drag-drop on the dropzone — wired at modal-open time so the listeners
 // only attach once per page lifecycle.
