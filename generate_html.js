@@ -23,6 +23,97 @@ function stripEmoji(str) {
     .trim();
 }
 
+// ─── SVG ICON LIBRARY (Tabler-style line icons, inline) ───
+// Keyword → SVG path(s). Rendered at 24px with currentColor stroke so
+// the caller controls colour. Used on Core Features cards etc. Claude
+// outputs an `icon` keyword per feature; if missing we infer one from
+// the title text; if nothing matches we fall back to "sparkles".
+const ICON_PATHS = {
+  'chat':        '<path d="M8 9h8M8 13h6M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.3A8 8 0 1 1 21 12z"/>',
+  'message':     '<path d="M8 9h8M8 13h6M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.3A8 8 0 1 1 21 12z"/>',
+  'support':     '<path d="M3 12a9 9 0 0 1 18 0M3 12v3a2 2 0 0 0 2 2h1v-5H4M21 12v3a2 2 0 0 1-2 2h-1v-5h2"/>',
+  'headset':     '<path d="M3 12a9 9 0 0 1 18 0M3 12v3a2 2 0 0 0 2 2h1v-5H4M21 12v3a2 2 0 0 1-2 2h-1v-5h2"/>',
+  'clock':       '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  'time':        '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  'shield':      '<path d="M12 3l8 3v5c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-3z"/>',
+  'security':    '<path d="M12 3l8 3v5c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-3z"/>',
+  'bolt':        '<path d="M13 3L4 14h7l-1 7 9-11h-7l1-7z"/>',
+  'fast':        '<path d="M13 3L4 14h7l-1 7 9-11h-7l1-7z"/>',
+  'speed':       '<path d="M13 3L4 14h7l-1 7 9-11h-7l1-7z"/>',
+  'chart':       '<path d="M4 19V5M4 19h16M8 17v-5M12 17V9M16 17v-8"/>',
+  'analytics':   '<path d="M4 19V5M4 19h16M8 17v-5M12 17V9M16 17v-8"/>',
+  'data':        '<path d="M4 19V5M4 19h16M8 17v-5M12 17V9M16 17v-8"/>',
+  'insight':     '<path d="M4 19V5M4 19h16M8 17v-5M12 17V9M16 17v-8"/>',
+  'trending':    '<path d="M3 17l6-6 4 4 8-8M21 7v5M21 7h-5"/>',
+  'growth':      '<path d="M3 17l6-6 4 4 8-8M21 7v5M21 7h-5"/>',
+  'shopping':    '<path d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0"/>',
+  'cart':        '<path d="M4 5h2l2 11h10l2-7H7M9 20a1 1 0 1 0 0 .01M17 20a1 1 0 1 0 0 .01"/>',
+  'product':     '<path d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0"/>',
+  'tag':         '<path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9-9-9zM7.5 7.5h.01"/>',
+  'world':       '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/>',
+  'globe':       '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/>',
+  'language':    '<path d="M4 5h7M9 3v2c0 4-2 7-5 9M5 9c0 3 3 5 6 5M12 20l4-9 4 9M14.5 16h5"/>',
+  'users':       '<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5M21 20a6 6 0 0 0-4-5.6"/>',
+  'team':        '<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5M21 20a6 6 0 0 0-4-5.6"/>',
+  'audience':    '<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5M21 20a6 6 0 0 0-4-5.6"/>',
+  'heart':       '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+  'love':        '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+  'star':        '<path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17l-5.3 2.6 1.1-6L3.4 9.4l6-.8L12 3z"/>',
+  'search':      '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  'discover':    '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  'bell':        '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10 20a2 2 0 0 0 4 0"/>',
+  'notify':      '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10 20a2 2 0 0 0 4 0"/>',
+  'gear':        '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.4l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.4-1.4L13.8 2h-3.6l-.4 2.3a7 7 0 0 0-2.4 1.4l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.4l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.4 1.4l.4 2.3h3.6l.4-2.3a7 7 0 0 0 2.4-1.4l2.3 1 2-3.4-2-1.5A7 7 0 0 0 19 12z"/>',
+  'settings':    '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.4l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.4-1.4L13.8 2h-3.6l-.4 2.3a7 7 0 0 0-2.4 1.4l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.4l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.4 1.4l.4 2.3h3.6l.4-2.3a7 7 0 0 0 2.4-1.4l2.3 1 2-3.4-2-1.5A7 7 0 0 0 19 12z"/>',
+  'sparkles':    '<path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14z"/>',
+  'magic':       '<path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3zM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14z"/>',
+  'ai':          '<rect x="5" y="7" width="14" height="11" rx="2"/><path d="M9 7V4M15 7V4M9 12h.01M15 12h.01M9 15h6M2 11v3M22 11v3"/>',
+  'robot':       '<rect x="5" y="7" width="14" height="11" rx="2"/><path d="M9 7V4M15 7V4M9 12h.01M15 12h.01M9 15h6M2 11v3M22 11v3"/>',
+  'phone':       '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+  'mobile':      '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+  'gift':        '<path d="M4 11h16v9H4zM4 7h16v4H4zM12 7v13M12 7C9 7 8 3 12 3s3 4 0 4z"/>',
+  'camera':      '<path d="M4 8h3l2-2h6l2 2h3v11H4zM12 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>',
+  'share':       '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-4M8.2 13l7.6 4"/>',
+  'social':      '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-4M8.2 13l7.6 4"/>',
+  'book':        '<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 0-2 2V4zM18 20H7"/>',
+  'knowledge':   '<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 0-2 2V4zM18 20H7"/>',
+  'check':       '<path d="M4 12l5 5L20 6"/>',
+  'target':      '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.5"/>',
+  'rocket':      '<path d="M5 15c-1 1-1 4-1 4s3 0 4-1m9-13c-3 0-7 2-9 6l-2 3 3-2c4-2 6-6 6-9l2-1-3 0z M9 15l-3-3"/>',
+};
+
+// Infer an icon keyword from a feature title when Claude didn't supply one.
+function _inferIconKeyword(title) {
+  const t = (title || '').toLowerCase();
+  const map = [
+    [/recommend|product|shop|item|選品|商品|推薦/, 'shopping'],
+    [/support|service|help|客服|客戶|服務|tone|voice|語氣/, 'support'],
+    [/social|share|instagram|tiktok|gif|分享|社群/, 'social'],
+    [/data|insight|signal|preference|analytic|數據|洞察|偏好/, 'chart'],
+    [/24|7|instant|real.?time|即時|隨時|時/, 'clock'],
+    [/multi.?lang|language|語言|翻譯/, 'language'],
+    [/world|global|全球|國際/, 'world'],
+    [/secur|privacy|safe|安全|隱私/, 'shield'],
+    [/fast|speed|quick|快|秒/, 'bolt'],
+    [/grow|trend|sales|conversion|成長|轉換|業績/, 'trending'],
+    [/love|emotion|empath|喜歡|情感|溫度/, 'heart'],
+    [/chat|conversation|對話|聊天/, 'chat'],
+    [/knowledge|learn|faq|知識|學習/, 'book'],
+    [/ai|smart|intelligent|智慧|聰明/, 'ai'],
+  ];
+  for (const [re, kw] of map) { if (re.test(t)) return kw; }
+  return 'sparkles';
+}
+
+// Return an inline <svg> for a feature, coloured via `color`.
+function featureIconSvg(feature, color) {
+  let kw = (feature && typeof feature.icon === 'string' && feature.icon.trim().toLowerCase()) || '';
+  if (!kw || !ICON_PATHS[kw]) kw = _inferIconKeyword(feature && feature.title);
+  const path = ICON_PATHS[kw] || ICON_PATHS['sparkles'];
+  return '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="' + (color || '#1a1a1a') +
+    '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block">' + path + '</svg>';
+}
+
 function hexToRgb(hex) {
   const h = hex.replace('#', '');
   return {
@@ -947,11 +1038,18 @@ function renderSlide_S5_CoreFeatures(proposal, client) {
   const features = (d.features || []).slice(0, 4);
   const colors = ['var(--brand-c1)', 'var(--brand-c2)', 'var(--brand-c4)', 'var(--brand-c1)'];
 
+  // Soft tinted backgrounds for the icon chip, paired with each accent.
+  const iconBg = ['rgba(0,0,0,0.04)', 'rgba(0,0,0,0.04)', 'rgba(0,0,0,0.04)', 'rgba(0,0,0,0.04)'];
   const featureCards = features
     .map((f, i) => `
-      <div style="background: white; padding: 32px; border-radius: 12px; border-left: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-        <div style="font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${stripEmoji(f.title || '')}</div>
-        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; line-height: 1.6;">${stripEmoji(f.desc || '')}</div>
+      <div style="background: white; padding: 28px 30px; border-radius: 12px; border-left: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+          <div style="width: 46px; height: 46px; flex-shrink: 0; border-radius: 11px; background: ${iconBg[i] || 'rgba(0,0,0,0.04)'}; display: flex; align-items: center; justify-content: center;">
+            ${featureIconSvg(f, colors[i])}
+          </div>
+          <div style="font-family: 'Poppins', sans-serif; font-size: 21px; font-weight: 700; color: #1a1a1a;">${stripEmoji(f.title || '')}</div>
+        </div>
+        <div style="font-family: 'Poppins', sans-serif; font-size: 17px; color: #6b7280; line-height: 1.55;">${stripEmoji(f.desc || '')}</div>
       </div>
     `)
     .join('');

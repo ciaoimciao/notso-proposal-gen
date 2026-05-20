@@ -5170,8 +5170,8 @@ function _dmEnsureOverlay() {
     '<div class="_dm-handle" data-corner="se" style="' + HANDLE_BASE + ';right:-6px;bottom:-6px;cursor:nwse-resize"></div>' +
     // Action buttons anchored to the bottom edge — Replace (upload your
     // own image to swap this one in-place) + Delete (remove broken image).
-    '<button class="_dm-replace" style="' + ACT_BTN + ';left:0;bottom:-28px;background:#3CC2A6;color:#fff">📤 換圖</button>' +
-    '<button class="_dm-delete" style="' + ACT_BTN + ';left:62px;bottom:-28px;background:#fff;color:#DC2626;border:1px solid #DC2626">🗑 刪除</button>' +
+    '<button class="_dm-replace" style="' + ACT_BTN + ';left:0;bottom:-28px;background:#3CC2A6;color:#fff">📤 Replace</button>' +
+    '<button class="_dm-delete" style="' + ACT_BTN + ';left:84px;bottom:-28px;background:#fff;color:#DC2626;border:1px solid #DC2626">🗑 Delete</button>' +
     '<div class="_dm-hint" style="position:absolute;right:0;top:-22px;font-size:10px;background:rgba(26,26,26,0.85);color:#fff;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">drag = move · corner = resize</div>';
   document.body.appendChild(_dmOverlay);
   // Wire handle mousedown → start resize drag
@@ -5251,7 +5251,7 @@ function _dmReplaceSelectedImage() {
       try { _schedulePdfSizeUpdate(); } catch (_) {}
       try { _unifiedSnapshotEdits(); } catch (_) {}
     } catch (err) {
-      alert('換圖失敗：' + (err && err.message ? err.message : err));
+      alert('Replace failed: ' + (err && err.message ? err.message : err));
     }
   };
   input.click();
@@ -5263,7 +5263,7 @@ function _dmReplaceSelectedImage() {
 function _dmDeleteSelectedImage() {
   if (!_dmSelected || !_dmSelected.el) return;
   const slotKey = _dmSelected.slotKey;
-  if (!confirm('確定要刪除這張圖片嗎？（之後可以重新生成或上傳取代）')) return;
+  if (!confirm('Delete this image? (You can regenerate or upload a replacement later.)')) return;
   const sel = '[data-slot-key="' + (window.CSS && CSS.escape ? CSS.escape(slotKey) : slotKey) + '"]';
   (_unifiedSlideNodes || new Map()).forEach(node => {
     if (node) node.querySelectorAll(sel).forEach(el => { el.style.display = 'none'; });
@@ -6778,6 +6778,45 @@ async function exportPDFFromUnifiedEditor() {
 // reflects all the user's text edits / asset placements, but the text
 // is NOT individually editable in PowerPoint (it's a picture). That
 // tradeoff is what makes it work without a server-side renderer.
+// Load a script tag once, resolving when it's actually loaded. Used to
+// lazy-load the heavy PPTX libs on demand instead of blocking page load.
+function _loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-lazy="' + src + '"]');
+    if (existing) {
+      if (existing.dataset.loaded === '1') { resolve(); return; }
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('load failed: ' + src)));
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = src;
+    s.dataset.lazy = src;
+    s.onload = () => { s.dataset.loaded = '1'; resolve(); };
+    s.onerror = () => reject(new Error('load failed: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+// Ensure html2canvas + pptxgenjs globals exist. They're requested at
+// page load via <script> tags, but a slow CDN means the user can click
+// Export before they finish. This loads them on demand and polls until
+// the globals appear (up to 15s) so the export always works.
+async function _ensurePptxLibs() {
+  if (typeof PptxGenJS !== 'undefined' && typeof html2canvas !== 'undefined') return;
+  const loads = [];
+  if (typeof html2canvas === 'undefined') loads.push(_loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'));
+  if (typeof PptxGenJS === 'undefined') loads.push(_loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js'));
+  try { await Promise.all(loads); } catch (_) {}
+  const start = Date.now();
+  while ((typeof PptxGenJS === 'undefined' || typeof html2canvas === 'undefined') && Date.now() - start < 15000) {
+    await new Promise(r => setTimeout(r, 200));
+  }
+  if (typeof PptxGenJS === 'undefined' || typeof html2canvas === 'undefined') {
+    throw new Error('Could not load the PowerPoint libraries from the CDN. Check your internet connection and try again.');
+  }
+}
+
 async function exportPPTX() {
   // Slides come from the unified editor cache. If the user hasn't
   // opened the editor yet, open it first so _unifiedSlideNodes fills.
@@ -6786,16 +6825,25 @@ async function exportPPTX() {
     if (proceed) { try { await openUnifiedEditor(); } catch (_) {} }
     return;
   }
-  if (typeof PptxGenJS === 'undefined' || typeof html2canvas === 'undefined') {
-    alert('PPTX libraries are still loading from the CDN — wait a few seconds and try again.');
-    return;
-  }
 
   // Find the button to show progress on (works from both the Step-page
   // button and the in-editor header button).
   const btns = Array.from(document.querySelectorAll('button[onclick="exportPPTX()"]'));
   const setBtns = (txt, disabled) => btns.forEach(b => { b.textContent = txt; b.disabled = !!disabled; });
   const origLabels = btns.map(b => b.textContent);
+
+  // Lazy-load the libs (with a visible "loading" state) instead of
+  // bailing with an error if they haven't finished downloading yet.
+  if (typeof PptxGenJS === 'undefined' || typeof html2canvas === 'undefined') {
+    setBtns('⏳ 載入工具…', true);
+    try {
+      await _ensurePptxLibs();
+    } catch (err) {
+      btns.forEach((b, i) => { b.textContent = origLabels[i]; b.disabled = false; });
+      alert(err.message || 'PPTX 函式庫載入失敗，請檢查網路後再試。');
+      return;
+    }
+  }
   const restoreBtns = () => btns.forEach((b, i) => { b.textContent = origLabels[i]; b.disabled = false; });
 
   // Honor the export selection (the per-slide checkboxes in the strip).
@@ -7610,9 +7658,9 @@ function _userUploadsRender() {
       <div style="padding:6px 8px;">
         <div title="${_escHtml(u.name)}" style="font-size:10px; color:#6b7280; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${_escHtml(u.name)}</div>
         <button onclick="_userUploadPlaceOnSlide('${u.id}')"
-                style="width:100%; padding:5px 6px; background:var(--brand-c1, #3CC2A6); color:#fff; border:0; border-radius:4px; font-size:10px; font-weight:600; cursor:pointer;">+ 放這頁</button>
-        <button onclick="_userUploadPlaceOnAllSlides('${u.id}')" title="當作 logo / 浮水印放到每一頁（同位置，可單獨拖移或刪除）"
-                style="width:100%; margin-top:4px; padding:5px 6px; background:#fff; color:var(--brand-c1, #3CC2A6); border:1px solid var(--brand-c1, #3CC2A6); border-radius:4px; font-size:10px; font-weight:600; cursor:pointer;">📋 放所有頁（logo）</button>
+                style="width:100%; padding:5px 6px; background:var(--brand-c1, #3CC2A6); color:#fff; border:0; border-radius:4px; font-size:10px; font-weight:600; cursor:pointer;">+ This slide</button>
+        <button onclick="_userUploadPlaceOnAllSlides('${u.id}')" title="Place on every slide as a logo / watermark (same spot, each can be dragged or deleted individually)"
+                style="width:100%; margin-top:4px; padding:5px 6px; background:#fff; color:var(--brand-c1, #3CC2A6); border:1px solid var(--brand-c1, #3CC2A6); border-radius:4px; font-size:10px; font-weight:600; cursor:pointer;">📋 All slides (logo)</button>
       </div>
     </div>
   `).join('');

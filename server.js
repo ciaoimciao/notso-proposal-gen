@@ -912,7 +912,7 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
     "s5":  {"headline":"Core Features",                     // FIXED label
             "lead":"1-sentence so-what naming WHAT the mascot does for THIS client. No em-dash.",
             "intro":"1-sentence value statement",
-            "features":[{"icon":"emoji","title":"feature solving pain","desc":"how it applies"}, "...3-4 items"]},
+            "features":[{"icon":"ONE keyword from this set ONLY: chat, support, clock, shield, bolt, chart, trending, shopping, cart, tag, world, language, users, heart, star, search, bell, gear, sparkles, ai, phone, gift, camera, share, social, book, target, rocket","title":"feature solving pain","desc":"how it applies"}, "...3-4 items"]},
 
     "s6":  {"headline":"Mascot Selection",                  // FIXED label
             "lead":"1-sentence framing the choice. No em-dash.",
