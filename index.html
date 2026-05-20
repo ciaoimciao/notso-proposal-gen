@@ -751,7 +751,8 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         <div style="text-align:center;margin-bottom:12px;font-size:13px;color:var(--gray-400)" id="mascotSelectHint" data-i18n="mascot.selectHint">
           Click each card to assign: A (cover + primary) → B → C → deselect. Pick at least 1.
         </div>
-        <div style="display:flex;gap:12px;justify-content:center">
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="backToMascotSettings()" title="Go back to the mascot settings (name, reference image, prompt, engine) to change them before generating again.">← Back to settings</button>
           <button class="btn btn-secondary" onclick="generateMascots()" data-i18n="mascot.regenerate">🔄 Regenerate</button>
           <button class="btn btn-primary" id="mascotConfirmBtn" onclick="confirmMascots()" disabled data-i18n="mascot.confirm">
             Confirm Selection →
@@ -8447,6 +8448,28 @@ function _replaceTextNodesInTree(root, regex, replacement) {
 }
 
 window._syncMascotNameFromStep2 = _syncMascotNameFromStep2;
+
+// Return to the Step-2 mascot SETTINGS form (name / reference image /
+// custom prompt / engine) so the user can change inputs before
+// generating again — instead of only being able to "Regenerate" with
+// the exact same settings. The already-generated options stay in
+// memory (mascotImages) so nothing is lost if they change their mind
+// and just hit Generate again; the new run replaces them.
+function backToMascotSettings() {
+  const area = document.getElementById('mascotGenArea');
+  const loading = document.getElementById('mascotLoading');
+  const options = document.getElementById('mascotOptions');
+  if (loading) loading.classList.add('hidden');
+  if (options) options.classList.add('hidden');
+  if (area) {
+    area.classList.remove('hidden');
+    // Scroll the form back into view + focus the name field for quick edits.
+    try { area.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
+    const nameInput = document.getElementById('mascotName');
+    if (nameInput) { try { nameInput.focus(); } catch (_) {} }
+  }
+}
+window.backToMascotSettings = backToMascotSettings;
 
 async function generateMascots() {
   // Read engine + key from the unified provider config (Gemini OR OpenAI).
