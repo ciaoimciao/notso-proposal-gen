@@ -5171,7 +5171,8 @@ function _dmEnsureOverlay() {
     // Action buttons anchored to the bottom edge — Replace (upload your
     // own image to swap this one in-place) + Delete (remove broken image).
     '<button class="_dm-replace" style="' + ACT_BTN + ';left:0;bottom:-28px;background:#3CC2A6;color:#fff">📤 Replace</button>' +
-    '<button class="_dm-delete" style="' + ACT_BTN + ';left:84px;bottom:-28px;background:#fff;color:#DC2626;border:1px solid #DC2626">🗑 Delete</button>' +
+    '<button class="_dm-crop" style="' + ACT_BTN + ';left:84px;bottom:-28px;background:#fff;color:#1a1a1a;border:1px solid #d1d5db">✂️ Crop</button>' +
+    '<button class="_dm-delete" style="' + ACT_BTN + ';left:148px;bottom:-28px;background:#fff;color:#DC2626;border:1px solid #DC2626">🗑 Delete</button>' +
     '<div class="_dm-hint" style="position:absolute;right:0;top:-22px;font-size:10px;background:rgba(26,26,26,0.85);color:#fff;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">drag = move · corner = resize</div>';
   document.body.appendChild(_dmOverlay);
   // Wire handle mousedown → start resize drag
@@ -5203,8 +5204,110 @@ function _dmEnsureOverlay() {
     e.preventDefault(); e.stopPropagation();
     if (_dmSelected && _dmSelected.el) _dmDeleteSelectedImage();
   });
+  // Crop: open the pan + zoom panel for the selected image.
+  _dmOverlay.querySelector('._dm-crop').addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+  _dmOverlay.querySelector('._dm-crop').addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (_dmSelected && _dmSelected.el) _dmOpenCropPanel();
+  });
   return _dmOverlay;
 }
+
+// ─── Crop panel: zoom + horizontal + vertical sliders ───────────────
+// Lets the user decide exactly how a slot image is cropped. For
+// cover-fit images (S16 promo, dashboard) the sliders drive
+// object-position (pan) + transform scale (zoom); for contain-fit
+// images they drive tx/ty + scale. All values live in
+// _mascotTransforms[slotKey] and apply via _mxpApply, so the crop
+// persists into the cached slide node and the PDF / PPTX export.
+let _dmCropPanel = null;
+function _dmOpenCropPanel() {
+  if (!_dmSelected || !_dmSelected.el) return;
+  const slotKey = _dmSelected.slotKey;
+  const el = _dmSelected.el;
+  let isCover = false;
+  try { isCover = (getComputedStyle(el).objectFit === 'cover'); } catch (_) {}
+  const t = _mxpGet(slotKey);
+
+  if (!_dmCropPanel) {
+    _dmCropPanel = document.createElement('div');
+    _dmCropPanel.id = '_dmCropPanel';
+    _dmCropPanel.style.cssText = 'position:fixed;z-index:360;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.18);padding:14px 16px;width:248px;font-family:inherit';
+    _dmCropPanel.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+        '<span style="font-size:13px;font-weight:700;color:#1a1a1a">✂️ Crop / Position</span>' +
+        '<button id="_dmCropClose" style="border:none;background:transparent;cursor:pointer;font-size:16px;color:#9ca3af;line-height:1">×</button>' +
+      '</div>' +
+      _cropRow('Zoom', '_dmCropZoom', 100, 400, 100) +
+      _cropRow('Horizontal', '_dmCropX', 0, 100, 50) +
+      _cropRow('Vertical', '_dmCropY', 0, 100, 50) +
+      '<button id="_dmCropReset" style="margin-top:8px;padding:5px 12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;font-size:11px;color:#6b7280">Reset</button>' +
+      '<div style="font-size:10px;color:#9ca3af;margin-top:8px;line-height:1.5">拖圖也可以平移、拉角落也可以縮放，跟這裡同步。</div>';
+    document.body.appendChild(_dmCropPanel);
+    _dmCropPanel.querySelector('#_dmCropClose').onclick = () => { _dmCropPanel.style.display = 'none'; };
+    _dmCropPanel.querySelector('#_dmCropReset').onclick = () => {
+      const tt = _mxpGet(_dmSelected.slotKey);
+      tt.scale = 1; tt.objX = 50; tt.objY = 50; tt.tx = 0; tt.ty = 0;
+      _mxpApply(_dmSelected.slotKey); _dmRepositionOverlay(); _dmSyncCropPanel();
+    };
+    // Wire sliders
+    const onInput = () => {
+      if (!_dmSelected) return;
+      const tt = _mxpGet(_dmSelected.slotKey);
+      const z = +_dmCropPanel.querySelector('#_dmCropZoom').value / 100;
+      const hx = +_dmCropPanel.querySelector('#_dmCropX').value;
+      const vy = +_dmCropPanel.querySelector('#_dmCropY').value;
+      tt.scale = z;
+      let coverNow = false;
+      try { coverNow = (getComputedStyle(_dmSelected.el).objectFit === 'cover'); } catch (_) {}
+      if (coverNow) { tt.objX = hx; tt.objY = vy; }
+      else {
+        // contain-fit → translate. Map 0-100 slider to ±300px range.
+        tt.tx = (hx - 50) / 50 * 300;
+        tt.ty = (vy - 50) / 50 * 300;
+      }
+      _mxpApply(_dmSelected.slotKey);
+      _dmRepositionOverlay();
+    };
+    ['_dmCropZoom', '_dmCropX', '_dmCropY'].forEach(id => {
+      _dmCropPanel.querySelector('#' + id).addEventListener('input', onInput);
+    });
+  }
+
+  // Position near the selected image (right side, fall back to left).
+  const r = el.getBoundingClientRect();
+  let left = r.right + 12, top = r.top;
+  if (left + 248 > window.innerWidth - 12) left = Math.max(12, r.left - 248 - 12);
+  if (top + 230 > window.innerHeight - 12) top = Math.max(12, window.innerHeight - 230 - 12);
+  _dmCropPanel.style.left = left + 'px';
+  _dmCropPanel.style.top = top + 'px';
+  _dmCropPanel.style.display = 'block';
+  _dmSyncCropPanel();
+}
+
+function _cropRow(label, id, min, max, val) {
+  return '<div style="display:grid;grid-template-columns:62px 1fr 38px;gap:8px;align-items:center;margin-bottom:8px">' +
+    '<label style="font-size:11px;color:#374151">' + label + '</label>' +
+    '<input type="range" id="' + id + '" min="' + min + '" max="' + max + '" step="1" value="' + val + '" style="accent-color:#3CC2A6">' +
+    '<span id="' + id + 'Out" style="font-size:11px;font-family:ui-monospace,monospace;text-align:right;color:#6b7280">' + val + '</span></div>';
+}
+
+function _dmSyncCropPanel() {
+  if (!_dmCropPanel || !_dmSelected) return;
+  const t = _mxpGet(_dmSelected.slotKey);
+  let isCover = false;
+  try { isCover = (getComputedStyle(_dmSelected.el).objectFit === 'cover'); } catch (_) {}
+  const z = Math.round((t.scale || 1) * 100);
+  const hx = isCover ? (typeof t.objX === 'number' ? t.objX : 50) : Math.round((t.tx || 0) / 300 * 50 + 50);
+  const vy = isCover ? (typeof t.objY === 'number' ? t.objY : 50) : Math.round((t.ty || 0) / 300 * 50 + 50);
+  const set = (id, v) => {
+    const s = _dmCropPanel.querySelector('#' + id), o = _dmCropPanel.querySelector('#' + id + 'Out');
+    if (s) s.value = v; if (o) o.textContent = v;
+  };
+  set('_dmCropZoom', z); set('_dmCropX', Math.max(0, Math.min(100, hx))); set('_dmCropY', Math.max(0, Math.min(100, vy)));
+}
+
+window._dmOpenCropPanel = _dmOpenCropPanel;
 
 // Upload a custom image and swap it into the currently-selected slide
 // image IN PLACE — keeps the same position, size, and transform. Works
@@ -5314,7 +5417,10 @@ function _dmDeselect() {
     _dmSelected.el.classList.remove('mxp-active');
   }
   if (_dmOverlay) _dmOverlay.style.display = 'none';
+  if (_dmCropPanel) _dmCropPanel.style.display = 'none';
   _dmSelected = null;
+  // Persist the crop / transform changes into the snapshot.
+  try { _unifiedSnapshotEdits(); } catch (_) {}
 }
 
 // Global mouse handlers (installed once)
@@ -5377,6 +5483,7 @@ function _dmInstallGlobalHandlers() {
     if (e.target.closest && e.target.closest('[data-slot-key]')) return;
     if (e.target.closest && e.target.closest('#_dmOverlay')) return;
     if (e.target.closest && e.target.closest('#mascotXformPanel')) return;
+    if (e.target.closest && e.target.closest('#_dmCropPanel')) return;
     _dmDeselect();
   });
 
