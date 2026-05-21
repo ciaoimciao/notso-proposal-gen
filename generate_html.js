@@ -812,8 +812,10 @@ function renderSlide_S1_Cover(proposal, client, mascotImages) {
         <!-- Right: notso.ai logo + date (matches Finsport "Geldig t/m..." slot) -->
         <div style="font-family: 'Poppins', sans-serif; align-self: center; text-align: right;">
           <div style="display: inline-flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-            <div style="width: 32px; height: 32px; border-radius: 8px; background: #1a1a1a; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;">N</div>
-            <div style="font-size: 20px; font-weight: 800; color: #1a1a1a;">notso.ai</div>
+            ${_notsoLogoDataUrl()
+              ? `<img src="${_notsoLogoDataUrl()}" alt="notso.ai" style="height: 34px; width: auto; display: block;" />`
+              : `<div style="width: 32px; height: 32px; border-radius: 8px; background: #1a1a1a; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;">N</div>
+            <div style="font-size: 20px; font-weight: 800; color: #1a1a1a;">notso.ai</div>`}
           </div>
           <div style="font-size: 13px; color: #6b7280;">Generated ${dateStr}</div>
         </div>
@@ -1264,6 +1266,23 @@ function renderSlide_S8_PersonalityEmpathy(proposal, client, mascotImages) {
 // a slide is rendered. The frame is the pre-processed transparent PNG with
 // outside + screen both alpha=0; it gets layered ON TOP of the chat content
 // so the bezel masks anything that overflows the screen rect.
+// Real notso.ai logo. Drop the file at assets/notso-logo.png and it renders
+// on the cover automatically; if the file is missing we fall back to the
+// CSS "N" placeholder so nothing breaks.
+let _NOTSO_LOGO_DATA_URL = null;
+function _notsoLogoDataUrl() {
+  if (_NOTSO_LOGO_DATA_URL !== null) return _NOTSO_LOGO_DATA_URL;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const buf = fs.readFileSync(path.join(__dirname, 'assets', 'notso-logo.png'));
+    _NOTSO_LOGO_DATA_URL = 'data:image/png;base64,' + buf.toString('base64');
+  } catch (e) {
+    _NOTSO_LOGO_DATA_URL = '';
+  }
+  return _NOTSO_LOGO_DATA_URL;
+}
+
 let _PHONE_FRAME_DATA_URL = null;
 function _phoneFrameDataUrl() {
   if (_PHONE_FRAME_DATA_URL) return _PHONE_FRAME_DATA_URL;
@@ -2011,7 +2030,9 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
       <!-- Right: Content -->
       <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 50px 50px 50px 20px;">
         <!-- notso.ai logo -->
-        <div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: white; margin-bottom: 40px;">notso.ai</div>
+        ${_notsoLogoDataUrl()
+          ? `<img src="${_notsoLogoDataUrl()}" alt="notso.ai" style="height: 30px; width: auto; display: block; margin-bottom: 40px;" />`
+          : `<div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: white; margin-bottom: 40px;">notso.ai</div>`}
 
         <!-- Title: AI-written punchy CTA — no hardcoded "you!" tail.
              The AI's closing_title IS the full punch line; appending "you!"
