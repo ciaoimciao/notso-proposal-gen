@@ -1136,7 +1136,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
      pptxgenjs assembles them into a .pptx. Pure browser, no server
      python3 needed (which Vercel serverless doesn't have). -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
 <script>
 /* ─── STATE ─── */
@@ -6913,11 +6913,17 @@ function _loadScriptOnce(src) {
 async function _ensurePptxLibs() {
   if (typeof PptxGenJS !== 'undefined' && typeof html2canvas !== 'undefined') return;
   const loads = [];
-  if (typeof html2canvas === 'undefined') loads.push(_loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'));
-  if (typeof PptxGenJS === 'undefined') loads.push(_loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js'));
+  if (typeof html2canvas === 'undefined') loads.push(
+    _loadScriptOnce('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js')
+      .catch(() => _loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'))
+  );
+  if (typeof PptxGenJS === 'undefined') loads.push(
+    _loadScriptOnce('https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js')
+      .catch(() => _loadScriptOnce('https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js'))
+  );
   try { await Promise.all(loads); } catch (_) {}
   const start = Date.now();
-  while ((typeof PptxGenJS === 'undefined' || typeof html2canvas === 'undefined') && Date.now() - start < 15000) {
+  while ((typeof PptxGenJS === 'undefined' || typeof html2canvas === 'undefined') && Date.now() - start < 25000) {
     await new Promise(r => setTimeout(r, 200));
   }
   if (typeof PptxGenJS === 'undefined' || typeof html2canvas === 'undefined') {
