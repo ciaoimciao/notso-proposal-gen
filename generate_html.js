@@ -929,11 +929,10 @@ function renderSlide_S3_PainPoints(proposal, client, mascotImages) {
       const colors = ['var(--brand-c1)', 'var(--brand-c4)', 'var(--brand-c2)'];
       return `
         <div style="background: white; padding: 32px; border-radius: 12px; border-top: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px;">
             <div style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 11px; background: rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center;">${featureIconSvg({ title: p.title }, colors[i])}</div>
-            <div style="font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 800; color: ${colors[i]};">${String(i + 1).padStart(2, '0')}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 800; color: ${colors[i]}; line-height: 1.3;">${stripEmoji(p.title || '')}</div>
           </div>
-          <div style="font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${stripEmoji(p.title || '')}</div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; line-height: 1.6;">${stripEmoji(p.desc || '')}</div>
         </div>
       `;
@@ -2031,7 +2030,7 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
       <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 50px 50px 50px 20px;">
         <!-- notso.ai logo -->
         ${_notsoLogoDataUrl()
-          ? `<img src="${_notsoLogoDataUrl()}" alt="notso.ai" style="height: 30px; width: auto; display: block; margin-bottom: 40px;" />`
+          ? `<img src="${_notsoLogoDataUrl()}" alt="notso.ai" style="height: 30px; width: auto; align-self: flex-start; margin-bottom: 40px;" />`
           : `<div style="font-family: 'Poppins', sans-serif; font-size: 18px; font-weight: 700; color: white; margin-bottom: 40px;">notso.ai</div>`}
 
         <!-- Title: AI-written punchy CTA — no hardcoded "you!" tail.
