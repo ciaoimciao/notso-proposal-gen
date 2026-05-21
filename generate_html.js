@@ -927,7 +927,10 @@ function renderSlide_S3_PainPoints(proposal, client, mascotImages) {
       const colors = ['var(--brand-c1)', 'var(--brand-c4)', 'var(--brand-c2)'];
       return `
         <div style="background: white; padding: 32px; border-radius: 12px; border-top: 4px solid ${colors[i]}; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-          <div style="font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 800; color: ${colors[i]}; margin-bottom: 12px;">${String(i + 1).padStart(2, '0')}</div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 11px; background: rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center;">${featureIconSvg({ title: p.title }, colors[i])}</div>
+            <div style="font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 800; color: ${colors[i]};">${String(i + 1).padStart(2, '0')}</div>
+          </div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 12px;">${stripEmoji(p.title || '')}</div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 18px; color: #6b7280; line-height: 1.6;">${stripEmoji(p.desc || '')}</div>
         </div>
@@ -1428,6 +1431,7 @@ function renderSlide_S10_ChatflowDesign(proposal, client, mascotImages) {
       return `
         <div style="flex: 1; min-width: 0; display: flex; align-items: stretch; gap: 16px;">
           <div style="flex: 1; min-width: 0; background: white; padding: 24px 22px; border-radius: 14px; border-top: 4px solid var(--brand-c1); box-shadow: 0 2px 12px rgba(0,0,0,0.06); display: flex; flex-direction: column;">
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">${featureIconSvg({ title: title }, 'var(--brand-c1)')}</div>
             <div style="font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Step ${i + 1}</div>
             <div style="font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px; line-height: 1.2;">${title}</div>
             <div style="font-family: 'Poppins', sans-serif; font-size: 16px; color: #4b5563; line-height: 1.55;">${desc}</div>
@@ -1482,6 +1486,7 @@ function renderSlide_S11_KnowledgeBase(proposal, client, mascotImages) {
   const categoryRows = categories
     .map((cat, i) => `
       <div style="display: flex; align-items: center; gap: 18px; padding: 24px 26px; background: white; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <div style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 11px; background: rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center;">${featureIconSvg({ title: cat.input_label || cat.title }, 'var(--brand-c1)')}</div>
         <div style="flex: 1; min-width: 0;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 700; color: var(--brand-c1); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Input</div>
           <div style="font-family: 'Poppins', sans-serif; font-size: 19px; font-weight: 600; color: #1a1a1a; line-height: 1.35;">${stripEmoji(cat.input_label || cat.title || '')}</div>

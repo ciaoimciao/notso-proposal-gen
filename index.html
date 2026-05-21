@@ -2617,7 +2617,10 @@ async function callProposalContentEndpoint(info, key) {
   // any non-recommended slide back on without a regenerate round-trip.
   try {
     if (recommended.length && typeof selectedSlides !== 'undefined') {
-      selectedSlides = new Set(recommended);
+      // Hidden by default: Market Opportunity (s4) + ROI Evidence (s13).
+      // Content is still generated and can be toggled back on in the picker.
+      const HIDDEN_BY_DEFAULT = new Set(['s4', 's13']);
+      selectedSlides = new Set(recommended.filter(s => !HIDDEN_BY_DEFAULT.has(s)));
       if (typeof renderSlidePicker === 'function') renderSlidePicker();
       console.log('[AI] Recommended slides:', recommended);
       console.log('[AI] Rationale:', rationale);
