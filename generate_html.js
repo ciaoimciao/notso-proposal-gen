@@ -2035,8 +2035,12 @@ function renderSlide_S18_ThankYou(proposal, client, mascotImages) {
 
         <!-- Title: AI-written punchy CTA — no hardcoded "you!" tail.
              The AI's closing_title IS the full punch line; appending "you!"
-             below it produced "Ready to bring Yaz to life?\nyou!" garbage. -->
-        <div style="margin-bottom: 24px;">
+             below it produced "Ready to bring Yaz to life?\nyou!" garbage.
+             Wrap kept stable by waiting for document.fonts.ready in the
+             PDF renderer (see generatePDFBuffer) — without that, Puppeteer
+             would snap with the OS fallback font and 4-line titles would
+             flip to 5 lines from font-metric drift. -->
+        <div style="margin-bottom: 24px; max-width: 100%; overflow-wrap: break-word;">
           <div style="font-family: 'Poppins', sans-serif; font-size: 90px; font-weight: 800; line-height: 0.98; color: white; margin: 0;">${closingTitle}</div>
         </div>
 
@@ -2200,8 +2204,22 @@ async function generatePDFBuffer(html) {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 810 });
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await new Promise(r => setTimeout(r, 2000));
+    // 'networkidle0' instead of 'domcontentloaded' — waits for ALL network
+    // requests (incl. Google Fonts CSS + its underlying woff2 files) to
+    // finish. Critical for layout fidelity: when Poppins arrives late, the
+    // PDF snapshot was using the OS fallback (system sans-serif) which has
+    // different character widths, so titles broke into more lines than the
+    // browser preview. User reported this on s18 Thank You: preview wrapped
+    // headline into 4 lines, PDF into 5 — looked "cropped" at the right.
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
+    // Belt-and-braces: explicitly wait until the browser confirms ALL
+    // fontfaces are ready. document.fonts.ready resolves when every @font-
+    // face has either loaded or fatally errored, so layout calculations
+    // afterwards use the real metrics.
+    try {
+      await page.evaluate(() => document.fonts && document.fonts.ready ? document.fonts.ready : null);
+    } catch (_) {}
+    await new Promise(r => setTimeout(r, 500));  // small buffer for layout settle
     const buf = await page.pdf({
       width: '1440px',
       height: '810px',

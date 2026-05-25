@@ -33,19 +33,27 @@ const STYLE_PREFIX =
   // was breaking faithfulness (user feedback). If the reference does have
   // them, the consistency-lock block in server.js carries them through.
   // ── CRITICAL: NO OUTLINES (mandatory, repeated for AI compliance) ──
-  // We mention this rule three times in escalating language because Gemini
-  // / OpenAI image models routinely ignore a single inline mention when the
-  // reference image they were given has a strong cartoon outline. Repeating
-  // it as a hard global rule, an absolute requirement, and an explicit
-  // prohibition is what reliably drops the outline.
-  'ABSOLUTELY NO OUTLINES OF ANY KIND on the character body silhouette. ' +
-  'NO black outline, NO dark outline, NO ink outline, NO contour line, ' +
-  'NO line-art border tracing the character shape. ' +
-  'The silhouette is defined ONLY by form, volume, and the thin rim light. ' +
-  'The character edge MUST blend smoothly into the transparent background ' +
-  'WITHOUT a darker rim — no "halo of dark pixels" along the perimeter. ' +
-  'Treat the character like a real 3D vinyl toy photographed against pure ' +
-  'white: a toy has no outline drawn around it, only soft material edges. ' +
+  // We mention this rule SIX times in escalating language because Gemini
+  // / OpenAI image models routinely ignore single mentions when the
+  // reference image they were given has a strong cartoon outline. Going
+  // hard here because user fed back "still ugly black outline" twice.
+  'CRITICAL RULE — NO LINEART ANYWHERE ON THE CHARACTER. ' +
+  'This is a real photograph of a 3D vinyl toy figure sitting on a plain ' +
+  'white surface — NOT a 2D illustration. ' +
+  'ZERO outlines, ZERO black contour, ZERO ink lines, ZERO line-art border. ' +
+  'NO dark rim, NO halo of dark pixels at the silhouette edge. ' +
+  'The character silhouette is defined ONLY by the material itself ' +
+  '(matte clay surface) and soft studio rim-light — NOT by any drawn line. ' +
+  'If you find yourself adding a darker edge to "make the character pop", ' +
+  'STOP — that\'s exactly the lineart we forbid. ' +
+  'Imagine the toy is on a Pop Mart product page photograph: clean matte ' +
+  'surface that fades into white background through micro-shadow only, ' +
+  'no comic-book outline drawn around the figure. ' +
+  'Reference: think of Sonny Angel / Pop Mart blind-box figurines — those ' +
+  'have NO outline, only material edges. THAT is the target. ' +
+  'If the user\'s reference image HAS an outline, IGNORE IT — re-render ' +
+  'the same character WITHOUT the outline. The outline is the one thing ' +
+  'we always override from references. ' +
   'Fully transparent background (PNG with alpha channel, no baked backdrop). ' +
   'Character is centered, full body visible, slight low-angle hero framing. ';
 

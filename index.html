@@ -2697,7 +2697,23 @@ async function startGeneration() {
     setStep(1);
     btn.textContent = 'Generate Proposal →';
     btn.disabled = false;
-    showError('API Error: ' + err.message + ' — Please check your Claude API key and try again.');
+    // Diagnose the actual cause from err.message instead of always blaming
+    // the API key. "Failed to fetch" / "NetworkError" is a connectivity
+    // problem (server down, browser blocked, network), NOT auth.
+    const m = String(err.message || err);
+    let hint;
+    if (/failed to fetch|networkerror|load failed|fetch.*aborted/i.test(m)) {
+      hint = '⚠ 連不到 server。請確認 `node server.js` 還在跑，或重新整理本頁。（這個錯誤跟 API key 無關。）';
+    } else if (/401|invalid.*api.*key|authentication/i.test(m)) {
+      hint = '⚠ Claude API key 錯誤或失效。請去 console.anthropic.com 確認 key。';
+    } else if (/429|rate.?limit|quota|exceeded/i.test(m)) {
+      hint = '⚠ Claude API 配額用完或被 rate-limit。請等幾分鐘再試，或檢查 console.anthropic.com 的 usage 頁。';
+    } else if (/500|502|503|504|gateway|internal server/i.test(m)) {
+      hint = '⚠ Server 內部錯誤（' + m + '）— 請看 terminal log 找詳細原因。';
+    } else {
+      hint = '⚠ API Error: ' + m;
+    }
+    showError(hint);
   }
 }
 
@@ -3189,11 +3205,72 @@ function toggleSlide(id) {
   if (selectedSlides.has(id)) selectedSlides.delete(id);
   else selectedSlides.add(id);
   updateSlideSelection();
+  // User just hand-edited — recompute which preset (if any) still matches.
+  _refreshPresetBarStyles();
 }
 
+// Currently active preset tag — null when user has hand-picked a custom
+// combination. Lives module-scoped so the preset bar can highlight which
+// button is active across re-renders.
+let _activePreset = 'second';
+
 function setPreset(preset) {
+  _activePreset = preset;
   selectedSlides = new Set(ALL_SLIDES.filter(s => s.preset.includes(preset)).map(s => s.id));
   updateSlideSelection();
+  _refreshPresetBarStyles();
+}
+
+// Detect which preset (if any) the current selectedSlides matches exactly.
+// Returns 'first' | 'second' | null (custom). Used by toggleSlide() to clear
+// the active-button highlight once the user hand-picks slides.
+function _detectActivePreset() {
+  const firstIds = new Set(ALL_SLIDES.filter(s => s.preset.includes('first')).map(s => s.id));
+  const secondIds = new Set(ALL_SLIDES.filter(s => s.preset.includes('second')).map(s => s.id));
+  const matches = (a, b) => a.size === b.size && Array.from(a).every(x => b.has(x));
+  if (matches(selectedSlides, firstIds)) return 'first';
+  if (matches(selectedSlides, secondIds)) return 'second';
+  return null;
+}
+
+// Repaint the two preset buttons so the active one looks solid-green +
+// has a ✓ check, the inactive one stays outline. If the user hand-picks
+// a non-preset combo, both buttons go outline + a "Custom" badge shows.
+function _refreshPresetBarStyles() {
+  const buttons = document.querySelectorAll('button[onclick^="setPreset("]');
+  if (!buttons.length) return;
+  const detected = _detectActivePreset();
+  _activePreset = detected;  // sync state
+  buttons.forEach(btn => {
+    const m = btn.getAttribute('onclick').match(/setPreset\(['"]([^'"]+)/);
+    const isActive = m && m[1] === detected;
+    if (isActive) {
+      btn.style.background = '#16A34A';
+      btn.style.color = '#fff';
+      btn.style.boxShadow = '0 2px 8px rgba(22,163,74,0.35)';
+      // Add a ✓ marker if not already there
+      if (!btn.textContent.startsWith('✓')) btn.textContent = '✓ ' + btn.textContent.trim();
+    } else {
+      btn.style.background = '#fff';
+      btn.style.color = '#15803D';
+      btn.style.boxShadow = 'none';
+      btn.textContent = btn.textContent.replace(/^✓\s*/, '');
+    }
+  });
+  // Show "Custom" badge in the hint slot when neither preset matches.
+  const hintSpan = document.querySelector('[data-i18n="preset.bar.hint"]');
+  if (hintSpan) {
+    if (detected === null) {
+      hintSpan.textContent = '✏️ 自訂組合（' + selectedSlides.size + ' 張）';
+      hintSpan.style.color = '#dc2626';
+      hintSpan.style.fontWeight = '700';
+    } else {
+      hintSpan.textContent = t('preset.bar.hint');
+      hintSpan.style.color = '#15803D';
+      hintSpan.style.fontWeight = '';
+      hintSpan.style.opacity = '0.8';
+    }
+  }
 }
 
 // Return selected slide IDs in the canonical ALL_SLIDES display order.
@@ -3333,6 +3410,8 @@ function renderAllSlides(d, info) {
   }).join('');
 
   updateSlideSelection();
+  // Apply active-preset styling on first paint (default = 'second' = full).
+  try { _refreshPresetBarStyles(); } catch (_) {}
 }
 
 function safe(v){ return v || '' }
@@ -9184,11 +9263,21 @@ async function _removeDarkEdgeOutline(dataUrl) {
 
         const ALPHA_OPAQUE = 200;        // count as opaque for boundary detection
         const ALPHA_TRANSPARENT = 32;    // count as background for boundary detection
-        const OUTLINE_THICKNESS = 4;     // search this many pixels into the band
-        const INNER_SAMPLE_DEPTH = 10;   // sample inner colour this many hops inside
-        const OUTLINE_DARK_RATIO = 0.65; // band pixel darker than inner × 0.65 = outline
-        const OUTLINE_ABS_BRIGHTNESS = 110; // also cap at absolute brightness — anything
-                                            // above 110/255 is unlikely to be ink outline
+        const OUTLINE_THICKNESS = 8;     // (was 4) AI cartoon outlines on 1024px
+                                         // images often span 5-8 px after anti-
+                                         // aliasing — too-shallow band left a
+                                         // visible dark ring on the silhouette
+        const INNER_SAMPLE_DEPTH = 14;   // (was 10) push sample further inside
+                                         // so we don't accidentally read pixels
+                                         // still inside the dark ring itself
+        const OUTLINE_DARK_RATIO = 0.85; // (was 0.65) catch lighter outlines too
+                                         // — anything ≥15% darker than the inner
+                                         // body colour is treated as outline.
+                                         // User feedback was the band was still
+                                         // visible after the old threshold.
+        const OUTLINE_ABS_BRIGHTNESS = 170; // (was 110) include mid-grey outlines
+                                            // — Gemini sometimes draws a brownish
+                                            // line that read as 130-160 brightness.
 
         const bri = (i) => 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
 
@@ -9734,7 +9823,7 @@ function renderMascotGrid() {
 
     card.innerHTML = `
       <div class="mascot-num">#${idx + 1}</div>
-      <button class="mascot-regen-btn" data-idx="${idx}" title="重生這一個 mascot（不影響其他 8 個）" style="position:absolute;top:6px;right:6px;background:rgba(255,255,255,0.95);border:1px solid #e5e7eb;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:5;box-shadow:0 1px 3px rgba(0,0,0,0.1)">⟳</button>
+      <button class="mascot-regen-btn" data-idx="${idx}" title="重生這一個 mascot（不影響其他 8 個）" style="position:absolute;top:8px;right:8px;background:#16A34A;color:#fff;border:2px solid #fff;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700;line-height:1;display:flex;align-items:center;gap:5px;z-index:5;box-shadow:0 3px 10px rgba(0,0,0,0.25);transition:all 0.15s" onmouseover="this.style.background='#15803D';this.style.transform='scale(1.08)'" onmouseout="this.style.background='#16A34A';this.style.transform='scale(1)'"><span style="font-size:16px">⟳</span>重生</button>
       <img src="${img.data_url}" alt="Mascot option ${idx + 1}" />
       <div class="mascot-label ${labelClass}">${labelText}</div>
     `;
