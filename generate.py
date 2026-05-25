@@ -6,8 +6,39 @@ Reads proposal JSON from stdin, outputs file to specified path.
 Usage:
   echo '{"format":"pptx","proposal":{...},"client":{...}}' | python3 generate.py
 """
-import sys, json, os, re
+import sys, json, os, re, base64, tempfile
 from pathlib import Path
+
+# ─── data: URL → temp file helper ───
+# Mascot images arrive from the browser as base64 `data:image/...` URLs
+# (savedMascotPaths holds data URLs, _shrinkMascotMap keeps them as data
+# URLs). python-pptx's add_picture needs a real file path, so decode each
+# data URL to a temp file once and reuse it across slides. A normal file
+# path is returned unchanged; anything unparseable returns '' so callers
+# fall back to the dashed placeholder.
+_DATAURL_TMP_CACHE = {}
+def _materialize_image(img_path):
+    if not img_path or not isinstance(img_path, str):
+        return ''
+    if not img_path.startswith('data:'):
+        return img_path
+    if img_path in _DATAURL_TMP_CACHE:
+        return _DATAURL_TMP_CACHE[img_path]
+    try:
+        header, b64 = img_path.split(',', 1)
+        ext = '.png'
+        if 'jpeg' in header or 'jpg' in header:
+            ext = '.jpg'
+        elif 'webp' in header:
+            ext = '.webp'
+        raw = base64.b64decode(b64)
+        fd, tmp = tempfile.mkstemp(suffix=ext, prefix='notso_mascot_')
+        with os.fdopen(fd, 'wb') as f:
+            f.write(raw)
+        _DATAURL_TMP_CACHE[img_path] = tmp
+        return tmp
+    except Exception:
+        return ''
 
 # ─── PPTX Generation ───
 def generate_pptx(proposal, client, output_path, selected_slides=None):
@@ -146,6 +177,7 @@ def generate_pptx(proposal, client, output_path, selected_slides=None):
         placeholder with a dashed border and centered label.
         """
         img_path = mascot_images.get(image_key, '') if image_key else ''
+        img_path = _materialize_image(img_path)  # decode data: URLs → temp file
 
         if img_path and os.path.exists(img_path):
             try:
@@ -318,6 +350,8 @@ def generate_pptx(proposal, client, output_path, selected_slides=None):
     card_top = max(1.75, after_title + 0.25)
 
     for i, p in enumerate(points[:3]):
+        if isinstance(p, str):
+            p = {'title': p, 'desc': ''}   # tolerate string-only pain points
         cx = 0.55 + i * (card_w + card_gap)
         # White card (no border) with a C1 top bar
         card_shape = add_rect(s2, Inches(cx), Inches(card_top), Inches(card_w), Inches(card_h), CARD_BG)

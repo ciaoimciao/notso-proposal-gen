@@ -29,6 +29,8 @@ venv/
 # ─── Runtime job/cache folders ───────────────────────
 .canva-jobs.archive/
 .assetpack-jobs/
+# Shared-deck storage (local FS backend for /api/deck — runtime data, like a DB)
+.deck-store/
 output/*.pptx
 output/*.pdf
 output/assetpack-*.zip
@@ -72,3 +74,5 @@ scripts/yazio-preview-v2.html
 scripts/yazio-system-*.html
 scripts/yazio-text-bumped.html
 scripts/mermaid-chatflow-demo.html
+
+/assets/_qa_out/

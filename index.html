@@ -785,9 +785,8 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
       <button class="btn btn-primary" onclick="openUnifiedEditor()">✏️ Edit &amp; Assign Assets</button>
       <button class="btn btn-secondary" onclick="previewAndEdit()" title="Scroll through all slides side-by-side to review before export">🔍 Overview</button>
       <button class="btn btn-secondary" onclick="exportPDF()">📄 Download PDF</button>
-      <button class="btn btn-secondary" onclick="exportPPTX()">📊 Export PPTX</button>
+      <button class="btn btn-secondary" onclick="shareDeck()" data-i18n="share.btn" data-i18n-title="share.btn.title" title="Create a share link. Recipients see the exact same HTML deck in their browser. Append /edit to the URL for an editable version with revision history. Stored server-side, not subject to browser storage limits.">🔗 Share link</button>
       <button class="btn btn-secondary" onclick="openAssetPackModal()" id="assetPackBtn">🎁 Mascot Asset Pack</button>
-      <button class="btn btn-gslides" onclick="sendToGoogleSlides()" id="sendToGSlidesBtn">📊 Export to Google Slides</button>
     </div>
   </div>
 
@@ -932,8 +931,7 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
               title="預估 PDF 上傳大小（壓縮後）。Vercel 上限 4.5 MB，安全閾值 4.3 MB。"
               style="font-size:11px;font-family:ui-monospace,monospace;padding:4px 9px;background:#f3f4f6;color:#6b7280;border-radius:6px;letter-spacing:0.2px;border:1px solid transparent;transition:background .15s,color .15s,border-color .15s">— MB / 4.3 MB</span>
         <button class="btn btn-primary" onclick="exportPDFFromUnifiedEditor()" id="unifiedExportBtn" style="font-size:12px;padding:6px 16px">📄 Export PDF</button>
-        <button class="btn btn-secondary" onclick="exportPPTX()" title="Export to PowerPoint. Each slide is a high-res image of your design (reflects all your edits) — opens in PowerPoint/Keynote but text isn't individually editable." style="font-size:12px;padding:6px 16px">📊 Export PPTX</button>
-        <button class="btn btn-secondary" onclick="refreshUnifiedEditorFromServer()" title="Discard your text edits and reload slides from the server (use this after adding new asset pack images)." style="font-size:12px;padding:6px 12px">🔄 Refresh</button>
+        <button class="btn btn-secondary" onclick="refreshUnifiedEditorFromServer()" data-i18n-title="refresh.title" title="Discard your text edits and reload slides from the server (use this after adding new asset pack images)." style="font-size:12px;padding:6px 12px">🔄 Refresh</button>
         <button class="btn btn-secondary" onclick="closeUnifiedEditor()" style="font-size:12px;padding:6px 16px">Close</button>
       </div>
     </div>
@@ -1261,6 +1259,40 @@ const I18N = {
     'mascot.selectHint': 'Click each card to assign: A (cover + primary) → B → C → deselect. Pick at least 1.',
     'mascot.regenerate': '🔄 Regenerate',
     'mascot.confirm': 'Confirm Selection →',
+    // ── Share-link flow (button → modal → banner → save) ──
+    'share.btn': '🔗 Share link',
+    'share.btn.title': 'Create a share link. Recipients see the exact same HTML deck in their browser. Append /edit to the URL for an editable version with revision history. Stored server-side, not subject to browser storage limits.',
+    'share.alert.noProposal': 'Generate a proposal first before sharing.',
+    'share.btn.creating': 'Creating link…',
+    'share.error.failed': 'Share failed: ',
+    'share.modal.title': '🔗 Share link created',
+    'share.modal.desc': "Send this link — anyone with it sees the exact same deck in their browser. Append <b>/edit</b> for an editable version with revision history.",
+    'share.modal.copy': 'Copy',
+    'share.modal.openView': 'Open view',
+    'share.modal.openEdit': 'Open editor',
+    'share.modal.close': 'Close',
+    'share.save.notShared': 'This is not a share link page — nothing to save.',
+    'share.save.saving': 'Saving…',
+    'share.save.savedPrefix': '✓ Saved v',
+    'share.save.failed': 'Save failed: ',
+    'share.banner.label': '🔗 Shared deck',
+    'share.banner.modeView': 'View mode',
+    'share.banner.modeEdit': 'Edit mode',
+    'share.banner.copyLink': 'Copy link',
+    'share.banner.openEditor': 'Open editor',
+    'share.banner.save': 'Save',
+    'share.banner.editBtn': 'Edit',
+    'share.notFound.title': 'Deck not found',
+    'share.notFound.body': 'This link may have expired or been deleted.',
+    // ── Slide preset bar (first vs second pitch) ──
+    'preset.bar.label': 'PITCH STAGE',
+    'preset.bar.hint': 'Click to swap deck size',
+    'preset.first': 'First pitch',
+    'preset.second': 'Follow-up pitch',
+    'preset.first.tip': 'First pitch (8 slides) — Cover · Mascot Design · Core Features · Mascot Selection · Personality & Empathy · Chat Mock-up · Promo Materials · Thank You',
+    'preset.second.tip': 'Follow-up pitch (15 slides) — full deck including Pain Points, Chatflow Design, Knowledge Base, Data & Insights, Roadmap, Pricing, Licensing',
+    'refresh.confirm': 'Refresh will reload all slides from the server. EVERY TEXT EDIT you have made in this editor will be PERMANENTLY LOST. Mascot placements and image transforms stay. Continue?',
+    'refresh.title': 'Discard text edits and reload slides from the server (use this after adding new asset pack images, or to undo all text changes).',
   },
   'zh-TW': {
     'header.badge': '提案生成器',
@@ -1356,6 +1388,40 @@ const I18N = {
     'mascot.selectHint': '點擊每張卡片指派角色:A(封面 + 主角)→ B → C → 取消。至少選 1 張。',
     'mascot.regenerate': '🔄 重新生成',
     'mascot.confirm': '確認選擇 →',
+    // ── 分享連結流程（按鈕 → 彈窗 → banner → 儲存）──
+    'share.btn': '🔗 分享連結',
+    'share.btn.title': '建立分享連結。對方在瀏覽器就能看到一模一樣的 HTML 簡報；連結加 /edit 可編輯並存檔（有版本紀錄），存在伺服器、不受瀏覽器容量限制。',
+    'share.alert.noProposal': '先生成一份提案再分享。',
+    'share.btn.creating': '建立連結⋯',
+    'share.error.failed': '分享失敗：',
+    'share.modal.title': '🔗 分享連結已建立',
+    'share.modal.desc': '把這條連結傳給別人，他們在瀏覽器就能看到一模一樣的簡報。連結後面加 <b>/edit</b> 即可編輯並存檔（有版本紀錄）。',
+    'share.modal.copy': '複製',
+    'share.modal.openView': '開啟檢視',
+    'share.modal.openEdit': '開啟編輯',
+    'share.modal.close': '關閉',
+    'share.save.notShared': '這不是分享連結頁，無法儲存。',
+    'share.save.saving': '儲存中⋯',
+    'share.save.savedPrefix': '✓ 已存 v',
+    'share.save.failed': '儲存失敗：',
+    'share.banner.label': '🔗 分享的簡報',
+    'share.banner.modeView': '檢視模式',
+    'share.banner.modeEdit': '編輯模式',
+    'share.banner.copyLink': '複製連結',
+    'share.banner.openEditor': '開啟編輯器',
+    'share.banner.save': '儲存',
+    'share.banner.editBtn': '編輯',
+    'share.notFound.title': '找不到這份簡報',
+    'share.notFound.body': '連結可能已失效或被刪除。',
+    // ── 簡報階段切換 ──
+    'preset.bar.label': '提報階段',
+    'preset.bar.hint': '點擊切換簡報張數',
+    'preset.first': '第一次提報',
+    'preset.second': '第二次提報',
+    'preset.first.tip': '第一次提報 (8 張) — Cover · Mascot Design · Core Features · Mascot Selection · Personality & Empathy · Chat Mock-up · Promo Materials · Thank You',
+    'preset.second.tip': '第二次提報 (15 張) — 完整提案，含 Pain Points、Chatflow Design、Knowledge Base、Data & Insights、Roadmap、Pricing、Licensing',
+    'refresh.confirm': '🔄 Refresh 會從伺服器重新載入所有投影片。\n\n你在這個編輯器裡做過的「文字編輯」會全部消失，無法復原。\n\n（Mascot 擺位、圖片變形不會被清掉。）\n\n確定要繼續嗎？',
+    'refresh.title': '從伺服器重新載入投影片（會清掉所有文字編輯）。新增 asset pack 圖片後可以按這個來重新整理。',
   },
   ja: {
     'header.badge': '提案ジェネレーター',
@@ -1451,6 +1517,40 @@ const I18N = {
     'mascot.selectHint': 'カードをクリックして割り当て:A(カバー+メイン)→ B → C → 解除。最低 1 つ選択。',
     'mascot.regenerate': '🔄 再生成',
     'mascot.confirm': '選択を確定 →',
+    // ── 共有リンクのフロー（ボタン → モーダル → バナー → 保存）──
+    'share.btn': '🔗 共有リンク',
+    'share.btn.title': '共有リンクを作成します。受信者はブラウザで全く同じ HTML 提案を見ることができます。URL に /edit を付ければ、バージョン履歴付きの編集モードが開きます。サーバー側に保存され、ブラウザのストレージ制限を受けません。',
+    'share.alert.noProposal': '共有する前に提案を生成してください。',
+    'share.btn.creating': 'リンクを作成中⋯',
+    'share.error.failed': '共有に失敗しました：',
+    'share.modal.title': '🔗 共有リンクを作成しました',
+    'share.modal.desc': 'このリンクを送ると、ブラウザで全く同じ提案を見てもらえます。URL の末尾に <b>/edit</b> を付ければ、バージョン履歴付きで編集できます。',
+    'share.modal.copy': 'コピー',
+    'share.modal.openView': '表示で開く',
+    'share.modal.openEdit': '編集で開く',
+    'share.modal.close': '閉じる',
+    'share.save.notShared': '共有リンクのページではありません — 保存できません。',
+    'share.save.saving': '保存中⋯',
+    'share.save.savedPrefix': '✓ 保存しました v',
+    'share.save.failed': '保存に失敗しました：',
+    'share.banner.label': '🔗 共有された提案',
+    'share.banner.modeView': '表示モード',
+    'share.banner.modeEdit': '編集モード',
+    'share.banner.copyLink': 'リンクをコピー',
+    'share.banner.openEditor': 'エディタを開く',
+    'share.banner.save': '保存',
+    'share.banner.editBtn': '編集',
+    'share.notFound.title': '提案が見つかりません',
+    'share.notFound.body': 'リンクの有効期限が切れているか、削除された可能性があります。',
+    // ── 提案ステージ切替 ──
+    'preset.bar.label': '提案ステージ',
+    'preset.bar.hint': 'クリックでスライド数を切替',
+    'preset.first': '初回提案',
+    'preset.second': 'フォローアップ提案',
+    'preset.first.tip': '初回提案 (8 枚) — Cover · Mascot Design · Core Features · Mascot Selection · Personality & Empathy · Chat Mock-up · Promo Materials · Thank You',
+    'preset.second.tip': 'フォローアップ提案 (15 枚) — Pain Points、Chatflow Design、Knowledge Base、Data & Insights、Roadmap、Pricing、Licensing を含む完全版',
+    'refresh.confirm': '🔄 Refresh はサーバーから全スライドを再読込します。\n\nこのエディタで行った「テキスト編集」は全て失われ、復元できません。\n\n（マスコットの配置と画像変形は残ります。）\n\n続行しますか？',
+    'refresh.title': 'サーバーからスライドを再読込（全てのテキスト編集は破棄されます）。アセットパック画像を追加した後に使用してください。',
   },
 };
 
@@ -1476,6 +1576,13 @@ function applyI18n() {
     const v = t(k);
     if (v != null) el.setAttribute('placeholder', v);
   });
+  // `title` attribute (hover tooltip) — needed for the share-link button
+  // whose tooltip carries the full how-it-works blurb.
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+    const k = el.getAttribute('data-i18n-title');
+    const v = t(k);
+    if (v != null) el.setAttribute('title', v);
+  });
   document.documentElement.setAttribute('lang', _currentLang);
 }
 
@@ -1486,6 +1593,11 @@ function setLang(lang) {
   const sel = document.getElementById('langSwitch');
   if (sel) sel.value = lang;
   applyI18n();
+  // Shared-deck banner is built imperatively (not via data-i18n) because
+  // its button onclick handlers carry the deck id in their captured
+  // closures. Rebuild it after every language change so its labels stay
+  // in sync.
+  try { if (typeof _refreshSharedBanner === 'function') _refreshSharedBanner(); } catch (_) {}
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1811,28 +1923,102 @@ function setStep(n) {
 }
 
 /* ─── LOADING ANIMATION ─── */
+// Two-phase loading: a SCRIPTED phase that walks through 6 narrative steps
+// in the first ~30 seconds (gives the user something to read), then a
+// STILL-WORKING phase that cycles a single "Claude is thinking…" message
+// + an elapsed-time counter for as long as the Claude request runs.
+// Without phase 2 the loading bar froze at 95% for the remaining 60-110s
+// of Claude generation and felt like the app had crashed.
 const loadSteps = [
   { title:'Researching your client...', sub:'Analysing industry trends, pain points & competition', p:15, orb:'🔍' },
-  { title:'Mapping opportunities...', sub:'Connecting client context to notso.ai capabilities', p:30, orb:'🗺️' },
-  { title:'Creating mascot concepts...', sub:'Designing 2 character options tailored to their audience', p:50, orb:'🎭' },
-  { title:'Writing proposal copy...', sub:'Generating 9 slides in notso.ai voice & style', p:70, orb:'✍️' },
-  { title:'Adding data & insights...', sub:'Pulling relevant market stats for their industry', p:85, orb:'📊' },
-  { title:'Finalising your pitch...', sub:'Polishing every slide for maximum impact', p:95, orb:'✨' },
+  { title:'Mapping opportunities...', sub:'Connecting client context to notso.ai capabilities', p:25, orb:'🗺️' },
+  { title:'Sending brief to Claude...', sub:'Uploading client data + pitch brief to Anthropic', p:35, orb:'📡' },
+  { title:'Claude is reading...', sub:'Parsing your client description and pitch context', p:45, orb:'🧠' },
+  { title:'Creating mascot concept...', sub:'Designing a character tailored to the audience', p:55, orb:'🎭' },
+  { title:'Writing proposal copy...', sub:'Drafting 15 slides in notso.ai voice & style', p:70, orb:'✍️' },
+  { title:'Adding data & insights...', sub:'Pulling relevant market stats for their industry', p:80, orb:'📊' },
+  { title:'Finalising your pitch...', sub:'Polishing every slide for maximum impact', p:90, orb:'✨' },
 ];
 
 function animateLoading() {
+  const t0 = Date.now();
   let i = 0;
-  const interval = setInterval(() => {
-    if (i >= loadSteps.length) { clearInterval(interval); return; }
+  // Track both phases on a single state object. The caller used to do
+  // `const x = animateLoading(); clearInterval(x);` — that pattern still
+  // works because our object's [Symbol.toPrimitive] returns the phase-1
+  // ID, AND we wrap `clearInterval` with a helper for the new path.
+  const state = { phase1: null, phase2: null };
+
+  // Phase 1 — scripted narrative
+  state.phase1 = setInterval(() => {
+    if (i >= loadSteps.length) {
+      _origClearInterval(state.phase1); state.phase1 = null;
+      // Hand off to phase 2 (still-working ticker)
+      state.phase2 = _startStillWorkingTicker(t0);
+      return;
+    }
     const s = loadSteps[i];
     document.getElementById('loadTitle').textContent = s.title;
     document.getElementById('loadSub').textContent = s.sub;
     document.getElementById('progressBar').style.width = s.p + '%';
     document.getElementById('loadOrb').textContent = s.orb;
     i++;
-  }, 1400);
-  return interval;
+  }, 3500);
+
+  // Return a function-like object. Callers use it like:
+  //   const handle = animateLoading();
+  //   handle.stop();      ← new
+  //   clearInterval(handle); ← legacy; also works because we override below
+  return {
+    stop() {
+      if (state.phase1) _origClearInterval(state.phase1);
+      if (state.phase2) _origClearInterval(state.phase2);
+      state.phase1 = state.phase2 = null;
+    },
+    // For backwards compat with clearInterval(handle) callers
+    [Symbol.toPrimitive]() { return state.phase1 || state.phase2 || 0; },
+  };
 }
+
+// Phase 2: indeterminate "still thinking" ticker. Cycles 4 messages every
+// 4 seconds + shows elapsed seconds so the user has visible feedback
+// that the request is alive.
+function _startStillWorkingTicker(t0) {
+  const messages = [
+    { title: 'Claude 正在思考⋯', sub: '通常需要 60-120 秒，請耐心等候', orb: '⏳' },
+    { title: 'Still generating⋯', sub: 'Claude 正在把你的客戶資料變成 15 張投影片', orb: '🤔' },
+    { title: '快好了⋯', sub: '正在從草稿轉成結構化 JSON', orb: '📝' },
+    { title: '幾乎完成⋯', sub: '如果超過 3 分鐘還沒回應請打開 console 看錯誤', orb: '🎯' },
+  ];
+  let j = 0;
+  return setInterval(() => {
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
+    const m = messages[j % messages.length];
+    const titleEl = document.getElementById('loadTitle');
+    const subEl = document.getElementById('loadSub');
+    const orbEl = document.getElementById('loadOrb');
+    const barEl = document.getElementById('progressBar');
+    if (titleEl) titleEl.textContent = m.title + '  (' + elapsed + 's)';
+    if (subEl) subEl.textContent = m.sub;
+    if (orbEl) orbEl.textContent = m.orb;
+    if (barEl) {
+      const cur = parseInt(barEl.style.width) || 90;
+      if (cur < 98) barEl.style.width = (cur + 1) + '%';
+    }
+    j++;
+  }, 4000);
+}
+
+// Save real clearInterval before any override
+const _origClearInterval = window.clearInterval;
+// Wrap so that legacy `clearInterval(handle)` callers (where handle is our
+// loading state object, not a raw timer ID) still kill both phases. Works
+// because our object has Symbol.toPrimitive returning the current phase ID,
+// but we ALSO handle the case explicitly here to be safe.
+window.clearInterval = function(id) {
+  if (id && typeof id === 'object' && typeof id.stop === 'function') { id.stop(); return; }
+  return _origClearInterval(id);
+};
 
 /* ─── MAIN GENERATION ─── */
 function showError(msg) {
@@ -2287,14 +2473,8 @@ async function bootstrapFromServerConfig() {
   //     Google Slides still needs server-side Google OAuth we haven't
   //     wired for serverless. PPTX export is now CLIENT-SIDE (html2canvas
   //     + pptxgenjs) so it works fine on Vercel — no longer hidden.
-  if (cfg.isVercel) {
-    const hideSelectors = [
-      'button[onclick="sendToGoogleSlides()"]',
-    ];
-    hideSelectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => { el.style.display = 'none'; });
-    });
-  }
+  // (sendToGoogleSlides button has been removed from the export bar
+  //  pending re-design; no Vercel-only hiding needed.)
 
   // (3) Render the preset bar (one-click "load Save the Children") at the
   //     top of Step 1, visible whenever fixtures exist.
@@ -2959,28 +3139,51 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
 
 /* ─── RENDER ALL SLIDES ─── */
 /* ─── 18-SLIDE DEFINITION ─── */
+// SLIDE CATALOGUE — display order + preset membership.
+//
+// ── ORDERING ──
+// Array order = the order slides appear in the picker AND the order
+// they're sent to /api/preview. Server (generate_html.js) honours the
+// order of the `selectedSlides` array verbatim, so reordering here
+// reorders the rendered deck. The internal `id` codes (s1, s3, …) stay
+// unchanged for backwards-compatibility with mascot-slot keys, fixtures,
+// generate.py renderers, and saved-deck JSON — only the *array position*
+// is what defines the new sequence.
+//
+// ── HIDDEN SLIDES ──
+// s2 Table of Contents — intentionally removed (decks read better without
+//   an explicit TOC slide; the cover already telegraphs scope).
+// s4 Market Opportunity — removed per user request (always made the deck
+//   feel pitchier than necessary).
+// s13 ROI Evidence — removed per user request.
+//
+// ── PRESETS ──
+// 'first'  = 第一次提報 (first-time pitch, 8 slides — quick intro deck)
+// 'second' = 第二次提報 (follow-up pitch, all 15 slides — full deck)
+// Every slide carries 'second'; only the 8 first-pitch slides also carry
+// 'first'. Default selection = 'second' (full deck), and clicking
+// 第一次提報 filters down. Old 'full'/'core'/'pitch' tags retired.
 const ALL_SLIDES = [
-  { id:'s1',  icon:'🎯', label:'Cover',               key:'s1',  preset:['full','core','pitch'] },
-  { id:'s2',  icon:'📋', label:'Table of Contents',    key:'s2',  preset:['full','core'] },
-  { id:'s3',  icon:'😟', label:'Pain Points',          key:'s3',  preset:['full','core','pitch'] },
-  { id:'s4',  icon:'📈', label:'Market Opportunity',   key:'s4',  preset:['full','core'] },
-  { id:'s5',  icon:'✨', label:'Core Features',        key:'s5',  preset:['full','core','pitch'] },
-  { id:'s6',  icon:'🎭', label:'Mascot Selection',     key:'s6',  preset:['full','core'] },
-  { id:'s7',  icon:'🎨', label:'Mascot Design',        key:'s7',  preset:['full'] },
-  { id:'s8',  icon:'😊', label:'Personality & Empathy', key:'s8', preset:['full'] },
-  { id:'s9',  icon:'💬', label:'Chat Mock-up',         key:'s9',  preset:['full','core','pitch'] },
-  { id:'s10', icon:'🔀', label:'Chatflow Design',      key:'s10', preset:['full'] },
-  { id:'s11', icon:'🧠', label:'Knowledge Base',       key:'s11', preset:['full'] },
-  { id:'s12', icon:'📊', label:'Data & Insights',      key:'s12', preset:['full','core','pitch'] },
-  { id:'s13', icon:'💰', label:'ROI Evidence',          key:'s13', preset:['full','core'] },
-  { id:'s14', icon:'🗺️', label:'Roadmap',              key:'s14', preset:['full'] },
-  { id:'s15', icon:'💰', label:'Pricing',               key:'s15', preset:['full','core','pitch'] },
-  { id:'s16', icon:'🪧', label:'Promo Materials',       key:'s16', preset:['full'] },
-  { id:'s17', icon:'📜', label:'Licensing',              key:'s17', preset:['full'] },
-  { id:'s18', icon:'🙏', label:'Thank You',             key:'s18', preset:['full','core','pitch'] },
+  { id:'s1',  icon:'🎯', label:'Cover',                key:'s1',  preset:['first','second'] },
+  { id:'s3',  icon:'😟', label:'Pain Points',          key:'s3',  preset:['second'] },
+  { id:'s7',  icon:'🎨', label:'Mascot Design',        key:'s7',  preset:['first','second'] },
+  { id:'s5',  icon:'✨', label:'Core Features',        key:'s5',  preset:['first','second'] },
+  { id:'s6',  icon:'🎭', label:'Mascot Selection',     key:'s6',  preset:['first','second'] },
+  { id:'s8',  icon:'😊', label:'Personality & Empathy', key:'s8', preset:['first','second'] },
+  { id:'s9',  icon:'💬', label:'Chat Mock-up',         key:'s9',  preset:['first','second'] },
+  { id:'s10', icon:'🔀', label:'Chatflow Design',      key:'s10', preset:['second'] },
+  { id:'s11', icon:'🧠', label:'Knowledge Base',       key:'s11', preset:['second'] },
+  { id:'s12', icon:'📊', label:'Data & Insights',      key:'s12', preset:['second'] },
+  { id:'s14', icon:'🗺️', label:'Roadmap',              key:'s14', preset:['second'] },
+  { id:'s15', icon:'💰', label:'Pricing',               key:'s15', preset:['second'] },
+  { id:'s16', icon:'🪧', label:'Promo Materials',       key:'s16', preset:['first','second'] },
+  { id:'s17', icon:'📜', label:'Licensing',              key:'s17', preset:['second'] },
+  { id:'s18', icon:'🙏', label:'Thank You',             key:'s18', preset:['first','second'] },
 ];
 
-let selectedSlides = new Set(ALL_SLIDES.filter(s => s.preset.includes('core')).map(s => s.id));
+// Default = full 15-slide deck ("第二次提報"). Users click 第一次提報
+// to filter down to the 8-slide quick-intro variant.
+let selectedSlides = new Set(ALL_SLIDES.filter(s => s.preset.includes('second')).map(s => s.id));
 
 function toggleSlide(id) {
   if (selectedSlides.has(id)) selectedSlides.delete(id);
@@ -2992,6 +3195,17 @@ function setPreset(preset) {
   selectedSlides = new Set(ALL_SLIDES.filter(s => s.preset.includes(preset)).map(s => s.id));
   updateSlideSelection();
 }
+
+// Return selected slide IDs in the canonical ALL_SLIDES display order.
+// Critical because `selectedSlides` is a Set whose iteration order depends
+// on the sequence of toggleSlide() calls — if the user un-checked then
+// re-checked s3, s3 moves to the end of the Set, and Array.from() would
+// send the deck to the server in a scrambled order. The server respects
+// the order it receives, so we always rebuild from the spec order.
+function _orderedSelectedSlides() {
+  return ALL_SLIDES.filter(s => selectedSlides.has(s.id)).map(s => s.id);
+}
+window._orderedSelectedSlides = _orderedSelectedSlides;
 
 function updateSlideSelection() {
   ALL_SLIDES.forEach(s => {
@@ -3045,21 +3259,62 @@ const SLIDE_RENDERERS = {
 };
 
 function renderAllSlides(d, info) {
+  // Preset bar — two-button switch between first-pitch and follow-up
+  // decks. Was previously three small buttons (Full/Core/Pitch) the
+  // user found "not obvious enough"; redesigned as larger pill-style
+  // toggles in a coloured container so they read as the primary entry
+  // point, not chrome. Labels go through t() so the bar reflects the
+  // current language.
+  const firstCount = ALL_SLIDES.filter(s => s.preset.includes('first')).length;
+  const secondCount = ALL_SLIDES.filter(s => s.preset.includes('second')).length;
+  // Build the slide-list tooltips dynamically from ALL_SLIDES so they
+  // never drift from the actual preset definitions. Each tooltip lists
+  // the exact slides the preset will select, so the user knows what
+  // they're getting before clicking.
+  const firstSlides = ALL_SLIDES.filter(s => s.preset.includes('first')).map(s => s.label).join(' · ');
+  const secondSlides = ALL_SLIDES.filter(s => s.preset.includes('second')).map(s => s.label).join(' · ');
+  const firstTip = t('preset.first') + ' (' + firstCount + ' 張):\n' + firstSlides;
+  const secondTip = t('preset.second') + ' (' + secondCount + ' 張):\n' + secondSlides;
   const presetBar = `
-    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-      <span style="font-size:12px;font-weight:700;color:var(--gray-500)">PRESETS:</span>
-      <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px" onclick="setPreset('full')">Full (18)</button>
-      <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px" onclick="setPreset('core')">Core (10)</button>
-      <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px" onclick="setPreset('pitch')">Pitch (7)</button>
+    <div style="background:#F0FDF4;border:1.5px solid #16A34A;border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <span data-i18n="preset.bar.label" style="font-size:13px;font-weight:800;color:#15803D;letter-spacing:0.5px">${t('preset.bar.label')}</span>
+      <button class="btn" title="${firstTip.replace(/"/g,'&quot;')}" style="font-size:13px;padding:7px 16px;background:#fff;color:#15803D;border:1.5px solid #16A34A;border-radius:8px;font-weight:700;cursor:pointer" onclick="setPreset('first')" data-i18n="preset.first">${t('preset.first')} (${firstCount})</button>
+      <button class="btn" title="${secondTip.replace(/"/g,'&quot;')}" style="font-size:13px;padding:7px 16px;background:#16A34A;color:#fff;border:1.5px solid #16A34A;border-radius:8px;font-weight:700;cursor:pointer" onclick="setPreset('second')" data-i18n="preset.second">${t('preset.second')} (${secondCount})</button>
+      <span style="margin-left:auto;font-size:11px;color:#15803D;opacity:.8" data-i18n="preset.bar.hint">${t('preset.bar.hint')}</span>
     </div>
     <div style="background:#FFFBEA;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400E;line-height:1.5">
       <strong>✨ Edit tips:</strong> Double-click any text to edit it directly (Enter to save, Esc to cancel). Or click the <strong>✨ AI edit</strong> button on any slide to ask AI to rewrite it with your suggestion.
     </div>`;
 
+  // Helper: which mascot(s) appear on each slide.
+  // Returns an array of data-URL strings (1 or 3) the slide-card should
+  // thumbnail in the top bar. Pulls from mascotImages (Step 2 selections)
+  // so what the picker shows = what the rendered slide will actually use.
+  const _mascotThumbsForSlide = (sid) => {
+    const out = [];
+    const get = (sel) => (mascotSelections && typeof mascotSelections[sel] === 'number' &&
+                          mascotImages && mascotImages[mascotSelections[sel]])
+                          ? mascotImages[mascotSelections[sel]].data_url : null;
+    const a = get('option_a'), b = get('option_b'), c = get('option_c');
+    // s6 Mascot Selection shows three side-by-side (A+B+C variants).
+    if (sid === 's6') { [a, b, c].forEach(x => x && out.push(x)); return out; }
+    // Every other slide uses the cover mascot (option_a) when present.
+    if (a) out.push(a);
+    return out;
+  };
+
   document.getElementById('slidesList').innerHTML = presetBar + ALL_SLIDES.map((s, i) => {
     const checked = selectedSlides.has(s.id);
     const renderer = SLIDE_RENDERERS[s.id];
     const body = renderer ? renderer(d, info) : '<em>—</em>';
+    // Tiny mascot strip in the top bar — gives the user instant visual
+    // confirmation of which mascot lands on which slide BEFORE clicking
+    // through to preview. Empty if no mascots selected yet.
+    const thumbUrls = _mascotThumbsForSlide(s.id);
+    const thumbsHtml = thumbUrls.length ? `
+        <div class="slide-mascot-thumbs" title="已指派到這張：${thumbUrls.length} 個 mascot" style="display:flex;gap:4px;margin-left:8px;align-items:center">
+          ${thumbUrls.map((u, k) => `<img src="${u}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;background:#f3f4f6;border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,0.1)${k>0?';margin-left:-10px':''}" alt="mascot ${k+1}">`).join('')}
+        </div>` : '';
     return `
     <div class="slide-card ${checked?'selected':'deselected'}" id="card-${s.id}">
       <div class="slide-top">
@@ -3069,6 +3324,8 @@ function renderAllSlides(d, info) {
         <div class="slide-num">${String(i+1).padStart(2,'0')}</div>
         <span class="slide-icon">${s.icon}</span>
         <span class="slide-label">${s.label}</span>
+        ${thumbsHtml}
+        <button class="slide-edit-btn" onclick="event.stopPropagation();regenerateSingleSlide('${s.id}','${s.label.replace(/'/g,"\\'")}')" title="重生這張投影片（自動生成新內容，不影響其他）">🔁 重生</button>
         <button class="slide-edit-btn" onclick="event.stopPropagation();openEditModal('${s.id}','${s.label.replace(/'/g,"\\'")}')" title="Ask AI to rewrite this slide">✨ AI edit</button>
       </div>
       <div class="slide-body" data-slide="${s.id}">${body}</div>
@@ -3523,6 +3780,84 @@ function rThankYou(d, info) {
   `;
 }
 
+/* ─── EXPORT FILENAME HELPER ───
+ * Standard format: notso-{client}-{preset}-{YYYY-MM-DD}.{ext}
+ *   - client  = lowercased + non-word chars stripped → "miniso", "yazio"
+ *   - preset  = "first" / "second" based on selectedSlides composition
+ *   - date    = ISO YYYY-MM-DD so files sort chronologically
+ * Falls back gracefully when client.name is empty or preset is ambiguous. */
+function _buildExportFilename(ext) {
+  let clientSlug = ((client && client.name) || 'draft')
+    .toLowerCase()
+    .replace(/[^a-z0-9一-龥ぁ-んァ-ンー]/gi, '-')   // keep CJK
+    .replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!clientSlug) clientSlug = 'draft';
+  // Detect preset from current selection: if it matches the 'first' set
+  // exactly we tag "first", else if it matches 'second' we tag "second",
+  // else "custom" (user has hand-picked).
+  let presetTag = 'custom';
+  try {
+    const sel = (typeof selectedSlides !== 'undefined') ? selectedSlides : new Set();
+    const firstIds = new Set(ALL_SLIDES.filter(s => s.preset.includes('first')).map(s => s.id));
+    const secondIds = new Set(ALL_SLIDES.filter(s => s.preset.includes('second')).map(s => s.id));
+    const matches = (a, b) => a.size === b.size && Array.from(a).every(x => b.has(x));
+    if (matches(sel, firstIds)) presetTag = 'first';
+    else if (matches(sel, secondIds)) presetTag = 'second';
+  } catch (_) {}
+  const today = new Date().toISOString().slice(0, 10);
+  return `notso-${clientSlug}-${presetTag}-pitch-${today}.${ext}`;
+}
+
+/* ─── EXPORT PROGRESS OVERLAY ───
+ * Full-screen modal with animated spinner + step-by-step status text.
+ * Lives in DOM only while an export is in flight — created on demand,
+ * removed on completion or error. Caller advances the text via
+ * _updateExportProgress() so users see "Preparing… → Server rendering…
+ * → Downloading…" instead of a frozen button. Critical for PDF: server-
+ * side Puppeteer can take 30-60s and a silent button looked frozen. */
+function _showExportProgress(initialText) {
+  let m = document.getElementById('exportProgressOverlay');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'exportProgressOverlay';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100000;display:flex;align-items:center;justify-content:center;font-family:var(--font,sans-serif)';
+    m.innerHTML =
+      '<div style="background:#fff;border-radius:16px;padding:32px 40px;box-shadow:0 20px 60px rgba(0,0,0,0.3);min-width:380px;max-width:520px;text-align:center">' +
+        '<div id="exportProgressSpinner" style="font-size:56px;line-height:1;animation:exportSpin 1.5s linear infinite;margin-bottom:20px">⏳</div>' +
+        '<div id="exportProgressStatus" style="font-size:16px;font-weight:700;color:#111;margin-bottom:10px;min-height:24px">' + (initialText || '準備中…') + '</div>' +
+        '<div id="exportProgressHint" style="font-size:12px;color:#6b7280;line-height:1.5;max-width:380px;margin:0 auto"></div>' +
+        '<div id="exportProgressElapsed" style="font-size:11px;color:#9ca3af;margin-top:14px;font-family:ui-monospace,monospace"></div>' +
+      '</div>' +
+      '<style>@keyframes exportSpin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }</style>';
+    document.body.appendChild(m);
+  }
+  // Reset state for a new run
+  document.getElementById('exportProgressStatus').textContent = initialText || '準備中…';
+  document.getElementById('exportProgressHint').textContent = '';
+  document.getElementById('exportProgressElapsed').textContent = '';
+  // Elapsed-time ticker so users see the clock moving even if nothing else does.
+  if (window._exportProgressTimer) clearInterval(window._exportProgressTimer);
+  const t0 = Date.now();
+  window._exportProgressTimer = setInterval(() => {
+    const el = document.getElementById('exportProgressElapsed');
+    if (!el) { clearInterval(window._exportProgressTimer); return; }
+    el.textContent = '已花費 ' + ((Date.now() - t0) / 1000).toFixed(0) + ' 秒';
+  }, 250);
+}
+function _updateExportProgress(text, hint) {
+  const status = document.getElementById('exportProgressStatus');
+  const hintEl = document.getElementById('exportProgressHint');
+  if (status) status.textContent = text;
+  if (hintEl && typeof hint === 'string') hintEl.textContent = hint;
+}
+function _hideExportProgress() {
+  if (window._exportProgressTimer) {
+    clearInterval(window._exportProgressTimer);
+    window._exportProgressTimer = null;
+  }
+  document.getElementById('exportProgressOverlay')?.remove();
+}
+
 /* ─── SERVER-SIDE EXPORT (PPTX & PDF) ─── */
 function stripEmoji(str) {
   if (!str) return '';
@@ -3538,16 +3873,19 @@ async function serverExport(format) {
   const btn = event?.target;
   const origText = btn?.textContent;
   if (btn) { btn.textContent = 'Generating...'; btn.disabled = true; }
+  _showExportProgress(format === 'pdf' ? '準備 PDF…' : '準備 PPTX…');
 
   try {
     // Downscale mascots to keep the request body under Vercel's 4.5MB limit.
     // 768px keeps PDF quality high at the ≤480px slot sizes we render into
     // while cutting payload ~4× vs. raw 1024×1024 outputs.
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
+    _updateExportProgress('壓縮 mascot 圖片…', '把每個 mascot 縮到 640px 以避免超過 Vercel 4.5 MB payload 限制');
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 640);
+    _updateExportProgress('上傳到伺服器渲染…', '伺服器用 Puppeteer 把 HTML 渲染成 PDF — 通常需要 20-60 秒');
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format, proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selectedSlides), mascotImages: shrunkMascots })
+      body: JSON.stringify({ format, proposal, client: _slimClientForRender(client), selectedSlides: _orderedSelectedSlides(), mascotImages: shrunkMascots })
     });
 
     if (!res.ok) {
@@ -3555,14 +3893,17 @@ async function serverExport(format) {
       throw new Error(err.error || 'Generation failed');
     }
 
+    _updateExportProgress('下載檔案…', '伺服器已渲染完成');
     const blob = await res.blob();
-    const ext = format === 'pdf' ? '.pdf' : '.pptx';
-    const filename = 'notso-proposal-' + (client.name || 'draft').replace(/[^\w\-]/g, '') + ext;
+    const filename = _buildExportFilename(format);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
+    _updateExportProgress('✅ 完成！', '檔案應該已開始下載');
+    setTimeout(_hideExportProgress, 1200);
   } catch (err) {
+    _hideExportProgress();
     console.error(format + ' export error:', err);
     // The showError() helper renders inline on Step 1; if user is on
     // Step 3 we still show it but scroll the viewport to the top so it's
@@ -3612,11 +3953,11 @@ async function previewAndEdit() {
     // stays well under Vercel's 4.5MB serverless limit. Without this,
     // 8+ full-res mascots (~8MB total) trigger a 413 and the gateway
     // returns an HTML error page that blows up JSON.parse.
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 640);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selectedSlides), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: _orderedSelectedSlides(), mascotImages: shrunkMascots })
     });
     // Guard against Vercel edge errors (HTML gateway responses) — read as
     // text first, then try to parse. This turns the old "Unexpected token R"
@@ -3626,6 +3967,12 @@ async function previewAndEdit() {
     try { data = JSON.parse(raw); }
     catch (_) {
       const snippet = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+      // 413 path — Vercel rejects the request before it ever hits server.js,
+      // so the response is a plain-text gateway message, not JSON. Surface
+      // an actionable hint instead of the raw 'FUNCTION_PAYLOAD_TOO_LARGE'.
+      if (resp.status === 413 || /payload.too.large|entity too large/i.test(snippet)) {
+        throw new Error('Preview failed (HTTP 413): 上傳資料太大（Vercel 上限 4.5 MB）。請到 Step 2 減少 mascot 數量、或重新生成更小的 mascot 圖檔。');
+      }
       throw new Error(`Preview failed (HTTP ${resp.status}): ${snippet || 'server returned non-JSON response'}`);
     }
     if (!resp.ok || !data.success) throw new Error(data.error || 'Preview failed');
@@ -3808,7 +4155,7 @@ async function exportPDFFromPreview() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `notso-proposal-${(client.name || 'draft').replace(/[^\w-]/g, '-')}.pdf`;
+    a.download = _buildExportFilename('pdf');
     a.click();
     URL.revokeObjectURL(url);
     btn.textContent = '📄 Export PDF';
@@ -3948,17 +4295,20 @@ async function openUnifiedEditor() {
   // Fetch preview HTML — same call as legacy previewAndEdit.
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 640);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: _orderedSelectedSlides(), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
     let data;
     try { data = JSON.parse(raw); }
     catch (_) {
       const snippet = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+      if (resp.status === 413 || /payload.too.large|entity too large/i.test(snippet)) {
+        throw new Error('Preview failed (HTTP 413): 上傳資料太大（Vercel 上限 4.5 MB）。請到 Step 2 減少 mascot 數量、或重新生成更小的 mascot 圖檔。');
+      }
       throw new Error(`Preview failed (HTTP ${resp.status}): ${snippet || 'server returned non-JSON response'}`);
     }
     if (!resp.ok || !data.success) throw new Error(data.error || 'Preview failed');
@@ -4224,12 +4574,29 @@ function _unifiedSetSaveStatus(text, color) {
   if (color) el.style.color = color;
 }
 
+// Strip every inline `src="data:image/...;base64,..."` from an HTML string
+// before localStorage write. Base64 mascots can easily be 700 KB EACH and
+// nine of them blow past the browser's 5-10 MB localStorage quota in one
+// snapshot. The replacement marker is unique so the restore path can find
+// it and graft the LIVE image src back in by positional match.
+const _IMG_PLACEHOLDER = '__NOTSO_INLINE_IMG__';
+function _stripInlineImagesForSnapshot(html) {
+  if (typeof html !== 'string') return html;
+  // Match the whole src="data:...;base64,..." attribute (both quote styles).
+  return html.replace(
+    /\bsrc\s*=\s*(["'])data:image\/[a-zA-Z0-9.+\-]+;base64,[A-Za-z0-9+/=]+\1/gi,
+    'src="' + _IMG_PLACEHOLDER + '"'
+  );
+}
+
 function _unifiedSnapshotEdits(opts) {
   opts = opts || {};
   if (!(_unifiedSlideNodes instanceof Map) || !_unifiedSlideNodes.size) return false;
   const snap = {};
   _unifiedSlideNodes.forEach((node, sid) => {
-    if (node && typeof node.innerHTML === 'string') snap[sid] = node.innerHTML;
+    if (node && typeof node.innerHTML === 'string') {
+      snap[sid] = _stripInlineImagesForSnapshot(node.innerHTML);
+    }
   });
   if (!Object.keys(snap).length) return false;
   const payload = JSON.stringify({
@@ -4296,9 +4663,27 @@ function _unifiedRestoreEditsFromStorage() {
   if (!snap || !snap.slides) return 0;
   let n = 0;
   _unifiedSlideNodes.forEach((node, sid) => {
-    if (node && typeof snap.slides[sid] === 'string') {
-      try { node.innerHTML = snap.slides[sid]; n++; } catch (_) {}
-    }
+    if (!node || typeof snap.slides[sid] !== 'string') return;
+    try {
+      // Snapshot has `src="__NOTSO_INLINE_IMG__"` where the base64 used to
+      // be. Capture the LIVE image srcs (already in this fresh node) first
+      // — these came from the server's /api/preview response so they're the
+      // current truth. After we overlay the snapshot HTML (text edits), we
+      // graft the live srcs back in by positional match.
+      const liveSrcs = Array.from(node.querySelectorAll('img'))
+        .map(img => img.getAttribute('src') || '');
+      node.innerHTML = snap.slides[sid];
+      const restoredImgs = node.querySelectorAll('img');
+      restoredImgs.forEach((img, i) => {
+        if (img.getAttribute('src') === _IMG_PLACEHOLDER) {
+          // Use the live src at the same position. If counts disagree
+          // (rare — user added or removed an image), fall through and
+          // leave the placeholder visible so the broken state is obvious.
+          if (liveSrcs[i]) img.setAttribute('src', liveSrcs[i]);
+        }
+      });
+      n++;
+    } catch (_) {}
   });
   if (n > 0) {
     const ageMin = Math.round((Date.now() - (snap.ts || 0)) / 60000);
@@ -4313,16 +4698,35 @@ function _unifiedClearStorageSnapshot() {
     .forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
 }
 
-// Auto-save: while the editor is open, save every 5 seconds. Cheap if
+// Debounced snapshot — wired to every contenteditable's `input` event
+// so each keystroke schedules a save 350 ms later. If the user keeps
+// typing, the timer keeps getting pushed out; on the first quiet
+// moment we flush to localStorage. Critical for the "edit then switch
+// slide without blurring" path — the user's last burst of keystrokes
+// would otherwise live only in the DOM of a slide we're about to
+// detach.
+let _unifiedSnapshotDebounce = null;
+function _unifiedScheduleSnapshot() {
+  if (_unifiedSnapshotDebounce) clearTimeout(_unifiedSnapshotDebounce);
+  _unifiedSnapshotDebounce = setTimeout(() => {
+    _unifiedSnapshotDebounce = null;
+    try { _unifiedSnapshotEdits({ silent: true }); } catch (_) {}
+  }, 350);
+}
+
+// Auto-save: while the editor is open, save every 500 ms. Cheap if
 // nothing changed (we'd just overwrite the same JSON). Provides a
 // safety net for browser crashes, force-close, or anything that
-// doesn't fire the close handler.
+// doesn't fire the close handler. 500 ms (down from 1000 ms) so the
+// gap between a user typing and a possible navigation race is tighter
+// — the input-event debounce is the primary save path, this is the
+// belt-and-braces backup.
 let _unifiedAutoSaveTimer = null;
 function _unifiedStartAutoSave() {
   if (_unifiedAutoSaveTimer) return;
   _unifiedAutoSaveTimer = setInterval(() => {
-    try { _unifiedSnapshotEdits(); } catch (_) {}
-  }, 5000);
+    try { _unifiedSnapshotEdits({ silent: true }); } catch (_) {}
+  }, 500);
 }
 function _unifiedStopAutoSave() {
   if (_unifiedAutoSaveTimer) {
@@ -4333,11 +4737,13 @@ function _unifiedStopAutoSave() {
 
 // Force a clean re-fetch from /api/preview. Used by the explicit
 // 🔄 Refresh button in the editor header — the user gets a confirm
-// dialog because this discards their in-flight text edits.
+// dialog because this discards their in-flight text edits. The dialog
+// is language-aware (t()) and explicitly names what will be lost so
+// users don't lose work to a misclick.
 async function refreshUnifiedEditorFromServer() {
   const hasEdits = (_unifiedSlideNodes instanceof Map && _unifiedSlideNodes.size > 0);
   if (hasEdits) {
-    const ok = confirm('Refresh will reload the slides from the server. Any text edits you have made in this editor will be lost. Continue?');
+    const ok = confirm(t('refresh.confirm'));
     if (!ok) return;
   }
   // Wipe both in-memory and localStorage snapshots, then call the
@@ -4640,6 +5046,30 @@ function _unifiedRenderShell(html) {
   document.head.appendChild(chrome);
 
   // 3. Pick out each slide and stash it by id.
+  // ── Preserve in-flight TEXT edits across re-renders ──────────────
+  // Re-render flows (assign mascot, change design style, refresh) rebuild
+  // the slide DOM from fresh server HTML. Previously that silently wiped
+  // the user's text edits — the #1 "my edits disappeared" bug. We snapshot
+  // the LEAF TEXT of the existing nodes (by position) and re-apply it after
+  // the rebuild. Text only, so the fresh images/layout from the server are
+  // never clobbered. Position match is required so a structural style switch
+  // can't garble text.
+  const _leafTextEls = (root) => {
+    const out = [];
+    root.querySelectorAll('div, span, li, td, th').forEach(el => {
+      if (el.children.length === 0 || (el.children.length === 1 && el.children[0].tagName === 'BR')) out.push(el);
+    });
+    return out;
+  };
+  const _prevText = {};
+  try {
+    if (_unifiedSlideNodes instanceof Map && _unifiedSlideNodes.size) {
+      _unifiedSlideNodes.forEach((node, sid) => {
+        if (node) _prevText[sid] = _leafTextEls(node).map(el => el.innerHTML);
+      });
+    }
+  } catch (_) {}
+
   const slideEls = Array.from(doc.querySelectorAll('.slide'));
   _unifiedSlideIds = [];
   _unifiedSlideNodes = new Map();
@@ -4648,6 +5078,21 @@ function _unifiedRenderShell(html) {
     _unifiedSlideIds.push(sid);
     _unifiedSlideNodes.set(sid, el);
   });
+
+  // Re-apply preserved text edits by position (text only; never images).
+  try {
+    Object.keys(_prevText).forEach(sid => {
+      const node = _unifiedSlideNodes.get(sid);
+      if (!node) return;
+      const arr = _prevText[sid];
+      const els = _leafTextEls(node);
+      if (els.length === arr.length) {
+        for (let i = 0; i < els.length; i++) {
+          if (typeof arr[i] === 'string' && els[i].innerHTML !== arr[i]) els[i].innerHTML = arr[i];
+        }
+      }
+    });
+  } catch (_) {}
 
   // 4. Render the bottom thumbnail strip. Each entry is a 16:9 mini
   //    preview with a checkbox + slide number + label. The checkbox
@@ -4836,6 +5281,27 @@ function _unifiedShowSlide(slideId) {
   const stage = document.getElementById('unifiedSlideStageContent');
   const node  = _unifiedSlideNodes.get(slideId);
   if (!node) return;
+
+  // ── Persist in-flight edits BEFORE we detach the previous slide ─
+  // The user could be typing in a contenteditable on the current slide
+  // when they click another slide's tab. Two failure modes if we just
+  // blow away the stage:
+  //   1) The browser's pending IME composition / autocorrect on the
+  //      focused element may never commit, so the last few characters
+  //      live only in the editing buffer, not the DOM.
+  //   2) If anything else (a stray re-render in another tab, an auto-
+  //      save race, etc.) rebuilds _unifiedSlideNodes between now and
+  //      the user navigating back, the in-memory Map reference can be
+  //      replaced — and the only durable copy lives in localStorage.
+  // Force-blur the focused element (commits the IME buffer) and then
+  // snapshot. Silent so the "✓ Saved HH:MM" badge doesn't flicker on
+  // every slide switch.
+  try {
+    const af = document.activeElement;
+    if (af && af.isContentEditable && typeof af.blur === 'function') af.blur();
+  } catch (_) {}
+  try { _unifiedSnapshotEdits({ silent: true }); } catch (_) {}
+
   _unifiedActiveSlideId = slideId;
 
   // Switching slides → drop any active mascot selection (handles were
@@ -4858,6 +5324,14 @@ function _unifiedShowSlide(slideId) {
   frame.className = 'preview-stage-frame';
 
   // Make text content editable (same rule the legacy modal uses).
+  // We attach THREE listeners: focus (outline), blur (snapshot + outline
+  // clear), and input (debounced snapshot). The input listener is the
+  // critical one — if the user types and then navigates to another
+  // slide *without* clicking elsewhere first, blur may fire too late
+  // (after stage.innerHTML='' has detached the element), so we
+  // wouldn't otherwise persist the latest keystrokes. The debounce
+  // keeps localStorage writes off the critical path while still
+  // catching every typing burst inside 350 ms.
   node.querySelectorAll('div, span, li, td, th').forEach(el => {
     if (el.children.length === 0 || (el.children.length === 1 && el.children[0].tagName === 'BR')) {
       if (el.getAttribute('contenteditable')) return;
@@ -4865,7 +5339,8 @@ function _unifiedShowSlide(slideId) {
       el.style.cursor = 'text';
       el.style.outline = 'none';
       el.addEventListener('focus', function() { this.style.outline = '2px solid #3BB28E'; this.style.outlineOffset = '2px'; this.style.borderRadius = '4px'; });
-      el.addEventListener('blur',  function() { this.style.outline = 'none'; });
+      el.addEventListener('blur',  function() { this.style.outline = 'none'; try { _unifiedSnapshotEdits(); } catch (_) {} });
+      el.addEventListener('input', _unifiedScheduleSnapshot);
     }
   });
 
@@ -5759,11 +6234,11 @@ async function _unifiedPlaceBackupMascot(idx, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 640);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: _orderedSelectedSlides(), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
     const data = _safeJsonParse(raw, resp.status);
@@ -5830,11 +6305,11 @@ async function _unifiedSetDesignStyle(styleId) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 640);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: _orderedSelectedSlides(), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
     const data = _safeJsonParse(raw, resp.status);
@@ -6454,11 +6929,11 @@ async function _unifiedPlaceAsset(assetId, slotKey) {
 
   try {
     const selected = getSelectedSlides();
-    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 1024);
+    const shrunkMascots = await _shrinkMascotMap(savedMascotPaths || {}, 640);
     const resp = await fetch('/api/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selected), mascotImages: shrunkMascots })
+      body: JSON.stringify({ proposal, client: _slimClientForRender(client), selectedSlides: _orderedSelectedSlides(), mascotImages: shrunkMascots })
     });
     const raw = await resp.text();
     const data = _safeJsonParse(raw, resp.status);
@@ -6780,6 +7255,8 @@ async function exportPDFFromUnifiedEditor() {
   const orig = btn.textContent;
   btn.textContent = '⏳ Exporting...';
   btn.disabled = true;
+  _showExportProgress('準備 PDF…');
+  _updateExportProgress('壓縮投影片內的圖片…', '把每張投影片的 mascot/asset 壓到 800px WebP，避免 payload 超過 Vercel 4.5 MB');
 
   try {
     // Gather slide HTML in display order — and SHRINK every inline
@@ -6843,6 +7320,7 @@ async function exportPDFFromUnifiedEditor() {
         'Try regenerating with fewer slides selected, or remove very-high-resolution custom uploads.'
       );
     }
+    _updateExportProgress('上傳到伺服器渲染…', `Payload ${sizeMB.toFixed(2)} MB · ${_unifiedSlideIds.length} 張投影片 · Puppeteer 通常需要 20-60 秒，請耐心等候`);
     const resp = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -6864,14 +7342,18 @@ async function exportPDFFromUnifiedEditor() {
       } catch (_) {}
       throw new Error(`HTTP ${resp.status} ${resp.statusText}${serverMsg ? ' — ' + serverMsg : ''}`);
     }
+    _updateExportProgress('下載 PDF…', '伺服器已渲染完成，正在傳輸檔案');
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `notso-proposal-${(client.name || 'draft').replace(/[^\w-]/g, '-')}.pdf`;
+    a.download = _buildExportFilename('pdf');
     a.click();
     URL.revokeObjectURL(url);
+    _updateExportProgress('✅ 完成！', '檔案應該已開始下載');
+    setTimeout(_hideExportProgress, 1200);
   } catch (err) {
+    _hideExportProgress();
     alert('Export failed: ' + err.message);
   } finally {
     btn.textContent = orig;
@@ -7022,7 +7504,7 @@ async function exportPPTX() {
     }
 
     setBtns('⏳ Saving…', true);
-    const fileName = 'notso-proposal-' + ((client && client.name) || 'draft').replace(/[^\w-]/g, '-') + '.pptx';
+    const fileName = _buildExportFilename('pptx');
     await pptx.writeFile({ fileName });
   } catch (err) {
     console.error('PPTX export error:', err);
@@ -7074,7 +7556,7 @@ async function generatePPTXBlob() {
   const res = await fetch('/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ format: 'pptx', proposal, client: _slimClientForRender(client), selectedSlides: Array.from(selectedSlides) })
+    body: JSON.stringify({ format: 'pptx', proposal, client: _slimClientForRender(client), selectedSlides: _orderedSelectedSlides() })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -7239,7 +7721,7 @@ async function sendToGoogleSlides() {
     setGSStep(2, 'done', '✅ PPTX generated (' + Math.round(pptxBlob.size / 1024) + ' KB)');
 
     setGSStep(3, 'active', '<span class="gs-spinner"></span> Uploading to Google Drive &amp; converting to Slides...');
-    const filename = 'notso-proposal-' + (client.name || 'draft').replace(/[^\w\-]/g, '') + '.pptx';
+    const filename = _buildExportFilename('pptx');
     const uploadRes = await fetch('/api/gslides/export', {
       method: 'POST',
       headers: {
@@ -7527,6 +8009,236 @@ function loadFromHistory(id) {
     try { saveToHistory(client, proposal); } catch (_) {}
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// SHARE LINK — server-stored, shareable + editable deck links.
+// A deck = proposal + client + mascotPaths (+ transforms / edits),
+// POSTed to /api/deck and re-opened at /p/<id>. Identical look
+// because the shared page re-renders with the SAME renderer.
+// ═══════════════════════════════════════════════════════════════
+let _currentDeckId = null;
+
+async function _buildDeckPayload() {
+  const liteClient = Object.assign({}, client);
+  delete liteClient.mascotRefImages;
+  delete liteClient.mascotRefImage;
+  delete liteClient.clientSiteImage;
+
+  const shrunk = await _shrinkMascotMap(savedMascotPaths || {}, 640);
+  const images = [];
+  const idx = new Map();
+  const tok = (url) => {
+    if (!url) return '';
+    if (!idx.has(url)) { idx.set(url, images.length); images.push(url); }
+    return '__IMG' + idx.get(url) + '__';
+  };
+
+  const mascotPaths = {};
+  for (const [k, v] of Object.entries(shrunk)) { if (v) mascotPaths[k] = tok(v); }
+
+  let editedHtml = null;
+  try {
+    if (typeof _unifiedSlideNodes !== 'undefined' && _unifiedSlideNodes instanceof Map && _unifiedSlideNodes.size) {
+      editedHtml = {};
+      _unifiedSlideNodes.forEach((node, sid) => {
+        if (node && typeof node.innerHTML === 'string') {
+          editedHtml[sid] = node.innerHTML.replace(
+            /data:image\/[a-zA-Z0-9.+\-]+;base64,[A-Za-z0-9+\/=]+/g, (m) => tok(m));
+        }
+      });
+    }
+  } catch (_) {}
+
+  return {
+    proposal,
+    client: liteClient,
+    mascotPaths, images, editedHtml,
+    mascotTransforms: (typeof _mascotTransforms !== 'undefined' && _mascotTransforms) || {},
+    slideAssignments: (typeof _assetSlideAssignments !== 'undefined' && _assetSlideAssignments) || {},
+    mascotSelectionsData: (typeof mascotSelections !== 'undefined' && mascotSelections) || {},
+    selectedSlides: Array.from((typeof selectedSlides !== 'undefined' && selectedSlides) || []),
+    savedAt: Date.now(),
+  };
+}
+
+async function shareDeck() {
+  if (typeof proposal === 'undefined' || !proposal) { alert(t('share.alert.noProposal')); return; }
+  const btns = Array.from(document.querySelectorAll('button[onclick="shareDeck()"]'));
+  const orig = btns.map(b => b.textContent);
+  btns.forEach(b => { b.textContent = t('share.btn.creating'); b.disabled = true; });
+  try {
+    const payload = await _buildDeckPayload();
+    const res = await fetch('/api/deck', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    _currentDeckId = data.id;
+    _showShareModal(data.url);
+  } catch (e) {
+    alert(t('share.error.failed') + (e.message || e));
+  } finally {
+    btns.forEach((b, i) => { b.textContent = orig[i]; b.disabled = false; });
+  }
+}
+
+function _showShareModal(url) {
+  // Rebuild from scratch every call so language changes since last open
+  // are reflected. Cheap because the modal is a single DIV.
+  const existing = document.getElementById('shareModal');
+  if (existing) existing.remove();
+  const m = document.createElement('div');
+  m.id = 'shareModal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:center;justify-content:center';
+  m.innerHTML =
+    '<div style="background:#fff;border-radius:16px;padding:28px;max-width:520px;width:90%;font-family:var(--font,sans-serif);box-shadow:0 12px 40px rgba(0,0,0,.25)">' +
+      '<div style="font-size:18px;font-weight:800;margin-bottom:6px">' + t('share.modal.title') + '</div>' +
+      '<div style="font-size:13px;color:#6b7280;margin-bottom:16px;line-height:1.6">' + t('share.modal.desc') + '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:14px">' +
+        '<input id="shareLinkInput" readonly style="flex:1;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:ui-monospace,monospace">' +
+        '<button onclick="_copyShareLink()" style="padding:10px 16px;border:none;border-radius:8px;background:#111;color:#fff;font-weight:700;cursor:pointer">' + t('share.modal.copy') + '</button>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+        '<button onclick="window.open(document.getElementById(\'shareLinkInput\').value,\'_blank\')" style="padding:8px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer">' + t('share.modal.openView') + '</button>' +
+        '<button onclick="window.open(document.getElementById(\'shareLinkInput\').value+\'/edit\',\'_blank\')" style="padding:8px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer">' + t('share.modal.openEdit') + '</button>' +
+        '<button onclick="document.getElementById(\'shareModal\').remove()" style="padding:8px 14px;border:none;border-radius:8px;background:#f3f4f6;cursor:pointer">' + t('share.modal.close') + '</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(m);
+  m.querySelector('#shareLinkInput').value = url;
+  m.style.display = 'flex';
+}
+
+function _copyShareLink() {
+  const el = document.getElementById('shareLinkInput');
+  if (!el) return;
+  el.select();
+  try { navigator.clipboard.writeText(el.value); } catch (_) { try { document.execCommand('copy'); } catch (__) {} }
+}
+
+function _applyDeckEdits(editedHtml, images) {
+  if (!editedHtml || typeof _unifiedSlideNodes === 'undefined' || !(_unifiedSlideNodes instanceof Map)) return 0;
+  const inl = (s) => String(s).replace(/__IMG(\d+)__/g, (_, n) => (images && images[+n]) || '');
+  let n = 0;
+  _unifiedSlideNodes.forEach((node, sid) => {
+    if (node && typeof editedHtml[sid] === 'string') {
+      try { node.innerHTML = inl(editedHtml[sid]); n++; } catch (_) {}
+    }
+  });
+  return n;
+}
+
+async function saveSharedDeck() {
+  if (!_currentDeckId) { alert(t('share.save.notShared')); return; }
+  const btns = Array.from(document.querySelectorAll('button[onclick="saveSharedDeck()"]'));
+  const orig = btns.map(b => b.textContent);
+  btns.forEach(b => { b.textContent = t('share.save.saving'); b.disabled = true; });
+  try {
+    const payload = await _buildDeckPayload();
+    const res = await fetch('/api/deck/' + _currentDeckId, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    btns.forEach(b => { b.textContent = t('share.save.savedPrefix') + (data.version || ''); b.disabled = false; });
+    setTimeout(() => btns.forEach((b, i) => { b.textContent = orig[i]; }), 1800);
+  } catch (e) {
+    alert(t('share.save.failed') + (e.message || e));
+    btns.forEach((b, i) => { b.textContent = orig[i]; b.disabled = false; });
+  }
+}
+
+function _installSharedBanner(id, editMode) {
+  if (document.getElementById('sharedBanner')) return;
+  const link = location.origin + '/p/' + id;
+  const b = document.createElement('div');
+  b.id = 'sharedBanner';
+  // Stash editMode + link so the banner can re-render itself when the
+  // user switches language while a deck is open. Without this the
+  // banner's button labels stay frozen in whatever language was active
+  // at first render — applyI18n only touches data-i18n nodes.
+  b.dataset.deckId  = id;
+  b.dataset.editMode = editMode ? '1' : '0';
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:#111;color:#fff;padding:8px 16px;display:flex;align-items:center;gap:12px;font-family:var(--font,sans-serif);font-size:13px';
+  b.innerHTML =
+    '<span style="font-weight:800">' + t('share.banner.label') + '</span>' +
+    '<span style="opacity:.7">' + (editMode ? t('share.banner.modeEdit') : t('share.banner.modeView')) + '</span>' +
+    '<span style="flex:1"></span>' +
+    '<button onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + link + '\')" style="padding:5px 12px;border:1px solid #444;border-radius:7px;background:#222;color:#fff;cursor:pointer">' + t('share.banner.copyLink') + '</button>' +
+    (editMode
+      ? '<button onclick="openUnifiedEditor()" style="padding:5px 12px;border:none;border-radius:7px;background:#fff;color:#111;font-weight:700;cursor:pointer">' + t('share.banner.openEditor') + '</button>' +
+        '<button onclick="saveSharedDeck()" style="padding:5px 12px;border:none;border-radius:7px;background:#16A34A;color:#fff;font-weight:700;cursor:pointer">' + t('share.banner.save') + '</button>'
+      : '<button onclick="location.href=\'' + link + '/edit\'" style="padding:5px 12px;border:none;border-radius:7px;background:#fff;color:#111;font-weight:700;cursor:pointer">' + t('share.banner.editBtn') + '</button>');
+  document.body.appendChild(b);
+  document.body.style.paddingTop = '44px';
+}
+
+// Re-render the shared banner with the current language. Called on
+// every setLang() so a user switching EN ↔ 中文 ↔ JP while viewing a
+// /p/<id> page sees the banner's button labels update too.
+function _refreshSharedBanner() {
+  const old = document.getElementById('sharedBanner');
+  if (!old) return;
+  const id = old.dataset.deckId;
+  const editMode = old.dataset.editMode === '1';
+  old.remove();
+  document.body.style.paddingTop = '';
+  _installSharedBanner(id, editMode);
+}
+
+async function _loadSharedDeckFromUrl() {
+  const m = location.pathname.match(/^\/p\/([a-f0-9]{6,32})(\/edit)?\/?$/i);
+  if (!m) return;
+  const id = m[1];
+  const editMode = !!m[2];
+  _currentDeckId = id;
+  try {
+    const res = await fetch('/api/deck/' + id);
+    if (!res.ok) {
+      document.body.innerHTML = '<div style="padding:80px 20px;text-align:center;font-family:sans-serif"><h2>' + t('share.notFound.title') + '</h2><p style="color:#6b7280">' + t('share.notFound.body') + '</p></div>';
+      return;
+    }
+    const rec = await res.json();
+    const d = rec.data || {};
+    const imgs = d.images || [];
+    const inl = (s) => typeof s === 'string' ? s.replace(/__IMG(\d+)__/g, (_, n) => imgs[+n] || '') : s;
+
+    const mascotPaths = {};
+    for (const [k, v] of Object.entries(d.mascotPaths || {})) mascotPaths[k] = inl(v);
+
+    proposal = d.proposal;
+    client = d.client || {};
+    savedMascotPaths = mascotPaths;
+    if (d.mascotTransforms) _mascotTransforms = d.mascotTransforms;
+    if (d.slideAssignments) _assetSlideAssignments = d.slideAssignments;
+    if (d.mascotSelectionsData) mascotSelections = d.mascotSelectionsData;
+    if (Array.isArray(d.selectedSlides) && d.selectedSlides.length) selectedSlides = new Set(d.selectedSlides);
+
+    setStep(3);
+    try { document.getElementById('resultTitle').textContent = 'Proposal for ' + (client.name || ''); } catch (_) {}
+    try { renderAllSlides(proposal, client); } catch (e) { console.error('renderAllSlides failed', e); }
+    _installSharedBanner(id, editMode);
+
+    if (editMode) {
+      try {
+        await openUnifiedEditor();
+        const n = _applyDeckEdits(d.editedHtml, imgs);
+        if (n && typeof _unifiedActiveSlideId !== 'undefined' && _unifiedActiveSlideId) {
+          try { _unifiedShowSlide(_unifiedActiveSlideId); } catch (_) {}
+        }
+      } catch (_) {}
+    }
+  } catch (e) {
+    console.error('shared deck load failed', e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => { setTimeout(_loadSharedDeckFromUrl, 50); });
+window.shareDeck = shareDeck;
+window.saveSharedDeck = saveSharedDeck;
+window._copyShareLink = _copyShareLink;
 
 function reEditFromHistory(id) {
   const history = getHistory();
@@ -8269,6 +8981,340 @@ async function chromaKeyWhiteBackground(dataUrl) {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// _fillInternalHoles — repair "ate the character" bg-remove failures
+// ─────────────────────────────────────────────────────────────────
+// The U2Net / BiRefNet models behind /api/bg-remove are trained on photo
+// portraits. On stylized cartoon mascots they sometimes turn whole
+// regions INSIDE the character transparent — pastel hands, belly, the
+// inner area of an outlined limb — because the model interprets the
+// flat colour as "background noise". The user sees: missing limbs,
+// missing character base colours, hollow body.
+//
+// Fix: connected-component label every TRANSPARENT region. The REAL
+// background is exactly the union of transparent components that touch
+// the image border. Any transparent region NOT touching the border is
+// a HOLE that should never have been carved — re-fill it.
+//
+// Re-fill strategy:
+//   1. Restore alpha 255 for every hole pixel.
+//   2. Repaint RGB by sampling the nearest opaque neighbour ring. This
+//      gives a colour-coherent patch (the hole inherits the surrounding
+//      character colour) rather than leaving black-RGBA from the bg-
+//      removed transparent pixel.
+//
+// Edge case — hole touches a thin sliver of border due to model
+// imprecision: we accept that as "real bg". Anything bigger than
+// MAX_HOLE_FRACTION of the canvas is also left alone so we don't
+// accidentally fill in a legitimately-transparent backdrop on
+// pre-cut PNGs.
+async function _fillInternalHoles(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        if (!w || !h) { resolve(dataUrl); return; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+        const N = w * h;
+
+        // BFS label all transparent regions (alpha < ALPHA_THRESHOLD).
+        // ALPHA_THRESHOLD slightly above 0 so anti-aliased soft edges
+        // belong to the character side, not the hole side.
+        const ALPHA_THRESHOLD = 16;
+        const labels = new Int32Array(N);
+        const touchesBorder = [false]; // index 0 reserved
+        const sizes = [0];
+        const stack = [];
+        for (let seed = 0; seed < N; seed++) {
+          if (labels[seed] !== 0) continue;
+          if (d[seed * 4 + 3] >= ALPHA_THRESHOLD) continue;
+          const lab = sizes.length;
+          sizes.push(0);
+          touchesBorder.push(false);
+          labels[seed] = lab;
+          stack.push(seed);
+          while (stack.length) {
+            const q = stack.pop();
+            sizes[lab]++;
+            const x = q % w;
+            const y = (q - x) / w;
+            if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touchesBorder[lab] = true;
+            if (x + 1 < w) {
+              const np = q + 1;
+              if (labels[np] === 0 && d[np * 4 + 3] < ALPHA_THRESHOLD) { labels[np] = lab; stack.push(np); }
+            }
+            if (x > 0) {
+              const np = q - 1;
+              if (labels[np] === 0 && d[np * 4 + 3] < ALPHA_THRESHOLD) { labels[np] = lab; stack.push(np); }
+            }
+            if (q + w < N) {
+              const np = q + w;
+              if (labels[np] === 0 && d[np * 4 + 3] < ALPHA_THRESHOLD) { labels[np] = lab; stack.push(np); }
+            }
+            if (q >= w) {
+              const np = q - w;
+              if (labels[np] === 0 && d[np * 4 + 3] < ALPHA_THRESHOLD) { labels[np] = lab; stack.push(np); }
+            }
+          }
+        }
+
+        // Cap: never fill a "hole" larger than 35% of the canvas — that
+        // would imply the entire foreground was mis-classified, which is
+        // an unrecoverable failure mode better handled by the chroma-key
+        // fallback.
+        const MAX_HOLE_FRACTION = 0.35;
+        const maxHolePixels = Math.floor(N * MAX_HOLE_FRACTION);
+
+        // Build a mask of pixels to re-fill.
+        const refillMask = new Uint8Array(N);
+        let refillCount = 0;
+        for (let p = 0; p < N; p++) {
+          const lab = labels[p];
+          if (lab === 0) continue;
+          if (touchesBorder[lab]) continue;        // real background
+          if (sizes[lab] > maxHolePixels) continue; // too big — skip
+          refillMask[p] = 1;
+          refillCount++;
+        }
+        if (refillCount === 0) { resolve(dataUrl); return; }
+
+        // For each refill pixel, sample the nearest opaque neighbour by
+        // a small spiral search. The hole gets the colour of the body
+        // around it — no black-on-transparent legacy showing through.
+        const sampleNearestOpaque = (cx, cy) => {
+          for (let r = 1; r <= 12; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+              for (let dx = -r; dx <= r; dx++) {
+                if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue; // ring only
+                const x = cx + dx, y = cy + dy;
+                if (x < 0 || y < 0 || x >= w || y >= h) continue;
+                const i = (y * w + x) * 4;
+                if (d[i + 3] >= 200 && !refillMask[y * w + x]) {
+                  return [d[i], d[i + 1], d[i + 2]];
+                }
+              }
+            }
+          }
+          return null;
+        };
+
+        let filled = 0;
+        for (let p = 0; p < N; p++) {
+          if (!refillMask[p]) continue;
+          const x = p % w, y = (p - x) / w;
+          const rgb = sampleNearestOpaque(x, y);
+          if (!rgb) continue;
+          const i = p * 4;
+          d[i]     = rgb[0];
+          d[i + 1] = rgb[1];
+          d[i + 2] = rgb[2];
+          d[i + 3] = 255;
+          filled++;
+        }
+
+        if (filled > 0) {
+          ctx.putImageData(imgData, 0, 0);
+          if (window._holeFillDebug !== false) {
+            const pct = (filled / N * 100).toFixed(2);
+            console.log('[bg-remove] hole-fill repaired ' + filled + ' interior pixels (' + pct + '% of canvas)');
+          }
+          resolve(canvas.toDataURL('image/png'));
+        } else {
+          resolve(dataUrl);
+        }
+      } catch (e) {
+        console.warn('[bg-remove] hole-fill failed, returning original:', e && e.message);
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// _removeDarkEdgeOutline — strip the "ink halo" AI keeps drawing
+// ─────────────────────────────────────────────────────────────────
+// User complaint: the AI keeps drawing a thin BLACK OUTLINE around
+// the character silhouette, and Replicate's bg-removal can't help
+// because the outline is INSIDE the character (it's part of the
+// generated image, not the background). Prompt-side hardening is
+// unreliable — Gemini routinely ignores "no outline" when the
+// reference image has one. So we strip it pixel-side after bg-remove.
+//
+// Algorithm — "edge despill against an inner sample":
+//   1. Build the alpha-boundary band (every opaque pixel within 4 hops
+//      of a transparent neighbour, up to OUTLINE_THICKNESS pixels deep).
+//   2. For each band pixel, sample the local "inner colour" 8-12 pixels
+//      further inside the character.
+//   3. If the band pixel is materially DARKER than the inner sample
+//      (brightness < inner × OUTLINE_DARK_RATIO), it's outline.
+//      Re-paint it with the inner sample's RGB — shape stays exactly
+//      the same, just the dark ring becomes character colour.
+//   4. Anti-alias the resulting RGB transition by blending halfway-out
+//      pixels at 50%, so we don't replace a sharp black ring with a
+//      sharp colour ring.
+//
+// Why "inner-sample replace" instead of "alpha-erode"?
+//   Eroding alpha would shrink the character by 2-3 pixels and lose
+//   silhouette detail (hand fingers, feather tips, etc.). Re-colouring
+//   the dark band keeps every pixel of shape that bg-removal preserved
+//   — only the colour value of those dark-band pixels changes.
+async function _removeDarkEdgeOutline(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        if (!w || !h) { resolve(dataUrl); return; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+        const N = w * h;
+
+        const ALPHA_OPAQUE = 200;        // count as opaque for boundary detection
+        const ALPHA_TRANSPARENT = 32;    // count as background for boundary detection
+        const OUTLINE_THICKNESS = 4;     // search this many pixels into the band
+        const INNER_SAMPLE_DEPTH = 10;   // sample inner colour this many hops inside
+        const OUTLINE_DARK_RATIO = 0.65; // band pixel darker than inner × 0.65 = outline
+        const OUTLINE_ABS_BRIGHTNESS = 110; // also cap at absolute brightness — anything
+                                            // above 110/255 is unlikely to be ink outline
+
+        const bri = (i) => 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+
+        // ── Step 1: BFS-mark the boundary band (depths 1..OUTLINE_THICKNESS) ──
+        // depth[p] = 0 if not in band, otherwise the hop count from nearest
+        // transparent neighbour. Pixels with depth between 1 and
+        // OUTLINE_THICKNESS are candidate outline pixels.
+        const depth = new Uint8Array(N);
+        const queue = [];
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const p = y * w + x;
+            const a = d[p * 4 + 3];
+            if (a < ALPHA_OPAQUE) continue;
+            // Is any 4-neighbour transparent (or off-image)?
+            let touches = false;
+            if (x === 0 || y === 0 || x === w-1 || y === h-1) touches = true;
+            else {
+              if (d[((y-1)*w + x)*4 + 3] < ALPHA_TRANSPARENT) touches = true;
+              else if (d[((y+1)*w + x)*4 + 3] < ALPHA_TRANSPARENT) touches = true;
+              else if (d[(y*w + (x-1))*4 + 3] < ALPHA_TRANSPARENT) touches = true;
+              else if (d[(y*w + (x+1))*4 + 3] < ALPHA_TRANSPARENT) touches = true;
+            }
+            if (touches) { depth[p] = 1; queue.push(p); }
+          }
+        }
+        // Grow band inward up to OUTLINE_THICKNESS.
+        let head = 0;
+        while (head < queue.length) {
+          const p = queue[head++];
+          const dd = depth[p];
+          if (dd >= OUTLINE_THICKNESS) continue;
+          const x = p % w, y = (p - x) / w;
+          const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+          for (const [dx, dy] of dirs) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const np = ny * w + nx;
+            if (depth[np] !== 0) continue;
+            if (d[np*4 + 3] < ALPHA_OPAQUE) continue;
+            depth[np] = dd + 1;
+            queue.push(np);
+          }
+        }
+
+        // ── Step 2: for each band pixel, sample inner colour ──
+        // Walk inward (opposite of "toward nearest transparent neighbour")
+        // up to INNER_SAMPLE_DEPTH hops, looking for a fully-opaque pixel
+        // that is NOT itself in the band. Multiple samples averaged for
+        // stability against texture noise.
+        const sampleInner = (cx, cy) => {
+          let sumR = 0, sumG = 0, sumB = 0, cnt = 0;
+          const tries = [
+            [INNER_SAMPLE_DEPTH, 0], [-INNER_SAMPLE_DEPTH, 0],
+            [0, INNER_SAMPLE_DEPTH], [0, -INNER_SAMPLE_DEPTH],
+            [INNER_SAMPLE_DEPTH, INNER_SAMPLE_DEPTH],
+            [-INNER_SAMPLE_DEPTH, -INNER_SAMPLE_DEPTH],
+            [INNER_SAMPLE_DEPTH, -INNER_SAMPLE_DEPTH],
+            [-INNER_SAMPLE_DEPTH, INNER_SAMPLE_DEPTH],
+          ];
+          for (const [dx, dy] of tries) {
+            const x = cx + dx, y = cy + dy;
+            if (x < 0 || y < 0 || x >= w || y >= h) continue;
+            const np = y * w + x;
+            if (depth[np] !== 0) continue;                  // skip band
+            if (d[np * 4 + 3] < ALPHA_OPAQUE) continue;     // skip transparent
+            sumR += d[np*4]; sumG += d[np*4 + 1]; sumB += d[np*4 + 2]; cnt++;
+          }
+          if (cnt === 0) return null;
+          return [sumR / cnt, sumG / cnt, sumB / cnt];
+        };
+
+        // ── Step 3: recolour dark band pixels ──
+        let recoloured = 0;
+        const newR = new Float32Array(N);  // store result first, then commit
+        const newG = new Float32Array(N);
+        const newB = new Float32Array(N);
+        const touched = new Uint8Array(N);
+        for (let p = 0; p < N; p++) {
+          if (depth[p] === 0) continue;
+          const i = p * 4;
+          const x = p % w, y = (p - x) / w;
+          const inner = sampleInner(x, y);
+          if (!inner) continue;
+          const innerBri = 0.299 * inner[0] + 0.587 * inner[1] + 0.114 * inner[2];
+          const pixBri = bri(i);
+          const isDark = (pixBri < innerBri * OUTLINE_DARK_RATIO) &&
+                          (pixBri < OUTLINE_ABS_BRIGHTNESS);
+          if (!isDark) continue;
+          // Depth 1-2 = closest to edge → 100% replace.
+          // Depth 3-4 = inner-band → blend with original to soften the
+          // colour transition so we don't replace a black ring with a
+          // sharp colour ring.
+          const blend = (depth[p] <= 2) ? 1.0 : (1.0 - (depth[p] - 2) * 0.30);
+          newR[p] = d[i]     * (1 - blend) + inner[0] * blend;
+          newG[p] = d[i + 1] * (1 - blend) + inner[1] * blend;
+          newB[p] = d[i + 2] * (1 - blend) + inner[2] * blend;
+          touched[p] = 1;
+          recoloured++;
+        }
+        if (recoloured === 0) { resolve(dataUrl); return; }
+        for (let p = 0; p < N; p++) {
+          if (!touched[p]) continue;
+          const i = p * 4;
+          d[i]     = Math.round(Math.max(0, Math.min(255, newR[p])));
+          d[i + 1] = Math.round(Math.max(0, Math.min(255, newG[p])));
+          d[i + 2] = Math.round(Math.max(0, Math.min(255, newB[p])));
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        if (window._outlineRmDebug !== false) {
+          const pct = (recoloured / N * 100).toFixed(2);
+          console.log('[bg-remove] outline-strip recoloured ' + recoloured + ' edge pixels (' + pct + '% of canvas)');
+        }
+        resolve(canvas.toDataURL('image/png'));
+      } catch (e) {
+        console.warn('[bg-remove] outline-strip failed, returning original:', e && e.message);
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
 // removeBackgroundForImage — top-level "make this image transparent"
 // ─────────────────────────────────────────────────────────────────
 // Routes through /api/bg-remove (Replicate / 851-labs/background-remover)
@@ -8287,6 +9333,10 @@ async function chromaKeyWhiteBackground(dataUrl) {
 //     "small anti-aliased blob"
 //   - complex/textured backgrounds — chroma-key needs solid colour
 //     fill but the AI model doesn't care
+//
+// Both paths run through _fillInternalHoles before returning — repairs
+// the "U2Net ate the character belly / limbs" failure mode that the
+// model exhibits on stylized cartoon mascots.
 //
 // Both paths return a data URL with PNG transparency.
 async function removeBackgroundForImage(dataUrl, opts = {}) {
@@ -8307,7 +9357,17 @@ async function removeBackgroundForImage(dataUrl, opts = {}) {
       if (resp.ok) {
         const data = await resp.json();
         if (data && data.dataUrl && data.dataUrl.startsWith('data:image/')) {
-          return data.dataUrl;
+          // Two post-process passes — both no-ops on clean cutouts:
+          //   1. _fillInternalHoles  — patch belly/limbs the model ate.
+          //   2. _removeDarkEdgeOutline — strip ink halo the AI drew on
+          //      the silhouette (Gemini/OpenAI keep adding this when the
+          //      reference image had an outline, even though the prompt
+          //      forbids it).
+          try {
+            let url = await _fillInternalHoles(data.dataUrl);
+            url = await _removeDarkEdgeOutline(url);
+            return url;
+          } catch (_) { return data.dataUrl; }
         }
       } else {
         // 402 (no credit), 503 (no token), 500 — fall through silently.
@@ -8327,7 +9387,14 @@ async function removeBackgroundForImage(dataUrl, opts = {}) {
     }
   }
   // Fallback: in-browser canvas chroma-key (the existing algorithm).
-  return chromaKeyWhiteBackground(dataUrl);
+  // Run hole-fill + outline-strip on the result too — same reasoning
+  // as the API branch above.
+  const keyed = await chromaKeyWhiteBackground(dataUrl);
+  try {
+    let url = await _fillInternalHoles(keyed);
+    url = await _removeDarkEdgeOutline(url);
+    return url;
+  } catch (_) { return keyed; }
 }
 
 window.removeBackgroundForImage = removeBackgroundForImage;
@@ -8667,14 +9734,87 @@ function renderMascotGrid() {
 
     card.innerHTML = `
       <div class="mascot-num">#${idx + 1}</div>
+      <button class="mascot-regen-btn" data-idx="${idx}" title="重生這一個 mascot（不影響其他 8 個）" style="position:absolute;top:6px;right:6px;background:rgba(255,255,255,0.95);border:1px solid #e5e7eb;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:5;box-shadow:0 1px 3px rgba(0,0,0,0.1)">⟳</button>
       <img src="${img.data_url}" alt="Mascot option ${idx + 1}" />
       <div class="mascot-label ${labelClass}">${labelText}</div>
     `;
+    // Card click → toggle selection (A/B/C). But the ⟳ button has its
+    // own handler that calls stopPropagation so it doesn't accidentally
+    // cycle the slot when the user just wants to regenerate.
     card.onclick = () => selectMascot(idx);
+    const regenBtn = card.querySelector('.mascot-regen-btn');
+    if (regenBtn) {
+      regenBtn.onclick = (e) => { e.stopPropagation(); regenerateSingleMascot(idx); };
+    }
+    // Make card relative so absolute-positioned ⟳ button anchors correctly.
+    if (!card.style.position) card.style.position = 'relative';
     grid.appendChild(card);
   });
 
   updateMascotConfirmBtn();
+}
+
+// Regenerate a single mascot slot in-place. Calls /api/mascot/generate
+// with numOptions=1, then swaps mascotImages[idx] for the new result.
+// If that mascot was selected as A/B/C, the slot binding stays — only
+// the image changes, so the user doesn't lose their A/B/C choices.
+async function regenerateSingleMascot(idx) {
+  const provider = _getImageProviderConfig();
+  if (!provider.key) {
+    alert((provider.engine === 'openai' ? 'OpenAI' : 'Google Gemini') + ' API key 缺少 — 請回到 Step 1 設定');
+    return;
+  }
+  const card = document.getElementById('mascotCard_' + idx);
+  const img = card && card.querySelector('img');
+  const btn = card && card.querySelector('.mascot-regen-btn');
+  if (img) img.style.opacity = '0.35';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; btn.style.pointerEvents = 'none'; }
+
+  const mascotName = client.mascotName || proposal?.s1?.mascot_name || 'Buddy';
+  const personality = proposal?.s7?.personality || 'friendly, approachable, helpful';
+  const liveRefsRaw = (client.mascotRefImages || []).filter(Boolean);
+  const liveRefs = await Promise.all(liveRefsRaw.map(url => _shrinkDataUrl(url, 1024)));
+  const liveUseExisting = !!(document.getElementById('useExistingMascot') || {}).checked;
+
+  try {
+    const resp = await fetch('/api/mascot/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        geminiKey: provider.engine === 'gemini' ? provider.key : undefined,
+        openaiKey: provider.engine === 'openai' ? provider.key : undefined,
+        imageEngine: provider.engine,
+        clientName: client.name,
+        industry: client.industry,
+        mascotName,
+        personality,
+        color1: client.color1,
+        numOptions: 1,                          // ← KEY DIFFERENCE: just 1 variant
+        engine: document.getElementById('mascotEngine')?.value || 'auto',
+        customPrompt: (document.getElementById('mascotCustomPrompt') || {}).value || undefined,
+        referenceImage: liveRefs[0] || '',
+        referenceImages: liveRefs,
+        useExistingMascot: liveUseExisting,
+        faithfulMode: !!(document.getElementById('mascotFaithful') || {}).checked,
+        mimicMode: !!(document.getElementById('mascotMimicRef') || {}).checked,
+        refPromptOverride: (document.getElementById('mascotRefPromptOverride') || {}).value || '',
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
+    if (!data.images || !data.images.length) throw new Error('伺服器沒回傳圖');
+
+    // Background-remove + replace in place
+    let newUrl = data.images[0].data_url;
+    try { newUrl = await removeBackgroundForImage(newUrl); } catch (_) {}
+    mascotImages[idx] = { ...data.images[0], data_url: newUrl };
+    renderMascotGrid();   // re-renders all cards (keeps A/B/C bindings)
+  } catch (err) {
+    console.error('regen single mascot failed:', err);
+    alert('重生這個 mascot 失敗：' + err.message);
+    if (img) img.style.opacity = '1';
+    if (btn) { btn.disabled = false; btn.textContent = '⟳'; btn.style.pointerEvents = ''; }
+  }
 }
 
 function selectMascot(idx) {
@@ -8765,6 +9905,16 @@ async function confirmMascots() {
     document.getElementById('resultTitle').textContent = 'Proposal for ' + client.name;
     document.getElementById('resultSub').textContent = client.industry + ' · slides ready · mascots included';
     renderAllSlides(proposal, client);
+    // Smooth-scroll the page to the top of Step 3 so the user visibly
+    // sees the transition (previously the page would jump-cut and users
+    // didn't realise the step had advanced).
+    try {
+      requestAnimationFrame(() => {
+        const target = document.getElementById('step3') || document.getElementById('resultTitle');
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        else window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    } catch (_) {}
   } catch (err) {
     btn.textContent = 'Confirm Selection →';
     btn.disabled = false;
@@ -10193,6 +11343,97 @@ async function downloadAssetPackZip() {
     if (dlBtn) { dlBtn.disabled = false; dlBtn.textContent = originalLabel; }
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Single-slide regenerate — one-click "rewrite this slide" with
+   no user input required. Internally uses the same Claude
+   /v1/messages call as the AI edit modal, but seeds the
+   suggestion with a generic "fresh take" prompt so the user
+   doesn't have to type anything. Shows status inline on the
+   card while regenerating.
+   ═══════════════════════════════════════════════════════════ */
+async function regenerateSingleSlide(slideId, slideLabel) {
+  if (!proposal || !proposal[slideId]) return;
+
+  let key = '';
+  try { key = sessionStorage.getItem('claudeKey') || ''; } catch {}
+  if (!key) key = (document.getElementById('claudeKey') || {}).value || '';
+  if (!key) { alert('沒有 Claude API key — 請先在 Step 1 設定後重生整份提案'); return; }
+
+  // Visual loading state on the card
+  const card = document.getElementById('card-' + slideId);
+  const body = card && card.querySelector('.slide-body');
+  const origHtml = body ? body.innerHTML : '';
+  if (body) body.innerHTML = '<div style="padding:20px;text-align:center;color:#9ca3af;font-size:13px"><div style="font-size:32px;animation:spin 2s linear infinite;display:inline-block">⏳</div><div style="margin-top:8px">重生 ' + (slideLabel || slideId) + ' 中⋯ (10-30 秒)</div></div>';
+
+  try {
+    const langMap = {
+      'en':'English','zh-TW':'Traditional Chinese (繁體中文)','ja':'Japanese (日本語)',
+      'nl':'Dutch (Nederlands)','ko':'Korean (한국어)','de':'German (Deutsch)',
+      'fr':'French (Français)','es':'Spanish (Español)'
+    };
+    const langLabel = langMap[(client||{}).lang] || 'English';
+
+    const sysPrompt = 'You are an expert proposal editor for notso.ai. Rewrite ONE slide of a sales proposal with a fresh, more compelling angle. Return ONLY valid JSON — no markdown, no code fences, no prose.';
+    const userPrompt =
+      'Client: ' + ((client||{}).name||'') + ' (' + ((client||{}).industry||'') + ')\n' +
+      'Use case: ' + ((client||{}).useCase||'') + '\n' +
+      'Pitch brief: ' + ((client||{}).brief||'') + '\n' +
+      'Slide key: ' + slideId + '\n' +
+      'Output language: ' + langLabel + '\n\n' +
+      'Current slide JSON:\n' + JSON.stringify(proposal[slideId], null, 2) + '\n\n' +
+      'Rewrite this slide with a DIFFERENT angle — different examples, sharper wording, ' +
+      'maybe a punchier headline. Keep the EXACT SAME top-level JSON structure and keys; ' +
+      'same array lengths. Keep text in ' + langLabel + '. Return ONLY the new JSON object.';
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2500,
+        system: sysPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    });
+    if (!res.ok) {
+      const errBody = await res.text();
+      throw new Error('Claude error ' + res.status + ': ' + errBody.slice(0,200));
+    }
+    const data = await res.json();
+    const text = (data.content || []).map(c => c.text || '').join('').trim();
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('Claude 沒回傳合法 JSON');
+    const newSlide = JSON.parse(m[0]);
+    proposal[slideId] = newSlide;
+    // Re-render just this card body via the slide renderer
+    if (body && typeof SLIDE_RENDERERS[slideId] === 'function') {
+      body.innerHTML = SLIDE_RENDERERS[slideId](proposal, { color1: client.color1 });
+    } else {
+      // Fallback: full re-render
+      renderAllSlides(proposal, { color1: client.color1 });
+    }
+    // Toast-style success on the card
+    if (card) {
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:absolute;top:8px;right:8px;background:#16A34A;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;animation:fadeOut 2.4s forwards';
+      toast.textContent = '✓ 已重生';
+      card.style.position = 'relative';
+      card.appendChild(toast);
+      setTimeout(() => toast.remove(), 2400);
+    }
+  } catch (err) {
+    console.error('regenerate slide failed:', err);
+    if (body) body.innerHTML = origHtml;
+    alert('重生失敗：' + err.message);
+  }
+}
+window.regenerateSingleSlide = regenerateSingleSlide;
 
 /* ═══════════════════════════════════════════════════════════
    #2a — Pencil Edit Modal: AI-assisted slide rewrite

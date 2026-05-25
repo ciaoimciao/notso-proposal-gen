@@ -23,8 +23,17 @@ STYLE_PREFIX = (
     "light on the silhouette. "
     "Large round eyes with a solid black pupil and one small white highlight "
     "point — no iris detail, no eyelashes, no catchlight shapes. "
-    "Thick, dark, prominent eyebrows that carry the emotion. "
-    "No hard black outlines; silhouette is defined by form and rim light. "
+    # Eyebrows: no longer hard-coded. Reference image decides. Forcing thick
+    # dark brows on a reference that had none was breaking faithfulness.
+    # ── CRITICAL: NO OUTLINES (repeated three times for AI compliance) ──
+    "ABSOLUTELY NO OUTLINES OF ANY KIND on the character body silhouette. "
+    "NO black outline, NO dark outline, NO ink outline, NO contour line, "
+    "NO line-art border tracing the character shape. "
+    "The silhouette is defined ONLY by form, volume, and the thin rim light. "
+    "The character edge MUST blend smoothly into the transparent background "
+    "WITHOUT a darker rim — no 'halo of dark pixels' along the perimeter. "
+    "Treat the character like a real 3D vinyl toy photographed against pure "
+    "white: a toy has no outline drawn around it, only soft material edges. "
     "Fully transparent background (PNG with alpha channel, no baked backdrop). "
     "Character is centered, full body visible, slight low-angle hero framing. "
 )
@@ -34,7 +43,10 @@ STYLE_PREFIX = (
 # -----------------------------------------------------------------------------
 NEGATIVE_SUFFIX = (
     "blurry, low quality, distorted, extra limbs, extra fingers, malformed "
-    "hands, hard black outlines, cel shading, anime, manga, comic speed lines, "
+    "hands, hard black outlines, black outline, dark outline, ink outline, "
+    "cartoon outline, contour line around character, line-art border, "
+    "silhouette outline, dark rim around body, black halo at edge, "
+    "cel shading, anime, manga, comic speed lines, "
     "cyberpunk, Y2K, metallic finish, chrome, neon glow, holographic, "
     "plastic shine, glossy surface, glass refraction, "
     "realistic skin pores, realistic hair strands, photorealistic human, "

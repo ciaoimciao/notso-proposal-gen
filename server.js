@@ -23,6 +23,41 @@ const path = require('path');
 const { URL } = require('url');
 const { execFile } = require('child_process');
 
+// ─── .env.local loader (local dev) ───
+// On Vercel, env vars come from the dashboard automatically — no loading
+// needed. Locally, the user keeps secrets in .env.local (Vercel CLI's
+// convention) but plain `node server.js` does NOT auto-read it. Without
+// this, REPLICATE_API_TOKEN / GEMINI_API_KEY etc. silently stay empty and
+// every endpoint falls back to the worse-quality path (e.g. /api/bg-remove
+// returns 503 → client drops to canvas chroma-key instead of U2Net AI).
+// Tiny parser, no `dotenv` dep, same .env semantics: KEY=value lines,
+// `#` comments, optional quotes around values.
+(function loadDotEnvLocal() {
+  for (const fname of ['.env.local', '.env']) {
+    const p = path.join(__dirname, fname);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const txt = fs.readFileSync(p, 'utf8');
+      for (const raw of txt.split('\n')) {
+        const line = raw.trim();
+        if (!line || line.startsWith('#')) continue;
+        const eq = line.indexOf('=');
+        if (eq <= 0) continue;
+        const key = line.slice(0, eq).trim();
+        let val = line.slice(eq + 1).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) ||
+            (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        // Existing process.env wins (so users can override per shell).
+        if (process.env[key] === undefined) process.env[key] = val;
+      }
+    } catch (e) { /* unreadable .env — keep going, env stays empty */ }
+  }
+})();
+
+const deckStore = require('./deck-store');  // shared-deck storage (FS / Vercel Blob)
+
 // ─── NOTSO STYLE LOCK ───
 // Every mascot generation call MUST route through this module so that the
 // rules in notso_style_lock.md are enforced at the prompt layer. Do not
@@ -2392,10 +2427,21 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
           } catch (compErr) {
             console.error(`    ❌ Compositor failed for ${task.label}: ${compErr.message}`);
             console.error(`       stack:`, compErr.stack);
-            lastErr = `compositor: ${compErr.message}`;
-            // Fall through to Gemini path as a fallback. The Gemini prompt
-            // for mock-phone-chat / mock-website is a generic phone/website
-            // mockup, so the user still gets *something* in that asset slot.
+            // HARD FAIL — DO NOT FALL THROUGH TO GEMINI.
+            // Gemini's "phone mockup" prompt produces a stylized illustrated
+            // phone (cartoon body / 3D-render chibi mascot ON the screen),
+            // which is exactly what the user does NOT want. The compositor
+            // is the only correct path; if it dies, the right answer is to
+            // surface that failure so the user can fix the input (missing
+            // mascot, wrong site upload, runtime missing @napi-rs/canvas)
+            // rather than ship a misleading AI-generated mockup.
+            return {
+              id: task.id,
+              category: task.category,
+              label: task.label,
+              ok: false,
+              error: `Mockup compositor failed: ${compErr.message}. The phone/laptop mockups MUST go through the pixel compositor (mockup_compose_v2). AI generation fallback is intentionally disabled for these two slots to avoid the stylized illustrated-mockup look. Check: (1) mascotDataUrl is a valid PNG, (2) mockup-assets/phone-frame.png + laptop-frame.png present, (3) @napi-rs/canvas loaded.`,
+            };
           }
         }
 
@@ -2900,10 +2946,66 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
   }
 
   // ──────────────────────────────────────
+  // SHARED DECKS — server-stored, shareable + editable links
+  //   POST /api/deck             { client, proposal, mascotPaths, ... } → { id, url }
+  //   GET  /api/deck/:id         → { id, version, ts, data }
+  //   PUT  /api/deck/:id         { ...same... } → { id, version }   (new version)
+  //   GET  /api/deck/:id/versions → { id, versions:[{version,ts}] }
+  // The pretty URL /p/:id (below, in STATIC) boots the SPA, which then
+  // fetches /api/deck/:id and renders the exact same HTML deck.
+  // ──────────────────────────────────────
+  if (url.pathname === '/api/deck' && req.method === 'POST') {
+    try {
+      const data = JSON.parse((await collectBody(req)).toString() || '{}');
+      if (!data || !data.proposal) return json(res, 400, { error: 'Missing proposal data' });
+      const rec = await deckStore.createDeck(data);
+      const proto = (req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
+      const host  = req.headers['host'] || 'localhost';
+      return json(res, 200, { id: rec.id, version: rec.version, url: `${proto}://${host}/p/${rec.id}` });
+    } catch (err) {
+      console.error('deck create error:', err);
+      return json(res, 500, { error: 'Save failed: ' + (err.message || err) });
+    }
+  }
+
+  {
+    const m = url.pathname.match(/^\/api\/deck\/([a-f0-9]{6,32})(\/versions)?$/i);
+    if (m) {
+      const id = m[1];
+      const isVersions = !!m[2];
+      try {
+        if (req.method === 'GET' && isVersions) {
+          return json(res, 200, { id, versions: await deckStore.listVersions(id) });
+        }
+        if (req.method === 'GET') {
+          const rec = await deckStore.loadDeck(id);
+          if (!rec) return json(res, 404, { error: 'Deck not found' });
+          return json(res, 200, rec);
+        }
+        if (req.method === 'PUT' || req.method === 'POST') {
+          const data = JSON.parse((await collectBody(req)).toString() || '{}');
+          if (!data || !data.proposal) return json(res, 400, { error: 'Missing proposal data' });
+          const rec = await deckStore.updateDeck(id, data);
+          return json(res, 200, { id, version: rec.version });
+        }
+      } catch (err) {
+        console.error('deck op error:', err);
+        return json(res, 500, { error: 'Deck op failed: ' + (err.message || err) });
+      }
+    }
+  }
+
+  // ──────────────────────────────────────
   // STATIC FILES
   // ──────────────────────────────────────
-  let filePath = url.pathname === '/' ? '/index.html' : url.pathname;
-  filePath = path.join(__dirname, filePath);
+  let filePath;
+  if (/^\/p\/[a-f0-9]{6,32}(\/edit)?\/?$/i.test(url.pathname)) {
+    // Pretty share URL → boot the SPA; the client reads the id from the path.
+    filePath = path.join(__dirname, 'index.html');
+  } else {
+    filePath = url.pathname === '/' ? '/index.html' : url.pathname;
+    filePath = path.join(__dirname, filePath);
+  }
 
   // Prevent directory traversal
   if (!filePath.startsWith(__dirname)) {
