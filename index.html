@@ -462,7 +462,70 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
         </div>
         <div class="form-group">
           <label data-i18n="form.industry">Industry / Sector</label>
-          <input type="text" id="industry" data-i18n-placeholder="form.industry.ph" placeholder="e.g. Retail, Finance, Healthcare" />
+          <input type="text" id="industry" list="industry-suggestions" autocomplete="off" data-i18n-placeholder="form.industry.ph" placeholder="自由打字，或填網址後讓系統偵測" />
+          <!-- Free-text input with built-in HTML5 suggestion list. Users
+               can type literally anything (it's <input type="text">), but
+               they also see a curated dropdown of common verticals so the
+               UX doesn't feel "fixed choices only". The list is also used
+               as fallback when Brandfetch can't auto-detect. -->
+          <datalist id="industry-suggestions">
+            <option value="Retail / Lifestyle"></option>
+            <option value="Retail / Convenience Store"></option>
+            <option value="Retail / Fashion / Apparel"></option>
+            <option value="Food & Beverage / Restaurant chain"></option>
+            <option value="Food & Beverage / Fast food"></option>
+            <option value="Food & Beverage / Coffee chain"></option>
+            <option value="Finance / Banking"></option>
+            <option value="Finance / FinTech"></option>
+            <option value="Finance / Insurance"></option>
+            <option value="Finance / Investment"></option>
+            <option value="Healthcare / Hospital"></option>
+            <option value="Healthcare / Clinic chain"></option>
+            <option value="Healthcare / Telehealth"></option>
+            <option value="Healthcare / Pharmacy"></option>
+            <option value="Health & Nutrition / Mobile App"></option>
+            <option value="Higher Education / University"></option>
+            <option value="Higher Education / MOOC"></option>
+            <option value="K-12 Education"></option>
+            <option value="EdTech / Tutoring"></option>
+            <option value="Telecom / Mobile Carrier"></option>
+            <option value="Telecom / ISP"></option>
+            <option value="Travel / Airline"></option>
+            <option value="Travel / Hotel chain"></option>
+            <option value="Travel / OTA / Booking platform"></option>
+            <option value="Real Estate / Brokerage"></option>
+            <option value="Real Estate / Property tech"></option>
+            <option value="Automotive / OEM"></option>
+            <option value="Automotive / Dealership"></option>
+            <option value="Automotive / EV charging"></option>
+            <option value="Government / Local"></option>
+            <option value="Government / National agency"></option>
+            <option value="Government / Tourism board"></option>
+            <option value="NGO / International"></option>
+            <option value="NGO / Charity"></option>
+            <option value="NGO / Foundation"></option>
+            <option value="Sports / Club"></option>
+            <option value="Sports / League"></option>
+            <option value="Media / News"></option>
+            <option value="Media / Streaming"></option>
+            <option value="Gaming / Mobile"></option>
+            <option value="Gaming / Console"></option>
+            <option value="SaaS / B2B"></option>
+            <option value="SaaS / B2C"></option>
+            <option value="E-commerce / Marketplace"></option>
+            <option value="E-commerce / D2C"></option>
+            <option value="Blockchain / Web3 / Crypto"></option>
+            <option value="Logistics / Last-mile delivery"></option>
+            <option value="Logistics / Freight"></option>
+            <option value="Manufacturing / Consumer goods"></option>
+            <option value="Energy / Utilities"></option>
+            <option value="Beauty / Cosmetics"></option>
+            <option value="Beauty / Skincare"></option>
+            <option value="Pet / Pet care"></option>
+            <option value="Childcare / Parenting"></option>
+            <option value="Real Estate / Hospitality"></option>
+          </datalist>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:4px">💡 直接打字即可（不限選項）。填了 client website 之後點 🎨 Auto-fill colors 也會自動偵測產業。</div>
         </div>
         <div class="form-group full">
           <label data-i18n="form.website">Client Website <span class="hint" data-i18n="form.website.hint">— we'll auto-fetch their brand colors. Fine-tune later with the palette picker.</span></label>
@@ -1727,6 +1790,47 @@ function _initBriefExamples() {
 }
 document.addEventListener('DOMContentLoaded', _initBriefExamples);
 
+// Tiny Claude Haiku call to classify a company into one short industry
+// label. ~$0.001 per call, ~1 sec latency. Returns '' on any failure
+// (no key, network, parse, …) so the caller's defaults aren't disturbed.
+async function _classifyIndustryWithClaude(name, description) {
+  let key = '';
+  try { key = sessionStorage.getItem('claudeKey') || ''; } catch {}
+  if (!key) key = (document.getElementById('claudeKey') || {}).value || '';
+  if (!key || !key.startsWith('sk-ant-')) return '';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        // Haiku is cheapest + fastest for short classification.
+        // Falling back to sonnet if Haiku model name isn't recognised.
+        model: 'claude-haiku-4-5',
+        max_tokens: 60,
+        system:
+          'You classify a company into ONE short industry label. Return ONLY the label as plain text, max 6 words, in "Parent / Child" format when applicable (e.g. "Retail / Lifestyle Stores", "Finance / FinTech", "Higher Education / University", "Government / Tourism Board"). No quotes, no period, no explanation, no preamble.',
+        messages: [{
+          role: 'user',
+          content: `Company: ${name}\n\nDescription: ${description.slice(0, 800)}\n\nIndustry label:`,
+        }],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return '';
+    const data = await res.json();
+    const text = (data.content && data.content[0] && data.content[0].text) || '';
+    // Trim, strip surrounding quotes, cap to 80 chars
+    return text.trim().replace(/^["'「『]|["'」』]$/g, '').slice(0, 80);
+  } catch (_) {
+    return '';
+  }
+}
+
 async function autoFetchBrandColors() {
   const raw = (document.getElementById('clientWebsite') || {}).value || '';
   const domain = _extractDomain(raw);
@@ -1763,6 +1867,51 @@ async function autoFetchBrandColors() {
     // Render the swatch picker — user can click any swatch to override
     // the auto-pick. Compact ~48 px row, hex shown in monospace below.
     _renderBrandColorSwatches(hexes, hexes[0], domain);
+
+    // ── BONUS: auto-fill industry + description from same Brandfetch hit ──
+    // Brandfetch v2 returns `industries[]` (with confidence scores) and
+    // `description` for most brands. We pre-populate the form ONLY when
+    // those fields are still empty — never clobber what the user typed.
+    const indEl = document.getElementById('industry');
+    if (indEl && data.topIndustry && !indEl.value.trim()) {
+      indEl.value = data.topIndustry;
+      // Briefly highlight so the user sees what was auto-filled
+      indEl.style.background = '#FFFBEA';
+      indEl.style.transition = 'background 1.5s';
+      setTimeout(() => { indEl.style.background = ''; }, 1800);
+    }
+    const descEl = document.getElementById('clientDesc');
+    if (descEl && data.description && !descEl.value.trim()) {
+      // Use the short description as a seed — user can elaborate
+      descEl.value = data.description;
+      descEl.style.background = '#FFFBEA';
+      descEl.style.transition = 'background 1.5s';
+      setTimeout(() => { descEl.style.background = ''; }, 1800);
+    }
+    // If Brandfetch didn't give us a precise industry but DID give a
+    // description, ask Claude Haiku to classify it. ~$0.001 per call,
+    // ~1 second. Skips silently when no Claude key is set yet.
+    let claudeIndustry = '';
+    if (indEl && !indEl.value.trim() && data.description) {
+      try {
+        claudeIndustry = await _classifyIndustryWithClaude(data.name, data.description);
+        if (claudeIndustry) {
+          indEl.value = claudeIndustry;
+          indEl.style.background = '#FFFBEA';
+          indEl.style.transition = 'background 1.5s';
+          setTimeout(() => { indEl.style.background = ''; }, 1800);
+        }
+      } catch (_) { /* silent fallback to manual entry */ }
+    }
+    // Append auto-fill info to the status line so the user knows what got
+    // populated for free (just colors, or colors+industry+desc).
+    const filled = ['colors ✓'];
+    if ((data.topIndustry || claudeIndustry) && indEl && indEl.value) filled.push('industry ✓');
+    if (data.description && descEl && descEl.value === data.description) filled.push('description ✓');
+    if (status && filled.length > 1) {
+      status.textContent = `Auto-filled: ${filled.join(' · ')}`;
+      status.style.color = '#16A34A';
+    }
   } catch (err) {
     status.style.color = '#DC2626';
     const msg = err.message || String(err);

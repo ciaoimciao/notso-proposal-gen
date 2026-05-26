@@ -402,9 +402,37 @@ const handler = async (req, res) => {
       const colors = Array.isArray(data.colors)
         ? data.colors.filter(c => c && typeof c.hex === 'string')
         : [];
+      // Pick the highest-confidence industry. Brandfetch returns an array
+      // shaped like [{ id, slug, name, parent, score }, …] where score is
+      // 0-1 confidence. We bubble up just the human label so the client
+      // can pre-fill the industry input without further mapping.
+      const rawIndustries = Array.isArray(data.industries) ? data.industries : [];
+      const industries = rawIndustries
+        .filter(i => i && (i.name || i.slug))
+        .sort((a, b) => (b.score || 0) - (a.score || 0))
+        .map(i => ({
+          name: i.name || i.slug,
+          slug: i.slug || '',
+          parent: i.parent && (i.parent.name || i.parent.slug) || '',
+          score: typeof i.score === 'number' ? i.score : null,
+        }));
+      // Build a single human-readable industry string we can drop straight
+      // into the form. Format: "Parent / Child" when both exist, else just
+      // the deepest known label.
+      const topIndustry = industries[0]
+        ? (industries[0].parent
+            ? industries[0].parent + ' / ' + industries[0].name
+            : industries[0].name)
+        : '';
       return json(res, 200, {
         domain,
         name: data.name || '',
+        // Shortest sensible description — Brandfetch uses `description`
+        // (one-liner) AND `longDescription`. Prefer the short one.
+        description: data.description || '',
+        longDescription: data.longDescription || '',
+        topIndustry,
+        industries,
         colors: colors.map(c => ({
           hex: c.hex,
           type: c.type || 'unknown',
