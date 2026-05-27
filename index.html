@@ -847,6 +847,27 @@ input[type=color]{width:44px;height:44px;padding:3px;cursor:pointer;border-radiu
       </div>
       <button class="btn btn-primary" onclick="openUnifiedEditor()">✏️ Edit &amp; Assign Assets</button>
       <button class="btn btn-secondary" onclick="previewAndEdit()" title="Scroll through all slides side-by-side to review before export">🔍 Overview</button>
+      <!-- 🌐 One-click translate: re-runs Claude on the existing proposal JSON
+           and replaces every string value with the chosen language. Keeps all
+           keys, mascot art, colors, and slide selection intact.
+           Inline label tells the user what the dropdown does — without it
+           the bare flag-emoji + language name reads as a UI-locale toggle
+           rather than "translate the deck to ___". -->
+      <div class="translate-bar" title="Re-runs Claude to translate every slide's text into the chosen language. Mascots, colours, layout, and slide selection stay the same." style="display:flex;align-items:center;gap:6px;background:#F5F3FF;border:1.5px solid #C4B5FD;border-radius:8px;padding:4px 8px">
+        <span style="font-size:14px" aria-hidden="true">🌐</span>
+        <span data-i18n="translate.to" style="font-size:12px;font-weight:700;color:#5B21B6;letter-spacing:0.2px;white-space:nowrap">Translate to</span>
+        <select id="translateLang" title="Pick the target language — Claude will rewrite every slide in this language" style="border:1px solid #DDD6FE;background:#fff;font-size:13px;font-weight:600;color:#5B21B6;cursor:pointer;padding:4px 6px;border-radius:6px;outline:none">
+          <option value="en">English</option>
+          <option value="zh-TW">繁體中文</option>
+          <option value="ja">日本語</option>
+          <option value="nl">Nederlands</option>
+          <option value="ko">한국어</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+          <option value="es">Español</option>
+        </select>
+        <button id="translateBtn" class="btn" onclick="translateProposal()" title="Translate now (uses Claude — costs roughly $0.05-0.10 per run)" style="font-size:12px;padding:5px 12px;background:#7C3AED;color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer" data-i18n="translate.btn">Translate</button>
+      </div>
       <button class="btn btn-secondary" onclick="exportPDF()">📄 Download PDF</button>
       <button class="btn btn-secondary" onclick="shareDeck()" data-i18n="share.btn" data-i18n-title="share.btn.title" title="Create a share link. Recipients see the exact same HTML deck in their browser. Append /edit to the URL for an editable version with revision history. Stored server-side, not subject to browser storage limits.">🔗 Share link</button>
       <button class="btn btn-secondary" onclick="openAssetPackModal()" id="assetPackBtn">🎁 Mascot Asset Pack</button>
@@ -1286,6 +1307,8 @@ const I18N = {
     'form.clientSite.hint': '(optional — used for website composite mockups in the asset pack)',
     'form.clientSite.cta': 'Click or drop a screenshot here',
     'form.clientSite.sub': 'PNG, JPG — one image',
+    'translate.to': 'Translate to',
+    'translate.btn': 'Translate',
     'form.outputLang': 'Output Language',
     'form.designSection': 'Design Style',
     'form.designHint': 'Pick the visual style of your proposal. You can change this anytime before export.',
@@ -1440,6 +1463,8 @@ const I18N = {
     'form.clientSite.hint': '(選填 — 用於素材包中的網站情境合成圖)',
     'form.clientSite.cta': '點擊或拖放截圖到此',
     'form.clientSite.sub': '支援 PNG、JPG — 單張圖片',
+    'translate.to': '翻譯為',
+    'translate.btn': '翻譯',
     'form.outputLang': '輸出語言',
     'form.designSection': '簡報設計風格',
     'form.designHint': '挑選這份提案的視覺風格，匯出前都可以隨時更換。',
@@ -1594,6 +1619,8 @@ const I18N = {
     'form.clientSite.hint': '(任意 — アセットパック内のサイト合成モックアップに使用)',
     'form.clientSite.cta': 'クリックまたはドラッグでスクリーンショットを追加',
     'form.clientSite.sub': 'PNG、JPG — 1 枚のみ',
+    'translate.to': '翻訳先',
+    'translate.btn': '翻訳',
     'form.outputLang': '出力言語',
     'form.designSection': 'デザインスタイル',
     'form.designHint': '提案の見た目を選んでください。書き出し前ならいつでも変更できます。',
@@ -4243,6 +4270,92 @@ function exportPDF() {
 
 function getSelectedSlides() { return selectedSlides; }
 
+/* ─── ONE-CLICK TRANSLATE ────────────────────────────────────────────────
+   Re-runs Claude on the already-generated proposal JSON and swaps every
+   string value to the target language. Keeps mascots, colours, slide
+   selection, and the design style intact. Triggered by the 🌐 button in
+   the Step 3 export bar.
+   ──────────────────────────────────────────────────────────────────── */
+async function translateProposal() {
+  if (!proposal || typeof proposal !== 'object') {
+    alert('No proposal to translate yet — generate one first.');
+    return;
+  }
+  const sel = document.getElementById('translateLang');
+  const btn = document.getElementById('translateBtn');
+  if (!sel || !btn) return;
+  const targetLang = sel.value;
+  const currentLang = (client && client.lang) || 'en';
+  if (targetLang === currentLang) {
+    alert('Already in this language.');
+    return;
+  }
+
+  // Pull the Claude key the way the rest of the app does: session first,
+  // then the visible Step 1 input as a fallback.
+  let key = '';
+  try { key = sessionStorage.getItem('claudeKey') || ''; } catch (_) {}
+  if (!key) {
+    const inp = document.getElementById('claudeKey');
+    key = (inp && inp.value || '').trim();
+  }
+  if (!key) {
+    alert('Claude API key missing. Go back to Step 1 and re-enter it.');
+    return;
+  }
+
+  const origBtnHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Translating…';
+
+  try {
+    const resp = await fetch('/api/proposal/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        claudeKey: key,
+        content: proposal,
+        targetLang,
+        clientName: (client && client.name) || '',
+        mascotName: (client && client.mascotName) || '',
+      }),
+    });
+    const raw = await resp.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch (_) {
+      throw new Error('Translate failed (HTTP ' + resp.status + '): ' + raw.slice(0, 180));
+    }
+    if (!resp.ok || !data.content) {
+      throw new Error(data.error || ('HTTP ' + resp.status));
+    }
+
+    // Swap in the translated content + remember the new language so future
+    // exports / preview calls render with matching UI labels.
+    proposal = data.content;
+    if (client) client.lang = targetLang;
+
+    // Re-render the Step 3 slide cards from the new JSON.
+    try { renderAllSlides(proposal, client); } catch (e) { console.warn('renderAllSlides:', e); }
+
+    // If the Overview modal happens to be open, refresh it so the user
+    // sees the translated copy immediately instead of stale HTML.
+    const overviewOpen = !document.getElementById('previewEditModal').classList.contains('hidden');
+    if (overviewOpen) {
+      try { await previewAndEdit(); } catch (e) { console.warn('preview refresh:', e); }
+    }
+
+    btn.innerHTML = '✓ Done';
+    setTimeout(() => { btn.innerHTML = origBtnHtml; btn.disabled = false; }, 1500);
+  } catch (err) {
+    console.error('translateProposal error:', err);
+    alert('Translate failed: ' + (err && err.message ? err.message : err));
+    btn.innerHTML = origBtnHtml;
+    btn.disabled = false;
+  }
+}
+window.translateProposal = translateProposal;
+
 /* ─── PREVIEW & EDIT ─── */
 let _previewHtml = ''; // Stores the raw HTML from preview generation
 
@@ -6532,6 +6645,14 @@ async function _unifiedPlaceBackupMascot(idx, slotKey) {
     delete _assetSlideAssignments[slotKey];
   }
 
+  // ▼ FORCE-FLUSH user edits to localStorage BEFORE we throw away the
+  //   current slide DOM. Without this, anything the user typed within
+  //   the last 350 ms (the snapshot debounce window) lives only in the
+  //   detached node about to be GC'd, and the leaf-count fallback in
+  //   _unifiedRenderShell can't recover edits when placement changes
+  //   slide structure (e.g. text placeholder replaced by an <img>).
+  try { _unifiedSnapshotEdits({ silent: true }); } catch (_) {}
+
   // Re-fetch preview so the slot's <img> actually updates.
   const stage = document.getElementById('unifiedSlideStageContent');
   const restoreId = _unifiedActiveSlideId;
@@ -6550,6 +6671,9 @@ async function _unifiedPlaceBackupMascot(idx, slotKey) {
     if (!resp.ok || !data.success) throw new Error(data.error || 'Preview refresh failed');
     _unifiedRawHtml = data.html;
     _unifiedRenderShell(data.html);
+    // ▼ Overlay localStorage edits onto the fresh HTML. Survives the
+    //   leaf-count mismatch case where Place changed slide structure.
+    try { _unifiedRestoreEditsFromStorage(); } catch (_) {}
     if (restoreId && _unifiedSlideNodes.has(restoreId)) {
       _unifiedShowSlide(restoreId);
     }
@@ -6603,6 +6727,11 @@ async function _unifiedSetDesignStyle(styleId) {
   // Re-render sidebar to update the ".selected" state.
   _unifiedRenderDesignStyle();
 
+  // ▼ Flush user text edits before the design-switch re-render. The new
+  //   style can change leaf-element counts, which makes the in-shell
+  //   position fallback bail out — localStorage overlay rescues them.
+  try { _unifiedSnapshotEdits({ silent: true }); } catch (_) {}
+
   // Refresh preview so all slides pick up the new data-design-style.
   const stage = document.getElementById('unifiedSlideStageContent');
   const restoreId = _unifiedActiveSlideId;
@@ -6621,6 +6750,8 @@ async function _unifiedSetDesignStyle(styleId) {
     if (!resp.ok || !data.success) throw new Error(data.error || 'Preview refresh failed');
     _unifiedRawHtml = data.html;
     _unifiedRenderShell(data.html);
+    // ▼ Overlay localStorage edits onto fresh HTML.
+    try { _unifiedRestoreEditsFromStorage(); } catch (_) {}
     if (restoreId && _unifiedSlideNodes.has(restoreId)) {
       _unifiedShowSlide(restoreId);
     }
@@ -7226,6 +7357,12 @@ async function _unifiedPlaceAsset(assetId, slotKey) {
   _assetSlideAssignments[slotKey] = { assetId, file: item.file };
   savedMascotPaths[slotKey] = item.dataUrl;
 
+  // ▼ Force-flush text edits so the localStorage restore path (below)
+  //   has the user's latest keystrokes. Without this, mid-typing edits
+  //   are lost when Place changes slide structure and the leaf-count
+  //   fallback in _unifiedRenderShell silently discards them.
+  try { _unifiedSnapshotEdits({ silent: true }); } catch (_) {}
+
   // Re-fetch preview so the slide HTML re-renders with the new image.
   // Cache the active slide id so we can return to it after refresh.
   const stage = document.getElementById('unifiedSlideStageContent');
@@ -7245,6 +7382,9 @@ async function _unifiedPlaceAsset(assetId, slotKey) {
     if (!resp.ok || !data.success) throw new Error(data.error || 'Preview refresh failed');
     _unifiedRawHtml = data.html;
     _unifiedRenderShell(data.html);
+    // ▼ Overlay localStorage edits onto fresh HTML — survives the
+    //   leaf-count mismatch case the in-shell fallback can't handle.
+    try { _unifiedRestoreEditsFromStorage(); } catch (_) {}
     if (restoreId && _unifiedSlideNodes.has(restoreId)) {
       _unifiedShowSlide(restoreId);
     }
@@ -7561,7 +7701,7 @@ async function exportPDFFromUnifiedEditor() {
   btn.textContent = '⏳ Exporting...';
   btn.disabled = true;
   _showExportProgress('準備 PDF…');
-  _updateExportProgress('壓縮投影片內的圖片…', '把每張投影片的 mascot/asset 壓到 800px WebP，避免 payload 超過 Vercel 4.5 MB');
+  _updateExportProgress('壓縮投影片內的圖片…', '把每張投影片的 mascot/asset 壓到 1024px WebP，避免 payload 超過 Vercel 4.5 MB');
 
   try {
     // Gather slide HTML in display order — and SHRINK every inline
@@ -7570,9 +7710,14 @@ async function exportPDFFromUnifiedEditor() {
     // mockups, asset-pack images embedded as base64 PNG) easily blows
     // past Vercel's 4.5 MB request body cap → HTTP 413.
     //
-    // 800 px max side + WebP @ 0.85 = ~80% size reduction vs raw PNG,
-    // and Puppeteer renders WebP identically to PNG so the final PDF
-    // looks unchanged. Done in parallel per slide for speed.
+    // 1024 px max side + WebP @ 0.85 keeps mockups (originally generated
+    // at 1024×1024 on the server) at NATIVE resolution — the previous
+    // 800-px setting was downsampling them by ~22%, which the user
+    // noticed as soft/blurry phone & laptop mockups in the final PDF.
+    // Per-image payload roughly doubles vs 800 px, but a typical 18-
+    // slide deck still stays comfortably under 4.5 MB at this size.
+    // Puppeteer renders WebP identically to PNG so the final PDF looks
+    // unchanged besides being sharper.
     const slideHtmls = (await Promise.all(_unifiedSlideIds.map(async sid => {
       const node = _unifiedSlideNodes.get(sid);
       if (!node) return '';
@@ -7587,7 +7732,7 @@ async function exportPDFFromUnifiedEditor() {
       const imgs = Array.from(clone.querySelectorAll('img[src^="data:image/"]'));
       await Promise.all(imgs.map(async img => {
         try {
-          const shrunk = await _shrinkDataUrl(img.getAttribute('src'), 800);
+          const shrunk = await _shrinkDataUrl(img.getAttribute('src'), 1024);
           if (shrunk && typeof shrunk === 'string') img.setAttribute('src', shrunk);
         } catch (_) { /* keep original */ }
       }));
@@ -9489,21 +9634,34 @@ async function _removeDarkEdgeOutline(dataUrl) {
 
         const ALPHA_OPAQUE = 200;        // count as opaque for boundary detection
         const ALPHA_TRANSPARENT = 32;    // count as background for boundary detection
-        const OUTLINE_THICKNESS = 8;     // (was 4) AI cartoon outlines on 1024px
-                                         // images often span 5-8 px after anti-
-                                         // aliasing — too-shallow band left a
-                                         // visible dark ring on the silhouette
-        const INNER_SAMPLE_DEPTH = 14;   // (was 10) push sample further inside
-                                         // so we don't accidentally read pixels
-                                         // still inside the dark ring itself
-        const OUTLINE_DARK_RATIO = 0.85; // (was 0.65) catch lighter outlines too
-                                         // — anything ≥15% darker than the inner
-                                         // body colour is treated as outline.
-                                         // User feedback was the band was still
-                                         // visible after the old threshold.
-        const OUTLINE_ABS_BRIGHTNESS = 170; // (was 110) include mid-grey outlines
-                                            // — Gemini sometimes draws a brownish
-                                            // line that read as 130-160 brightness.
+        const OUTLINE_THICKNESS = 12;    // (was 8) user reported a still-visible
+                                         // dark ring on most asset-pack emotions
+                                         // (Happy/Empathetic/Celebrating/etc.)
+                                         // while Curious came out clean. The
+                                         // ambient-occlusion shading on 3D toy
+                                         // renders can span 10-12 px at 1024-px
+                                         // source resolution after AI-side anti-
+                                         // aliasing — a wider band catches the
+                                         // soft halo the previous 8-px setting
+                                         // bailed on.
+        const INNER_SAMPLE_DEPTH = 18;   // (was 14) push further in so the inner
+                                         // sample is clearly OUTSIDE the new
+                                         // 12-px band. Must stay > THICKNESS or
+                                         // we'd be sampling colours still tinted
+                                         // by the dark ring we're trying to
+                                         // strip.
+        const OUTLINE_DARK_RATIO = 0.90; // (was 0.85) catch lighter rim shades.
+                                         // Anything ≥10% darker than the inner
+                                         // body colour gets re-coloured. Risk:
+                                         // legit darker fur details near the
+                                         // silhouette may also lighten — kept
+                                         // moderate to avoid flattening the
+                                         // character's depth shading.
+        const OUTLINE_ABS_BRIGHTNESS = 190; // (was 170) include brighter mid-tones
+                                            // — the cream-coloured mascots in
+                                            // the user's screenshot have rim
+                                            // pixels around 150-185 brightness
+                                            // that the old 170 cap missed.
 
         const bri = (i) => 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
 

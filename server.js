@@ -1190,6 +1190,123 @@ ${schema}`;
   }
 
   // ──────────────────────────────────────
+  // POST /api/proposal/translate
+  //   { claudeKey, content, targetLang, clientName?, mascotName? }
+  // Returns: { content: <translated content with identical keys/structure> }
+  //
+  // One-shot translator. Takes the already-generated proposal `content`
+  // object (s1..s18) and rewrites every string VALUE into the target
+  // language while preserving:
+  //   - all JSON keys
+  //   - all array lengths
+  //   - all numeric/boolean values
+  //   - brand names, mascot names, proper nouns
+  //   - the punchy marketing tone from the original copy
+  // The schema is identical to /api/proposal/generate-content's `content`
+  // field, so the frontend can drop the result straight into `proposal`
+  // and re-render without changing anything else.
+  // ──────────────────────────────────────
+  if (url.pathname === '/api/proposal/translate' && req.method === 'POST') {
+    try {
+      const body = JSON.parse((await collectBody(req)).toString());
+      const {
+        claudeKey,
+        content,
+        targetLang = 'en',
+        clientName = '',
+        mascotName = '',
+      } = body || {};
+      if (!claudeKey) return json(res, 400, { error: 'Missing Claude API key' });
+      if (!content || typeof content !== 'object') return json(res, 400, { error: 'Missing content object' });
+
+      const langMap = {
+        en: 'natural American English',
+        'zh-TW': '繁體中文 (台灣用語, punchy 的行銷調性, 品牌名保留原文)',
+        zh: '繁體中文 (台灣用語, punchy 的行銷調性)',
+        ja: 'パンチの効いた日本語マーケティング調',
+        nl: 'punchy natural Dutch (Nederlands)',
+        ko: 'punchy 한국어 마케팅 톤',
+        de: 'punchy natural German (Deutsch)',
+        fr: 'punchy natural French (Français)',
+        es: 'punchy natural Spanish (Español)',
+      };
+      const langInstr = langMap[targetLang] || langMap.en;
+
+      // Strip metadata before sending — __ai is bookkeeping, not copy.
+      const { __ai, ...payloadContent } = content;
+
+      const preserveBlock = [
+        clientName ? `- Client name "${clientName}" — keep as-is.` : '',
+        mascotName ? `- Mascot name "${mascotName}" — keep as-is.` : '',
+      ].filter(Boolean).join('\n');
+
+      const userMsg = `You are a marketing copywriter translating an already-written pitch deck.
+
+TARGET LANGUAGE: ${langInstr}
+
+RULES — read carefully, the JSON will be parsed by code:
+1. Return ONLY a JSON object. No prose, no code fences, no commentary.
+2. The returned object must have the SAME shape as the input: same keys, same nesting, same array lengths, same numeric/boolean values.
+3. Translate every STRING value into the target language.
+4. Do NOT translate:
+   - JSON keys (e.g. "headline", "lead", "cards" stay in English)
+   - Brand names, product names, proper nouns
+   - URLs, email addresses, hex colors, icon keywords (e.g. "chat", "bolt", "shield" inside an "icon" field stay as-is — they map to renderer assets)
+   - Numbers and percentages (e.g. "24/7", "150 countries", "$2B")
+${preserveBlock ? '5. SPECIFIC PRESERVATIONS:\n' + preserveBlock : ''}
+6. Keep the tone PUNCHY and marketing-grade. Short verbs-first sentences. Benefit before feature. No corporate fluff ("leverage", "empower", "seamless"). Headlines stay ≤10 words; sub-headlines ≤14 words.
+7. If a string is a FIXED section label like "Pain Points" / "Core Features" / "Market Opportunity" / "Chat Experience" / "Chatflow Design" / "Knowledge Base" / "Personality & Expressions" / "Licensing & Ownership" — translate it to the natural section-label equivalent in the target language (e.g. "Pain Points" → "痛點" in zh-TW, "課題" in ja).
+8. Preserve sentence count and structure — if the original is 1 sentence, keep it 1 sentence. If 3 bullets, keep 3 bullets.
+
+INPUT (translate the string values):
+${JSON.stringify(payloadContent, null, 2)}
+
+Return the translated JSON now.`;
+
+      const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': claudeKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-6',
+          max_tokens: 16000,
+          messages: [{ role: 'user', content: userMsg }],
+        }),
+      });
+
+      if (!anthropicRes.ok) {
+        const errTxt = await anthropicRes.text();
+        console.error('  ❌ Claude translate error:', errTxt.slice(0, 300));
+        return json(res, anthropicRes.status, { error: `Claude error ${anthropicRes.status}: ${errTxt.slice(0, 200)}` });
+      }
+
+      const data = await anthropicRes.json();
+      let text = (data.content || []).map(c => c.text || '').join('').trim();
+      if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\s*/, '').replace(/```\s*$/, '');
+      }
+      let translated;
+      try { translated = JSON.parse(text); }
+      catch (e) {
+        console.error('  ⚠️ Translate JSON parse failed, raw:', text.slice(0, 400));
+        return json(res, 500, { error: 'Claude returned invalid JSON', raw: text.slice(0, 800) });
+      }
+
+      // Restore __ai metadata so downstream code that reads it still works.
+      if (__ai) translated.__ai = __ai;
+      const filled = Object.keys(translated).filter(k => /^s\d+$/.test(k)).length;
+      console.log(`  🌐 Translated ${filled}/18 slides → ${targetLang}`);
+      return json(res, 200, { content: translated, targetLang });
+    } catch (err) {
+      console.error('  ❌ proposal/translate error:', err.message);
+      return json(res, 500, { error: err.message });
+    }
+  }
+
+  // ──────────────────────────────────────
   // API: Generate mascot images via Gemini Imagen
   // POST /api/mascot/generate  { geminiKey, clientName, industry, mascotName, personality, color1, numOptions, variations? }
   // Returns: { images: [ { id, data_url }, ... ] }

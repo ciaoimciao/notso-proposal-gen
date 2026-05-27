@@ -545,7 +545,18 @@ async function composeLaptopMockup({
   mascotDataUrl, mascotPath, laptopFramePath, websiteImageUrl, websitePath,
   mascotName = 'Notso', brandColor = '#DC2626',
   industry = '', mascotLine = null, userLine = null,
-  windowScale = 0.72, outputMaxW = 2000,
+  // outputMaxW was 2000 — a 4165×4165 source frame got force-downsampled
+  // to 2000, throwing away ~75% of the pixels at the COMPOSITOR stage,
+  // BEFORE the client's PDF-export shrink (1024 px) ran. Net effect: the
+  // laptop mockup was being downsampled twice in series (4165→2000→1024),
+  // while the phone went through ONLY ONE shrink (5000→1024) and looked
+  // sharp by comparison. User-reported "電腦的 mockup 超級糊但手機不糊"
+  // pointed directly here. Lifted to 4096 so the laptop matches the
+  // phone's "return at near-native resolution, let the export pipeline
+  // do the only shrink" behaviour. Memory cost: ~3-4x larger PNG in
+  // assetpack response (~3 MB up from ~800 KB) — acceptable, since the
+  // client's _shrinkDataUrl pass before PDF POST brings it back down.
+  windowScale = 0.72, outputMaxW = 4096,
   mascotSizeRatio = 0.55,
 }) {
   const framePath = laptopFramePath ||
