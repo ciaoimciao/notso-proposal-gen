@@ -2613,20 +2613,42 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
 
               // CONSISTENCY LOCK — every asset MUST be visually identical to
               // the reference mascot at the part-level (eyes, mouth shape,
-              // body proportions, outline weight, color palette). Without this
-              // explicit lock Gemini drifts across calls — especially on eye
-              // shape/size, which the user flagged as the worst offender.
+              // body proportions, color palette). Without this explicit lock
+              // Gemini drifts across calls — especially on eye shape/size,
+              // which the user flagged as the worst offender.
+              //
+              // STYLE OVERRIDE (added above the lock) forces a clean 3D clay
+              // render regardless of the reference's drawing style. Without
+              // this, references drawn with thick ink outlines (e.g. Chiikawa,
+              // Sanrio-style IP) get faithfully reproduced WITH the outline,
+              // which the user flagged as wrong — they want notso's 3D clay
+              // look every time, not a 1:1 reproduction of the source art's
+              // line work. The OUTLINE clause inside the lock is dropped and
+              // ART STYLE pinned to "clean 3D clay" rather than "match the
+              // reference" so the two blocks don't fight each other.
               const consistencyLock = [
                 '',
-                '[CONSISTENCY LOCK — READ CAREFULLY]',
-                'This image MUST match the reference mascot EXACTLY at the part level:',
-                '• EYES: identical eye shape, size, color, pupil style, and eyelash/brow pattern as the reference. Do not shrink, enlarge, restyle, or recolor the eyes.',
-                '• MOUTH: same mouth shape family as the reference (a smile may open/close for emotion but line weight and corner style stay identical).',
+                '[STYLE OVERRIDE — HIGHEST PRIORITY, READ FIRST]',
+                'Render in a CLEAN 3D CLAY-TOY style — like a soft polymer-clay figurine photographed in a studio:',
+                '• Soft matte material, gentle ambient-occlusion shadows on contour creases.',
+                '• NO black ink outlines around the silhouette, head, body, limbs, or facial features.',
+                '• NO drawn border lines, NO comic-book strokes, NO 2D illustration line work.',
+                '• Smooth toy-like 3D surfaces only — light falls off naturally, no flat 2D fills.',
+                'If the reference image is drawn with ink outlines, line art, or comic-style borders,',
+                'IGNORE that styling entirely. Extract ONLY the character identity from the reference',
+                '(face shape, body proportions, colour palette, expression personality, distinguishing',
+                'features such as hair tufts / ears / antennae) and re-render it as an outline-free 3D',
+                'clay figurine. The reference dictates WHO the character is; this clause dictates HOW',
+                'they are rendered. The two never conflict.',
+                '',
+                '[CONSISTENCY LOCK — READ AFTER THE STYLE OVERRIDE]',
+                'Within the clean 3D clay style above, the character must match the reference at the part level:',
+                '• EYES: identical eye shape, size, colour, pupil style, and brow pattern as the reference — but reproduced as solid-fill clay shapes, NOT inked lines. Do not shrink, enlarge, restyle, or recolour the eyes.',
+                '• MOUTH: same mouth shape family as the reference (a smile may open/close for emotion). Rendered as a clay relief — a small sculpted indent or solid shape, NOT an ink stroke.',
                 '• BODY: identical head-to-body ratio, limb length, hand style, foot/shoe style.',
-                '• OUTLINE: identical outline thickness and color. No new outlines, no removed outlines.',
-                '• COLORS: identical palette — every hex value from the reference must be reused unchanged.',
-                '• ART STYLE: identical rendering technique (flat vs. shaded, 2D vs. 3D). No style switching.',
-                'Only the pose, gesture, and facial expression are allowed to vary. Everything else is LOCKED to the reference.',
+                '• COLOURS: identical palette — every hex value from the reference must be reused unchanged. Only the line-art black is dropped.',
+                '• ART STYLE: 3D clay toy figurine (see STYLE OVERRIDE above). NOT 2D illustration, NOT inked cartoon, NOT line drawing. If the reference is 2D / inked, translate it into the 3D clay form.',
+                'Only the pose, gesture, and facial expression are allowed to vary. Everything else is LOCKED to the reference WITHIN the clay-style rendering.',
               ].join('\n');
 
               // Same framing / no-lineup rules as Step 2.5 mascot generation —

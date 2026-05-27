@@ -7728,10 +7728,19 @@ async function exportPDFFromUnifiedEditor() {
       });
       // Shrink each inline image. Failures are non-fatal — we just keep
       // the original src and let the payload check warn later.
+      //
+      // Per-slot cap mirrors _shrinkMascotMap's logic: mockup slots (phone /
+      // laptop / dashboard / cover_s*) get 1280 to match the upstream
+      // preview shrink — without this, mockup images that were already
+      // shrunk to 1280 for preview would be re-shrunk to 1024 here,
+      // throwing away the resolution bump we just gained. Plain mascot
+      // slots stay at 1024.
       const imgs = Array.from(clone.querySelectorAll('img[src^="data:image/"]'));
       await Promise.all(imgs.map(async img => {
         try {
-          const shrunk = await _shrinkDataUrl(img.getAttribute('src'), 1024);
+          const slot = img.getAttribute('data-slot-key') || '';
+          const cap = _MOCKUP_SLOT_RE.test(slot) ? 1280 : 1024;
+          const shrunk = await _shrinkDataUrl(img.getAttribute('src'), cap);
           if (shrunk && typeof shrunk === 'string') img.setAttribute('src', shrunk);
         } catch (_) { /* keep original */ }
       }));
@@ -9063,16 +9072,56 @@ function _slimClientForRender(client) {
   return slim;
 }
 
+// ── PER-SLOT shrink size for the deck-rendering pipeline ──
+// Mascot slots (round chibi character cutouts) are shown at 200-400 px wide
+// on the slide → 640 source is plenty (2x downsample, looks sharp).
+//
+// Mockup slots (composited phone / laptop / dashboard images that include
+// small UI text + chat bubbles) are shown at 350-950 px wide. The text
+// inside them is already small relative to the frame, so the same 640 cap
+// produced visibly blurry mockups AND illegible chat text — user
+// reported "電腦跟手機 mockup 在 assetpack 都清晰，但放上 deck 就糊，字都
+// 糊". 1280 keeps the frame near 1:1 at typical display size on the
+// laptop mockup and 3.5x downsample on the phone — both come out crisp.
+//
+// Payload impact: a 1280 WebP @ 0.95 is roughly 2x the bytes of a 640
+// WebP. A deck has at most 4–6 mockup slots (cover_s1_phone /
+// cover_s1_laptop / cover_s9 / cover_s9_laptop / cover_s10 / dashboard
+// / cover_s18_*), so the increase per /api/preview call is on the order
+// of a few hundred KB — well below the 4.5 MB Vercel cap.
+// Mockup slot keys based on the slot table in the slide-renderer config:
+//   cover_s1_phone / cover_s1_laptop / cover_s9 / cover_s9_laptop /
+//   cover_s10 / cover_s18_phone / cover_s18_laptop / dashboard
+//
+// Plain "cover_sN" entries WITHOUT phone/laptop suffix are MASCOT fallbacks
+// (cover_s1 = fallback hero mascot, cover_s3/4/7/11/14/18 = mascot poses)
+// — they must NOT be inflated to 1280, that wastes payload without making
+// the small mascot cutouts any sharper.
+//
+// So: substring match on phone / laptop / dashboard / mockup, PLUS exact
+// match on the two bare cover_s9 / cover_s10 slots which are themselves
+// mockups (per the slot config: cover_s9 = "Phone mockup (left)", cover_s10
+// = "Laptop mockup (bottom-right)"). Everything else (option_*, expression_*,
+// cover_s1, cover_s3 …) keeps the default mascot cap.
+const _MOCKUP_SLOT_RE = /^(cover_s9|cover_s10)$|(phone|laptop|dashboard|mockup)/i;
+function _maxSideForSlot(role, defaultMax) {
+  return _MOCKUP_SLOT_RE.test(role) ? Math.max(defaultMax, 1280) : defaultMax;
+}
+
 async function _shrinkMascotMap(paths, maxSide) {
   if (!paths || typeof paths !== 'object') return {};
   const out = {};
-  // Dedupe by source dataUrl → same shrunk result; cuts CPU + payload when
-  // multiple slides share the same mascot.
+  // Per-key cache: same url + same target size → dedupe to one shrink call.
+  // The cache key must include the target size because a mockup slot and a
+  // mascot slot pointing at the same source would otherwise share a smaller
+  // shrunk result and re-soften the mockup.
   const cache = new Map();
   for (const [role, url] of Object.entries(paths)) {
     if (!url) continue;
-    if (!cache.has(url)) cache.set(url, await _shrinkDataUrl(url, maxSide));
-    out[role] = cache.get(url);
+    const target = _maxSideForSlot(role, maxSide);
+    const cacheKey = url + '::' + target;
+    if (!cache.has(cacheKey)) cache.set(cacheKey, await _shrinkDataUrl(url, target));
+    out[role] = cache.get(cacheKey);
   }
   return out;
 }
@@ -11030,7 +11079,14 @@ async function generateAssetPack(opts = {}) {
   }
   const mascotImage = await _shrinkDataUrl(rawMascotImage, 1024);
   const rawSite = (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '';
-  const slimSiteImage = rawSite ? await _shrinkDataUrl(rawSite, 1600) : '';
+  // Site screenshot upper bound was 1600 — but the laptop frame is 4165×4165
+  // and the screen-content area inside it is roughly 2900×1600. A 1600-wide
+  // source gets upscaled to fill that area, producing the visibly soft
+  // website-inside-laptop the user flagged. 2880 matches the bundled
+  // mockup-assets/website.png native resolution AND covers the laptop screen
+  // area without upscaling — keeps the content sharp through the
+  // compositor → client _shrinkDataUrl(1024) → PDF pipeline.
+  const slimSiteImage = rawSite ? await _shrinkDataUrl(rawSite, 2880) : '';
   if (!opts.onlyIds) {
     // Reset session on fresh run
     _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
@@ -11546,7 +11602,10 @@ async function regenerateAssetPackItem(id) {
     // can exceed Vercel's 4.5 MB limit (HTTP 413).
     const mascotImage = await _shrinkDataUrl(_pickedMascotDataUrl(), 1024);
     const rawSiteRegen = (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '';
-    const slimSiteImageRegen = rawSiteRegen ? await _shrinkDataUrl(rawSiteRegen, 1600) : '';
+    // 2880 matches the laptop screen-content area natively (was 1600 — caused
+    // the soft website-inside-laptop the user flagged). See the matching note
+    // on the initial-generation path above.
+    const slimSiteImageRegen = rawSiteRegen ? await _shrinkDataUrl(rawSiteRegen, 2880) : '';
 
     // Always re-send the act-typing data URL from the client cache so the
     // mockup compositor uses a CONSISTENT mascot photo every regen / size
