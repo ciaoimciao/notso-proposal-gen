@@ -2010,8 +2010,16 @@ async function autoFetchBrandColors() {
     if ((data.topIndustry || claudeIndustry) && indEl && indEl.value) filled.push('industry ✓');
     if (data.description && descEl && descEl.value === data.description) filled.push('description ✓');
     if (status && filled.length > 1) {
-      status.textContent = `Auto-filled: ${filled.join(' · ')}`;
-      status.style.color = '#16A34A';
+      // Append the auto-fill summary as a NEW line below the swatch row.
+      // Setting textContent/innerHTML on `status` here would wipe out the
+      // swatches _renderBrandColorSwatches just rendered into this same
+      // #fetchBrandStatus container — that was the bug where colors showed
+      // "auto-filled" but no swatches appeared whenever a description or
+      // industry was also auto-filled (e.g. praxis.nl).
+      const _sum = document.createElement('div');
+      _sum.style.cssText = 'font-size:11px; color:#16A34A; margin-top:8px;';
+      _sum.textContent = `Auto-filled: ${filled.join(' · ')}`;
+      status.appendChild(_sum);
     }
   } catch (err) {
     status.style.color = '#DC2626';
