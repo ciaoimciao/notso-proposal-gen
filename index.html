@@ -8806,7 +8806,7 @@ loadGSConfig().then(() => {
    Fix: downscale each mascot to ≤maxSide before POST. 512 px is still crisp
    at preview-zoom (0.65×) and on exported PDFs at the slot sizes we actually
    use. `preservesAlpha: true` keeps the chroma-keyed transparency intact. */
-async function _shrinkDataUrl(dataUrl, maxSide) {
+async function _shrinkDataUrl(dataUrl, maxSide, quality = 0.95) {
   if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
     return dataUrl;
   }
@@ -8833,7 +8833,7 @@ async function _shrinkDataUrl(dataUrl, maxSide) {
         // natively. Falls back to PNG if browser somehow lacks WebP support.
         let out = '';
         try {
-          out = canvas.toDataURL('image/webp', 0.95);
+          out = canvas.toDataURL('image/webp', quality);
         } catch (_) { out = ''; }
         if (!out || !out.startsWith('data:image/webp')) {
           out = canvas.toDataURL('image/png');
@@ -9110,18 +9110,44 @@ function _maxSideForSlot(role, defaultMax) {
 
 async function _shrinkMascotMap(paths, maxSide) {
   if (!paths || typeof paths !== 'object') return {};
-  const out = {};
-  // Per-key cache: same url + same target size → dedupe to one shrink call.
-  // The cache key must include the target size because a mockup slot and a
-  // mascot slot pointing at the same source would otherwise share a smaller
-  // shrunk result and re-soften the mockup.
-  const cache = new Map();
-  for (const [role, url] of Object.entries(paths)) {
-    if (!url) continue;
-    const target = _maxSideForSlot(role, maxSide);
-    const cacheKey = url + '::' + target;
-    if (!cache.has(cacheKey)) cache.set(cacheKey, await _shrinkDataUrl(url, target));
-    out[role] = cache.get(cacheKey);
+  // Adaptive compression budget. Vercel rejects request bodies >4.5 MB at the
+  // gateway (HTTP 413) BEFORE they reach server.js, so per-image shrinking
+  // isn't enough — with many mascots/mockups the SUM blows past the cap. We
+  // estimate the total base64 size of the whole map and, if it exceeds a safe
+  // threshold, re-shrink everything at progressively smaller dimensions / lower
+  // WebP quality until it fits. ~3.3 MB of base64 leaves headroom for the
+  // proposal JSON + request wrapper under the 4.5 MB ceiling.
+  const BUDGET = 3.3 * 1024 * 1024;
+  const PASSES = [
+    { scale: 1.00, quality: 0.92 },
+    { scale: 0.85, quality: 0.85 },
+    { scale: 0.70, quality: 0.78 },
+    { scale: 0.55, quality: 0.72 },
+    { scale: 0.45, quality: 0.65 },
+  ];
+  let out = {};
+  for (let i = 0; i < PASSES.length; i++) {
+    const { scale, quality } = PASSES[i];
+    // Per-key cache: same url + same target + same quality → dedupe to one
+    // shrink call. The key must include target size + quality so a mockup slot
+    // and a mascot slot pointing at the same source don't share a result.
+    const cache = new Map();
+    out = {};
+    for (const [role, url] of Object.entries(paths)) {
+      if (!url) continue;
+      const target = Math.max(64, Math.round(_maxSideForSlot(role, maxSide) * scale));
+      const cacheKey = url + '::' + target + '::' + quality;
+      if (!cache.has(cacheKey)) cache.set(cacheKey, await _shrinkDataUrl(url, target, quality));
+      out[role] = cache.get(cacheKey);
+    }
+    const total = Object.values(out).reduce((n, s) => n + (typeof s === 'string' ? s.length : 0), 0);
+    if (total <= BUDGET || i === PASSES.length - 1) {
+      if (total > BUDGET) {
+        console.warn('[_shrinkMascotMap] still over budget after max compression: '
+          + (total / 1024 / 1024).toFixed(2) + ' MB');
+      }
+      break;
+    }
   }
   return out;
 }
@@ -10155,7 +10181,7 @@ async function generateMascots() {
         mascotName,
         personality,
         color1: client.color1,
-        numOptions: 9,
+        numOptions: 6,
         engine,
         customPrompt: customPrompt || undefined,
         referenceImage: liveRefs[0] || '',                 // legacy single-image compat
