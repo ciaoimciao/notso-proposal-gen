@@ -8254,6 +8254,22 @@ function resetAll() {
   document.getElementById('useCase').value='';
   document.getElementById('clientDesc').value='';
   document.getElementById('mascotName').value='';
+  // Wipe carried-over mascot + asset-pack state. Without this, starting a
+  // second proposal kept the PREVIOUS client's mascot and asset pack in
+  // memory — so the Asset Pack modal showed the old mascot and "Regenerate
+  // All" just remade it. Clearing these forces a clean slate for the new
+  // client; Step 2 repopulates them when the user generates a fresh mascot.
+  mascotImages = [];
+  mascotSelections = {};
+  savedMascotPaths = {};
+  _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
+  // Drop carried-over reference uploads (old mascot ref + client site shot)
+  // so the new proposal doesn't reuse the previous client's images.
+  if (_uploadedImages && typeof _uploadedImages === 'object') {
+    _uploadedImages.mascotRef = [];
+    _uploadedImages.clientSite = '';
+  }
+  if (client) { client.mascotRefImages = []; client.mascotRefImage = ''; client.clientSiteImage = ''; }
   // Also wipe auto-saved Step-1 state so the fresh form stays blank on refresh.
   if (typeof window.clearStep1AutoSave === 'function') window.clearStep1AutoSave();
 }
