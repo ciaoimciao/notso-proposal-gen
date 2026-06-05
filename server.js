@@ -973,9 +973,21 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
             "opportunity":"1-2 sentences on the gap notso.ai fills"},
 
     "s5":  {"headline":"Core Features",                     // FIXED label
-            "lead":"1-sentence so-what naming WHAT the mascot does for THIS client. No em-dash.",
+            "lead":"1-sentence so-what naming how notso.ai's 4-step service framework delivers for THIS client. No em-dash.",
             "intro":"1-sentence value statement",
-            "features":[{"icon":"ONE keyword from this set ONLY: chat, support, clock, shield, bolt, chart, trending, shopping, cart, tag, world, language, users, heart, star, search, bell, gear, sparkles, ai, phone, gift, camera, share, social, book, target, rocket","title":"feature solving pain","desc":"how it applies"}, "...3-4 items"]},
+            // FIXED notso.ai 4-STEP SERVICE FRAMEWORK. Output EXACTLY these 4
+            // features, in this order. Keep the "icon" keyword and the
+            // "Step N ·" title prefix EXACTLY as given; translate ONLY the
+            // step-name part of the title into the output language. The desc
+            // is the ONLY tailored field: rewrite each step's CORE CONCEPT
+            // applied to THIS client's industry / use-case. ≤22 words each.
+            // No em-dash. Do NOT add, drop, reorder, or rename the 4 steps.
+            "features":[
+              {"icon":"sparkles","title":"Step 1 · Design your mascot","desc":"CORE CONCEPT (tailor to client): turn the brand guide into a lively character that authentically connects with the audience."},
+              {"icon":"rocket","title":"Step 2 · Build & Deploy","desc":"CORE CONCEPT (tailor to client): train the AI on the client's raw data (PDFs, links, sheets) and deploy the mascot across every channel, from web and app to physical kiosks."},
+              {"icon":"chart","title":"Step 3 · Learn from analytics","desc":"CORE CONCEPT (tailor to client): track performance, decode sentiment, and measure real ROI on a 24/7 live dashboard."},
+              {"icon":"share","title":"Step 4 · Advertise with content","desc":"CORE CONCEPT (tailor to client): reuse the 3D character to generate endless on-brand marketing assets that fuel campaigns."}
+            ]},
 
     "s6":  {"headline":"Mascot Selection",                  // FIXED label
             "lead":"1-sentence framing the choice. No em-dash.",
@@ -1102,6 +1114,7 @@ On top of writing all 18, recommend a subset that is the BEST pitch for THIS cli
 CRITICAL RULES:
 - Write CONTENT for ALL 18 slides — every entry must be complete and tailored to THIS client. recommended_slides is just a suggestion.
 - For s3..s17 the "headline" field MUST equal the FIXED label shown above (verbatim). Do not invent your own. Punchy AI writing goes in "lead" only.
+- s5 (Core Features) is the FIXED notso.ai 4-step service framework. Output EXACTLY 4 features, in this order: (1) Design your mascot, (2) Build & Deploy, (3) Learn from analytics, (4) Advertise with content. Keep each given "icon" keyword and the "Step N ·" title prefix; translate only the step-name into the output language. Tailor ONLY each "desc" to this client. NEVER invent, drop, reorder, or rename these features.
 - s14.lead and s15.lead are INTENTIONALLY EMPTY STRINGS (""). The Roadmap and Pricing pages don't need a punchy line — the section label alone is the title.
 - NEVER use em-dash characters (— or –) in any "lead", "tagline", "intro", or "closing" field. Use period, comma, or rephrase.
 - s9 chat: bot turns are 1-2 SHORT sentences (NOT 3). The previous version was too verbose.

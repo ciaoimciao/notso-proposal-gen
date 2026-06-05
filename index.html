@@ -3749,11 +3749,32 @@ function rMarket(d) {
 }
 
 /* ── s5: Core Features ── */
+// Map an icon KEYWORD (what Claude emits, e.g. "rocket", "chart") to a
+// glyph for the live preview. The PDF/HTML export (generate_html.js) turns
+// these same keywords into SVGs; the preview previously printed the raw
+// keyword as text. Unknown values pass through (so an actual emoji still
+// works); empty falls back to ⚡.
+const _FEAT_EMOJI = {
+  chat:'💬', message:'💬', support:'💬', headset:'💬',
+  clock:'⏰', time:'⏰', shield:'🛡️', security:'🛡️',
+  bolt:'⚡', fast:'⚡', speed:'⚡', chart:'📊', analytics:'📊', data:'📊', insight:'📊',
+  trending:'📈', growth:'📈', shopping:'🛒', cart:'🛒', product:'🛒', tag:'🏷️',
+  world:'🌍', globe:'🌍', language:'🌐', users:'👥', team:'👥', audience:'👥',
+  heart:'❤️', love:'❤️', star:'⭐', search:'🔍', discover:'🔍', bell:'🔔', notify:'🔔',
+  gear:'⚙️', settings:'⚙️', sparkles:'✨', magic:'✨', ai:'🤖', robot:'🤖',
+  phone:'📱', mobile:'📱', gift:'🎁', camera:'📷', share:'📢', social:'📢',
+  book:'📚', knowledge:'📚', check:'✅', target:'🎯', rocket:'🚀',
+};
+function _featEmoji(icon) {
+  const kw = (typeof icon === 'string' ? icon.trim().toLowerCase() : '');
+  if (_FEAT_EMOJI[kw]) return _FEAT_EMOJI[kw];
+  return icon ? esc(icon) : '⚡';
+}
 function rFeatures(d) {
   if (!d) return '<em>—</em>';
   const feats = (d.features||[]).map((f,i) => `
     <div class="feature-row">
-      <div class="feat-icon">${esc(f.icon)||'⚡'}</div>
+      <div class="feat-icon">${_featEmoji(f.icon)}</div>
       <div><div class="feat-title" ${de('s5.features['+i+'].title')}>${esc(f.title)}</div><div class="feat-desc" ${de('s5.features['+i+'].desc')}>${esc(f.desc)}</div></div>
     </div>`).join('');
   return `<div class="s-headline" ${de('s5.headline')}>${esc(d.headline)}</div>${leadSub('s5',d)}<div class="s-text" style="margin-bottom:16px" ${de('s5.intro')}>${esc(d.intro)}</div>${feats}`;
@@ -9910,9 +9931,86 @@ async function _removeDarkEdgeOutline(dataUrl) {
 // model exhibits on stylized cartoon mascots.
 //
 // Both paths return a data URL with PNG transparency.
+// ─────────────────────────────────────────────────────────────────
+// _assessBgRemoval — judge whether a cutout is GOOD or ATE the character
+// ─────────────────────────────────────────────────────────────────
+// The classic failure mode is a WHITE character on a WHITE background:
+// colour-based keying (and sometimes the semantic model too) removes the
+// character's own white body because it's indistinguishable from the bg.
+// We compare the cutout against the original at a small working size and
+// measure two signals:
+//   retainedRatio      — opaque pixels in the result / total pixels.
+//                        Collapses toward 0 when the whole character was
+//                        eaten (only outlines / eyes survive).
+//   whiteEatenFraction — pixels that were OPAQUE + near-white in the
+//                        original but became transparent in the result,
+//                        / total. High when a white body was stripped.
+// Returns { retainedRatio, whiteEatenFraction, failed }.
+async function _assessBgRemoval(originalUrl, resultUrl) {
+  const load = (src) => new Promise((res, rej) => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => res(im); im.onerror = () => rej(new Error('load failed'));
+    im.src = src;
+  });
+  try {
+    const [o, r] = await Promise.all([load(originalUrl), load(resultUrl)]);
+    const ow = o.naturalWidth || 1, oh = o.naturalHeight || 1;
+    const W = 256, H = Math.max(1, Math.round(256 * oh / ow));
+    const sample = (im) => {
+      const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0, W, H);
+      return x.getImageData(0, 0, W, H).data;
+    };
+    const od = sample(o), rd = sample(r);
+    const total = W * H;
+    // Central region — where the character body almost always sits. We judge
+    // "white body eaten" here, NOT over the whole frame, so that normally
+    // removing the white BACKGROUND around a small character doesn't get
+    // mistaken for eating the character itself.
+    const cx0 = Math.floor(W * 0.25), cx1 = Math.ceil(W * 0.75);
+    const cy0 = Math.floor(H * 0.25), cy1 = Math.ceil(H * 0.75);
+    let retained = 0, whiteEaten = 0;
+    let centerTotal = 0, centerRetained = 0, centerWhiteEaten = 0;
+    for (let y = 0; y < H; y++) {
+      const inCenterY = (y >= cy0 && y < cy1);
+      for (let x = 0; x < W; x++) {
+        const a = (y * W + x) * 4;
+        const rAlpha = rd[a + 3];
+        const opaqueRes = rAlpha > 40;
+        if (opaqueRes) retained++;
+        const wasWhiteOpaque = od[a + 3] > 200 && od[a] > 225 && od[a + 1] > 225 && od[a + 2] > 225;
+        if (wasWhiteOpaque && !opaqueRes) whiteEaten++;
+        if (inCenterY && x >= cx0 && x < cx1) {
+          centerTotal++;
+          if (opaqueRes) centerRetained++;
+          if (wasWhiteOpaque && !opaqueRes) centerWhiteEaten++;
+        }
+      }
+    }
+    const retainedRatio = retained / total;
+    const whiteEatenFraction = whiteEaten / total;
+    const centerRetainedRatio = centerTotal ? centerRetained / centerTotal : 1;
+    const centerWhiteEatenFraction = centerTotal ? centerWhiteEaten / centerTotal : 0;
+    // (1) almost nothing left anywhere → the whole character was eaten.
+    // (2) the CENTRE went mostly empty AND a big white area there was removed
+    //     → a white character body got stripped (the reported failure).
+    const failed = retainedRatio < 0.06
+      || (centerRetainedRatio < 0.12 && centerWhiteEatenFraction > 0.30);
+    return { retainedRatio, whiteEatenFraction, centerRetainedRatio, centerWhiteEatenFraction, failed };
+  } catch (_) {
+    // If we can't assess (load/canvas error), don't block — assume OK.
+    return { retainedRatio: 1, whiteEatenFraction: 0, failed: false };
+  }
+}
+window._assessBgRemoval = _assessBgRemoval;
+
 async function removeBackgroundForImage(dataUrl, opts = {}) {
   const timeoutMs = opts.timeoutMs || 60000;
   const useApi = (opts.useApi !== false);  // default: try API first
+  const report = (opts.report && typeof opts.report === 'object') ? opts.report : null;
+
+  let candidate = null;   // the cutout under consideration
+  let viaApi = false;
 
   if (useApi) {
     try {
@@ -9937,8 +10035,9 @@ async function removeBackgroundForImage(dataUrl, opts = {}) {
           try {
             let url = await _fillInternalHoles(data.dataUrl);
             url = await _removeDarkEdgeOutline(url);
-            return url;
-          } catch (_) { return data.dataUrl; }
+            candidate = url;
+          } catch (_) { candidate = data.dataUrl; }
+          viaApi = true;
         }
       } else {
         // 402 (no credit), 503 (no token), 500 — fall through silently.
@@ -9957,15 +10056,33 @@ async function removeBackgroundForImage(dataUrl, opts = {}) {
       }
     }
   }
-  // Fallback: in-browser canvas chroma-key (the existing algorithm).
-  // Run hole-fill + outline-strip on the result too — same reasoning
-  // as the API branch above.
-  const keyed = await chromaKeyWhiteBackground(dataUrl);
-  try {
-    let url = await _fillInternalHoles(keyed);
-    url = await _removeDarkEdgeOutline(url);
-    return url;
-  } catch (_) { return keyed; }
+
+  if (candidate === null) {
+    // Fallback: in-browser canvas chroma-key (the existing algorithm).
+    // Run hole-fill + outline-strip on the result too — same reasoning
+    // as the API branch above.
+    const keyed = await chromaKeyWhiteBackground(dataUrl);
+    try {
+      let url = await _fillInternalHoles(keyed);
+      url = await _removeDarkEdgeOutline(url);
+      candidate = url;
+    } catch (_) { candidate = keyed; }
+  }
+
+  // ── Failure detection: if the cutout ate the character (the white-on-
+  //    white case the user reported), DON'T ship the broken image — keep
+  //    the intact original and flag it via opts.report so the UI can mark
+  //    it for manual fixing. ──
+  let assessment = { retainedRatio: 1, whiteEatenFraction: 0, failed: false };
+  try { assessment = await _assessBgRemoval(dataUrl, candidate); } catch (_) {}
+  if (report) { report.viaApi = viaApi; report.failed = !!assessment.failed; report.retainedRatio = assessment.retainedRatio; report.whiteEatenFraction = assessment.whiteEatenFraction; }
+  if (assessment.failed) {
+    console.warn('[bg-remove] cutout rejected — kept original (retained '
+      + Math.round(assessment.retainedRatio * 100) + '%, white-eaten '
+      + Math.round(assessment.whiteEatenFraction * 100) + '%). Likely a white character on a white background.');
+    return dataUrl;
+  }
+  return candidate;
 }
 
 window.removeBackgroundForImage = removeBackgroundForImage;
@@ -10253,11 +10370,15 @@ async function generateMascots() {
       const processed = await Promise.all(
         mascotImages.map(async (img, idx) => {
           try {
-            const transparent = await removeBackgroundForImage(img.data_url);
-            return { ...img, data_url: transparent };
+            const report = {};
+            const transparent = await removeBackgroundForImage(img.data_url, { report });
+            // report.failed === true means we kept the original because the
+            // cutout ate the character (white-on-white). Tag it so the grid
+            // shows a ⚠ badge and the user knows to fix it manually.
+            return { ...img, data_url: transparent, _bgRemoveFailed: !!report.failed };
           } catch (e) {
             console.warn(`Mascot ${idx} bg-removal failed, using original:`, e.message);
-            return img;
+            return { ...img, _bgRemoveFailed: true };
           }
         })
       );
@@ -10306,6 +10427,7 @@ function renderMascotGrid() {
     card.innerHTML = `
       <div class="mascot-num">#${idx + 1}</div>
       <button class="mascot-regen-btn" data-idx="${idx}" title="重生這一個 mascot（不影響其他 8 個）" style="position:absolute;top:8px;right:8px;background:#16A34A;color:#fff;border:2px solid #fff;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700;line-height:1;display:flex;align-items:center;gap:5px;z-index:5;box-shadow:0 3px 10px rgba(0,0,0,0.25);transition:all 0.15s" onmouseover="this.style.background='#15803D';this.style.transform='scale(1.08)'" onmouseout="this.style.background='#16A34A';this.style.transform='scale(1)'"><span style="font-size:16px">⟳</span>重生</button>
+      ${img._bgRemoveFailed ? '<div title="去背失敗（白底白角色）— 已保留原圖，請按「重生」或手動去背" style="position:absolute;top:8px;left:8px;background:#F59E0B;color:#1a1a1a;border:2px solid #fff;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;z-index:5;box-shadow:0 2px 8px rgba(0,0,0,0.25)">⚠ 去背失敗</div>' : ''}
       <img src="${img.data_url}" alt="Mascot option ${idx + 1}" />
       <div class="mascot-label ${labelClass}">${labelText}</div>
     `;
