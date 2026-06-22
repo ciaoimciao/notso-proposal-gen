@@ -2883,6 +2883,19 @@ async function startGeneration() {
   };
   applyBrandTheme(client);
 
+  // Fresh proposal = fresh slate. startGeneration() always builds a brand-new
+  // deck (new /api/generate content + new history entry), so wipe any mascot /
+  // asset-pack state carried over from the PREVIOUS proposal. Without this,
+  // re-filling the form and hitting "Generate" again (instead of using the
+  // "← New Proposal" reset button) left the prior deck's _assetPackSession in
+  // memory — so the Asset Pack modal stayed stuck on the OLD media pack and you
+  // could never generate one for the new deck. Step 2 repopulates mascots.
+  mascotImages = [];
+  mascotSelections = {};
+  savedMascotPaths = {};
+  _assetSlideAssignments = {};
+  _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
+
   setStep(2);
   const interval = animateLoading();
 
@@ -8466,28 +8479,40 @@ function loadFromHistory(id) {
     }
   } catch (_) {}
 
-  // Restore mascot state so Asset Pack modal opens with the right options
-  // and the previously-generated asset-pack grid reappears instead of the
+  // Restore mascot + asset-pack state so the Asset Pack modal opens with the
+  // right options and the previously-generated grid reappears instead of the
   // intro screen.
   //
-  // IMPORTANT: pre-fix history entries (from before we started saving
-  // mascotImages/assetPackSession) have these fields missing. Don't
-  // clobber current in-memory state in that case — the user may be mid
-  // session and still have their mascots loaded. Only overwrite a field
-  // if the entry actually has a non-empty value for it.
+  // RESTORE-OR-CLEAR: viewing a history entry is an explicit context switch to
+  // THAT proposal. If the entry carries the field, use it; if it doesn't, the
+  // new proposal genuinely has no mascot / no asset pack, so we must CLEAR the
+  // leftover in-memory state from the previously-open proposal. Without the
+  // clear, switching to a proposal that has no asset pack left the prior
+  // proposal's _assetPackSession in memory — so openAssetPackModal() kept
+  // showing the OLD media pack ("Regenerate All") and you could never start a
+  // fresh pack for the new deck. (resetAll/"New Proposal" already cleared this;
+  // the View-from-history path did not.)
   if (entry.mascotPaths && Object.keys(entry.mascotPaths).length) {
     savedMascotPaths = entry.mascotPaths;
+  } else {
+    savedMascotPaths = {};
   }
   if (entry.mascotSelectionsData && Object.keys(entry.mascotSelectionsData).length) {
     mascotSelections = entry.mascotSelectionsData;
+  } else {
+    mascotSelections = {};
   }
   if (Array.isArray(entry.mascotImages) && entry.mascotImages.length) {
     mascotImages = entry.mascotImages;
+  } else {
+    mascotImages = [];
   }
   if (entry.assetPackSession && entry.assetPackSession.sessionId &&
       Array.isArray(entry.assetPackSession.results) &&
       entry.assetPackSession.results.length) {
     _assetPackSession = entry.assetPackSession;
+  } else {
+    _assetPackSession = { sessionId: null, results: [], downloadUrl: '' };
   }
   if (entry.slideAssignments && Object.keys(entry.slideAssignments).length) {
     _assetSlideAssignments = entry.slideAssignments;
@@ -8851,7 +8876,7 @@ loadGSConfig().then(() => {
    Fix: downscale each mascot to ≤maxSide before POST. 512 px is still crisp
    at preview-zoom (0.65×) and on exported PDFs at the slot sizes we actually
    use. `preservesAlpha: true` keeps the chroma-keyed transparency intact. */
-async function _shrinkDataUrl(dataUrl, maxSide, quality = 0.95) {
+async function _shrinkDataUrl(dataUrl, maxSide, quality = 0.95, square = false) {
   if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
     return dataUrl;
   }
@@ -8861,17 +8886,30 @@ async function _shrinkDataUrl(dataUrl, maxSide, quality = 0.95) {
       try {
         const w0 = img.naturalWidth, h0 = img.naturalHeight;
         if (!w0 || !h0) { resolve(dataUrl); return; }
-        // ALWAYS re-encode (don't early-return on small images) — even if the
-        // image is already ≤maxSide, we want WebP encoding for transmission.
-        const scale = Math.min(1, Math.min(maxSide / w0, maxSide / h0));
-        const w = Math.max(1, Math.round(w0 * scale));
-        const h = Math.max(1, Math.round(h0 * scale));
         const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, w, h);
+        if (square) {
+          // Center-crop to a square, then output at a FIXED square size. Used
+          // for s16 promo materials so a rectangular reference image can't make
+          // the slide image rectangular — the slot stays a constant 1:1 at a
+          // constant resolution regardless of the source's aspect ratio.
+          const srcSide = Math.min(w0, h0);
+          const sx = Math.round((w0 - srcSide) / 2);
+          const sy = Math.round((h0 - srcSide) / 2);
+          const out = Math.max(1, Math.min(maxSide, srcSide));
+          canvas.width = out; canvas.height = out;
+          ctx.drawImage(img, sx, sy, srcSide, srcSide, 0, 0, out, out);
+        } else {
+          // ALWAYS re-encode (don't early-return on small images) — even if the
+          // image is already ≤maxSide, we want WebP encoding for transmission.
+          const scale = Math.min(1, Math.min(maxSide / w0, maxSide / h0));
+          const w = Math.max(1, Math.round(w0 * scale));
+          const h = Math.max(1, Math.round(h0 * scale));
+          canvas.width = w; canvas.height = h;
+          ctx.drawImage(img, 0, 0, w, h);
+        }
         // Prefer WebP at 95% quality — supports transparency, ~40-60% smaller
         // than PNG at near-identical visual quality. Modern Chromium (used by
         // every preview path AND Puppeteer PDF export on Vercel) decodes WebP
@@ -9149,8 +9187,15 @@ function _slimClientForRender(client) {
 // = "Laptop mockup (bottom-right)"). Everything else (option_*, expression_*,
 // cover_s1, cover_s3 …) keeps the default mascot cap.
 const _MOCKUP_SLOT_RE = /^(cover_s9|cover_s10)$|(phone|laptop|dashboard|mockup)/i;
+// s16 Promotional Materials slots (material_0/1/2). They render in a fixed
+// SQUARE slot on the slide, so we keep them high-res AND center-crop them to
+// 1:1 (see _shrinkMascotMap) — that decouples the promo images from the
+// reference image's aspect ratio (a rectangular ref no longer makes the promo
+// slide image rectangular or soft).
+const _MATERIAL_SLOT_RE = /^material_\d/i;
 function _maxSideForSlot(role, defaultMax) {
-  return _MOCKUP_SLOT_RE.test(role) ? Math.max(defaultMax, 1280) : defaultMax;
+  if (_MOCKUP_SLOT_RE.test(role) || _MATERIAL_SLOT_RE.test(role)) return Math.max(defaultMax, 1280);
+  return defaultMax;
 }
 
 async function _shrinkMascotMap(paths, maxSide) {
@@ -9180,9 +9225,12 @@ async function _shrinkMascotMap(paths, maxSide) {
     out = {};
     for (const [role, url] of Object.entries(paths)) {
       if (!url) continue;
+      const isMaterial = _MATERIAL_SLOT_RE.test(role);
       const target = Math.max(64, Math.round(_maxSideForSlot(role, maxSide) * scale));
-      const cacheKey = url + '::' + target + '::' + quality;
-      if (!cache.has(cacheKey)) cache.set(cacheKey, await _shrinkDataUrl(url, target, quality));
+      // Material slots are center-cropped to a fixed 1:1 square so the s16
+      // promo slide image stays the same size/shape no matter the source.
+      const cacheKey = url + '::' + target + '::' + quality + (isMaterial ? '::sq' : '');
+      if (!cache.has(cacheKey)) cache.set(cacheKey, await _shrinkDataUrl(url, target, quality, isMaterial));
       out[role] = cache.get(cacheKey);
     }
     const total = Object.values(out).reduce((n, s) => n + (typeof s === 'string' ? s.length : 0), 0);
