@@ -2072,6 +2072,14 @@ Return the translated JSON now.`;
         // starts that would otherwise wipe the session's act-typing
         // record and force a fallback to the generic reference image.
         innerMockupMascot = '',
+        // NEW: client flags the mascot as near-white / very light. A white
+        // character on the usual pure-white backdrop is impossible to chroma-
+        // key (and even semantic removers eat parts of it), producing the
+        // "殘破缺東缺西" holey cutouts users reported. When true, transparent
+        // (non-mockup) tasks render on a SATURATED CHROMA-GREEN backdrop
+        // instead — the downstream bg-removal auto-detects the dominant edge
+        // colour, so green strips cleanly while the near-white body survives.
+        lightMascot = false,
       } = body;
 
       // Validate the right key for the picked engine.
@@ -2656,6 +2664,7 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
                 '',
                 '[CONSISTENCY LOCK — READ AFTER THE STYLE OVERRIDE]',
                 'Within the clean 3D clay style above, the character must match the reference at the part level:',
+                '• SPECIES / CREATURE TYPE: the output is the EXACT SAME species, animal, or creature as the reference. If the reference is a fish, the output is the SAME fish — NEVER a dolphin, whale, shark, or any other animal. Do not substitute, "evolve", upgrade, or reinterpret the creature type. Keep the same body plan: same number and kind of limbs, fins, ears, horns, antennae, wings, and tails as the reference. The animal identity is LOCKED.',
                 '• EYES: identical eye shape, size, colour, pupil style, and brow pattern as the reference — but reproduced as solid-fill clay shapes, NOT inked lines. Do not shrink, enlarge, restyle, or recolour the eyes.',
                 '• MOUTH: same mouth shape family as the reference (a smile may open/close for emotion). Rendered as a clay relief — a small sculpted indent or solid shape, NOT an ink stroke.',
                 '• BODY: identical head-to-body ratio, limb length, hand style, foot/shoe style.',
@@ -2676,7 +2685,20 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
               const isMockupCategory = task.category === 'mockups';
               const framingRule = isMockupCategory ? '' :
                 '\n\n[FRAMING: Character must be FULLY VISIBLE — head fully shown, feet fully shown, both arms inside the frame. Leave 8-12% white margin on every side. Character takes 60-75% of frame height, CENTERED. Do NOT crop the head, feet, or any limb. Do NOT zoom in. NO model-sheet, NO turnaround, NO row of mini characters in the background. ONE single hero pose only.]';
-              const effectiveBgHint = isMockupCategory ? '' : bgHint;
+              // Near-white mascots can't be separated from a white backdrop —
+              // swap to a saturated chroma-green background for transparent
+              // (non-mockup) tasks. The client's chroma-key auto-detects the
+              // dominant edge colour and despills it, so green strips cleanly
+              // while the light body survives. Colour mascots keep white.
+              const useGreenBg = lightMascot && !isMockupCategory;
+              const greenBgHint = '\n\n[BACKGROUND: Output MUST be a plain pure #00C853 SOLID chroma-green background — NOT white, NOT grey, NOT transparent, NOT gradient, NOT scenery. The character is light/near-white, so a SATURATED GREEN backdrop is REQUIRED so the downstream bg-removal can cleanly separate the near-white character. Do NOT apply any green tint to the character itself — only the backdrop is green.]';
+              const effectiveBgHint = isMockupCategory ? '' : (useGreenBg ? greenBgHint : bgHint);
+              // When using the green backdrop, neutralise the hard-coded
+              // "pure white (#FFFFFF)" instruction baked into each task.prompt
+              // so it doesn't fight the green bg hint above.
+              const effectiveTaskPrompt = useGreenBg
+                ? task.prompt.replace(/pure white \(#FFFFFF\)/gi, 'pure chroma-green (#00C853)')
+                : task.prompt;
               // User-defined generation rules go BOTH at the very start
               // AND at the very end of the prompt — Gemini weights first +
               // last instructions more heavily, and previous version with
@@ -2691,7 +2713,7 @@ CAMERA: eye-level shot from about 3 meters, slight angle, soft natural lighting,
               const userRulesReminder = userRulesTrim
                 ? `\n\n[FINAL REMINDER — USER RULES ABOVE ARE LAW]\nBefore finalizing the image, verify: ${userRulesTrim}`
                 : '';
-              const fullPrompt = userRulesBlock + '\n\n' + task.prompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + effectiveBgHint + retryHint + userRulesReminder;
+              const fullPrompt = userRulesBlock + '\n\n' + effectiveTaskPrompt + '\n\n[STRICT: single-subject only — exactly ONE mascot character in the output, no duplicates.]' + framingRule + consistencyLock + effectiveBgHint + retryHint + userRulesReminder;
               reqParts.push({ text: fullPrompt });
 
               // ── OpenAI branch (when imageEngine='openai') ──

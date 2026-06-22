@@ -10042,8 +10042,13 @@ async function _assessBgRemoval(originalUrl, resultUrl) {
     // (1) almost nothing left anywhere → the whole character was eaten.
     // (2) the CENTRE went mostly empty AND a big white area there was removed
     //     → a white character body got stripped (the reported failure).
+    // (3) PARTIAL white-body damage — a meaningful chunk of the centre's white
+    //     area got eaten leaving a holey cutout, even though enough of the
+    //     character survives to dodge (1)/(2). This is the "殘破缺東缺西"
+    //     case users hit on light mascots; keep the intact original instead.
     const failed = retainedRatio < 0.06
-      || (centerRetainedRatio < 0.12 && centerWhiteEatenFraction > 0.30);
+      || (centerRetainedRatio < 0.12 && centerWhiteEatenFraction > 0.30)
+      || (centerWhiteEatenFraction > 0.22 && centerRetainedRatio < 0.55);
     return { retainedRatio, whiteEatenFraction, centerRetainedRatio, centerWhiteEatenFraction, failed };
   } catch (_) {
     // If we can't assess (load/canvas error), don't block — assume OK.
@@ -10051,6 +10056,50 @@ async function _assessBgRemoval(originalUrl, resultUrl) {
   }
 }
 window._assessBgRemoval = _assessBgRemoval;
+
+// ─────────────────────────────────────────────────────────────────
+// _isLightMascot — true when the mascot is near-white / very light
+// ─────────────────────────────────────────────────────────────────
+// A white character on the pure-white asset-pack backdrop can't be
+// chroma-keyed (and semantic removers eat parts of it), producing the
+// holey "殘破缺東缺西" cutouts. When this returns true the asset-pack
+// request flags lightMascot, and the server renders transparent tasks
+// on a saturated chroma-green backdrop instead.
+//
+// We measure ONLY the mascot body — Step-2 mascots are transparent PNGs,
+// so opaque pixels ARE the character. If the image carries no meaningful
+// transparency (can't isolate the body from a baked-in white bg) we bail
+// to false so coloured mascots on a white bg are never mis-flagged.
+async function _isLightMascot(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return false;
+  const img = await new Promise((res, rej) => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => res(im); im.onerror = () => rej(new Error('load failed'));
+    im.src = dataUrl;
+  });
+  const W = 64, H = Math.max(1, Math.round(64 * (img.naturalHeight || 1) / (img.naturalWidth || 1)));
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, W, H);
+  const d = x.getImageData(0, 0, W, H).data;
+  const total = W * H;
+  let opaque = 0, sumL = 0, sumS = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 128) continue;            // skip transparent background
+    opaque++;
+    const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    sumL += (mx + mn) / 2;                    // HSL lightness
+    sumS += mx === 0 ? 0 : (mx - mn) / mx;    // simple saturation proxy
+  }
+  // Need a real cut-out to trust the measurement: at least 8% opaque body
+  // AND meaningful transparency present (so it isn't a flat white-bg PNG).
+  const transparentFrac = (total - opaque) / total;
+  if (opaque / total < 0.08 || transparentFrac < 0.10) return false;
+  const meanL = sumL / opaque, meanS = sumS / opaque;
+  // Light + desaturated → treat as near-white.
+  return meanL > 0.80 && meanS < 0.20;
+}
+window._isLightMascot = _isLightMascot;
 
 async function removeBackgroundForImage(dataUrl, opts = {}) {
   const timeoutMs = opts.timeoutMs || 60000;
@@ -11298,6 +11347,9 @@ async function generateAssetPack(opts = {}) {
     return;
   }
   const mascotImage = await _shrinkDataUrl(rawMascotImage, 1024);
+  // Detect a near-white mascot so the server switches transparent tasks to a
+  // chroma-green backdrop (white-on-white is impossible to cut out cleanly).
+  const lightMascot = await _isLightMascot(rawMascotImage).catch(() => false);
   const rawSite = (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '';
   // Site screenshot upper bound was 1600 — but the laptop frame is 4165×4165
   // and the screen-content area inside it is roughly 2900×1600. A 1600-wide
@@ -11372,6 +11424,7 @@ async function generateAssetPack(opts = {}) {
         innerMockupMascot: actTypingDataUrl || undefined,
         industry: client.industry || client.useCase || '',
         promoContext,
+        lightMascot,
         sessionId: _assetPackSession.sessionId || undefined,
         onlyIds: opts.onlyIds || undefined,
         // Per-session mascot size inside phone/laptop mockup screens (0.30–0.95).
@@ -11821,6 +11874,9 @@ async function regenerateAssetPackItem(id) {
     // Shrink before POST — same reason as generateAssetPack: raw payload
     // can exceed Vercel's 4.5 MB limit (HTTP 413).
     const mascotImage = await _shrinkDataUrl(_pickedMascotDataUrl(), 1024);
+    // Same near-white detection as the full-pack flow so single-item regens
+    // also get the chroma-green backdrop for light mascots.
+    const lightMascot = await _isLightMascot(_pickedMascotDataUrl()).catch(() => false);
     const rawSiteRegen = (_uploadedImages && _uploadedImages.clientSite) || client.clientSiteImage || '';
     // 2880 matches the laptop screen-content area natively (was 1600 — caused
     // the soft website-inside-laptop the user flagged). See the matching note
@@ -11853,6 +11909,7 @@ async function regenerateAssetPackItem(id) {
         mascotImage,
         clientSiteImage: slimSiteImageRegen,
         innerMockupMascot: actTypingDataUrl || undefined,  // NEW: pins act-typing for mockup compositor
+        lightMascot,
         sessionId: _assetPackSession.sessionId,
         onlyIds: [id],
         mascotSizeRatio: (typeof _mascotSizeRatio === 'number' ? _mascotSizeRatio : 0.55),
