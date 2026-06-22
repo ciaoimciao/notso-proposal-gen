@@ -5060,6 +5060,13 @@ function _unifiedSnapshotEdits(opts) {
   if (!Object.keys(snap).length) return false;
   const payload = JSON.stringify({
     ts: Date.now(),
+    // Stamp the owning proposal's identity so restore can reject a snapshot
+    // that belongs to a DIFFERENT proposal. The global LATEST key (and the
+    // name-only key) otherwise leak the previous proposal's edited slides
+    // onto a freshly generated one — slide ids (s1/s7/…) are shared across
+    // proposals, so the old text overwrote the new AI-generated content.
+    owner: _unifiedSnapshotKey(),
+    ownerName: _unifiedSnapshotNameOnlyKey(),
     activeSlide: _unifiedActiveSlideId || null,
     slides: snap,
   });
@@ -5109,14 +5116,25 @@ function _unifiedSnapshotEdits(opts) {
 function _unifiedRestoreEditsFromStorage() {
   let snap = null;
   let sourceKey = '';
-  const keys = [_unifiedSnapshotKey(), _unifiedSnapshotNameOnlyKey(), _LATEST_SNAPSHOT_KEY];
+  const exactKey = _unifiedSnapshotKey();
+  const keys = [exactKey, _unifiedSnapshotNameOnlyKey(), _LATEST_SNAPSHOT_KEY];
   for (const k of keys) {
     try {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
-      snap = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.slides || !Object.keys(parsed.slides).length) continue;
+      // IDENTITY GUARD: only restore a snapshot that belongs to THIS proposal.
+      // The exact key already encodes client+title, so reading from it is
+      // trusted (also covers legacy snapshots with no `owner`). For the
+      // name-only and global LATEST fallbacks we require the embedded owner to
+      // match — otherwise we'd overlay a DIFFERENT proposal's edited slides
+      // onto the freshly generated one (the "上一份覆蓋" bug).
+      const belongs = (k === exactKey) || (parsed.owner && parsed.owner === exactKey);
+      if (!belongs) continue;
+      snap = parsed;
       sourceKey = k;
-      if (snap && snap.slides && Object.keys(snap.slides).length) break;
+      break;
     } catch (_) { /* try next */ }
   }
   if (!snap || !snap.slides) return 0;
